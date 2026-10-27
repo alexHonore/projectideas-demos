@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TradeDesk · Today</title>
+<meta name="description" content="TradeDesk V3: an operating system for an independent Québec grain and feed desk. From a supplier's email to priced, booked and reconciled loads, with a demo clock, event injection and optional live AI. Interactive demo, fictional data.">
+<meta name="theme-color" content="#0E1C2B">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div id="desk"></div>
+<main id="main" tabindex="-1">
+  <noscript><div class="wrap"><div class="empty"><p>TradeDesk needs JavaScript to run this demo. Everything runs locally in your browser.</p></div></div></noscript>
+</main>
+<footer class="foot"><div class="foot-in"><span>TradeDesk V3 demo. Fictional companies, people and prices; carrier, facility and accounting replies are simulated. It runs beside your ERP and does not replace it.</span><a href="../../index.html">&larr; All demos</a></div></footer>
+<div id="bottom"></div>
+<div id="more-host"></div>
+<dialog id="party-dlg" aria-labelledby="party-title"><div id="party-root"></div><div class="toasts in-dlg" role="status" aria-live="polite"></div></dialog>
+<dialog id="form-dlg" class="form-dlg" aria-labelledby="form-title"><div id="form-root"></div><div class="toasts in-dlg" role="status" aria-live="polite"></div></dialog>
+<dialog id="lab-dlg" class="drawer" aria-labelledby="lab-title"><div id="lab-root"></div><div class="toasts in-dlg" role="status" aria-live="polite"></div></dialog>
+<dialog id="search-dlg" class="search-dlg" aria-label="Search"><div id="search-root"></div></dialog>
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+<div id="tour-ring" class="tour-ring" hidden aria-hidden="true"></div>
+<div id="tour" class="tour" hidden></div>
+<div id="print-area" class="print-area"></div>
+<script src="vendor/anthropic-sdk.js"></script>
+<script src="vendor/live-ai.js"></script>
+<script src="js/data.js"></script>
+<script src="js/util.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/store.js"></script>
+<script src="js/views-shell.js"></script>
+<script src="js/views-today.js"></script>
+<script src="js/views-inbox.js"></script>
+<script src="js/views-trade.js"></script>
+<script src="js/views-loads.js"></script>
+<script src="js/views-settle.js"></script>
+<script src="js/views-book.js"></script>
+<script src="js/views-forms.js"></script>
+<script src="js/views-lab.js"></script>
+<script src="js/liveai.js"></script>
+<script src="js/search.js"></script>
+<script src="js/tour.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

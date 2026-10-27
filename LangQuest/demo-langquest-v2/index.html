@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="description" content="LangQuest v2 — Conversation-First AI-Native Language Learning. Mobile-Adapted Experience.">
+  <title>LangQuest · Master Any Language Through Real Conversation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body class="mode-phone">
+  <!-- Desktop Frame Controls (Floating) -->
+  <header class="frame-bar">
+    <div class="frame-bar-left">
+      <a href="../../index.html" class="hub-back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Demo Studio
+      </a>
+      <span class="hub-title">LangQuest v2 <span class="tag-mobile">Mobile Adapted</span></span>
+    </div>
+
+    <div class="device-switcher">
+      <button class="dev-btn active" id="btn-phone-view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+        iPhone 16 Pro Frame
+      </button>
+      <button class="dev-btn" id="btn-fluid-view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+        Responsive Full Screen
+      </button>
+    </div>
+  </header>
+
+  <!-- Device Stage -->
+  <div class="device-stage">
+    <div class="phone-mockup">
+      <!-- Hardware Island -->
+      <div class="phone-island">
+        <div class="island-camera"></div>
+      </div>
+
+      <!-- Phone Screen Viewport -->
+      <div class="phone-screen" id="app-screen">
+        <!-- Status Bar -->
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <div class="status-icons">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.28 19.59 10.59 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98A16.88 16.88 0 0 0 12 4z"/></svg>
+            <div class="battery-icon"><div class="battery-fill"></div></div>
+          </div>
+        </div>
+
+        <!-- App Header with Global Course Switcher -->
+        <div class="mobile-header">
+          <div class="course-picker" id="course-trigger" onclick="toggleCourseMenu()">
+            <span class="flag-icon" id="cur-flag">🇨🇦</span>
+            <div class="course-text">
+              <strong id="cur-lang-name">French (Québec)</strong>
+              <small id="cur-lang-level">B1 Conversational ▾</small>
+            </div>
+          </div>
+
+          <div class="stats-pills">
+            <div class="streak-pill">
+              <span>🔥</span>
+              <strong id="streak-num">14</strong>
+            </div>
+            <div class="xp-pill">
+              <span>💎</span>
+              <strong id="xp-num">480</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- 30-Course Catalog Dropdown (Overlay) -->
+        <div class="course-dropdown hidden" id="course-menu">
+          <div class="dropdown-header">
+            <span>30 SELECTABLE TRACKS</span>
+            <small>All 100% Free</small>
+          </div>
+          <div class="dropdown-scroll" id="course-dropdown-list">
+            <!-- Dynamically populated from 30 tracks -->
+          </div>
+        </div>
+
+        <!-- Scrollable Screen Content -->
+        <div class="scroll-content">
+          <!-- TAB 1: LEARN (HOME) -->
+          <div class="tab-pane active" id="pane-home">
+            <!-- Daily Mission Hero Card -->
+            <div class="home-hero-card">
+              <div class="hero-top">
+                <span class="hero-tag">DAILY CONVERSATION MISSION</span>
+                <span class="hero-xp">+50 XP</span>
+              </div>
+              <h2 class="hero-title" id="home-mission-title">Café de Flore: First Order</h2>
+              <p class="hero-desc">Practice natural spoken interaction with barista Élodie. No multiple-choice tiles—just real talking.</p>
+              
+              <div class="hero-progress">
+                <div class="bar-bg"><div class="bar-fill" style="width: 65%;"></div></div>
+                <span>Step 2 of 3 completed</span>
+              </div>
+
+              <button class="btn-play-mission" onclick="startMissionFromHome()">
+                <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Continue Mission
+              </button>
+            </div>
+
+            <!-- Spaced Repetition Due Card -->
+            <div class="section-heading">
+              <h3>Ready for Recall</h3>
+              <a href="#" class="view-all-link" onclick="openRecallTab()">3 Due Today</a>
+            </div>
+
+            <div class="recall-strip">
+              <div class="recall-item" onclick="quickFlipWord('Un café allongé', 'An Americano / long espresso')">
+                <span class="recall-term">Un café allongé</span>
+                <span class="recall-badge">94% Mastered</span>
+              </div>
+              <div class="recall-item" onclick="quickFlipWord('L\'addition, s\'il vous plaît', 'The bill, please')">
+                <span class="recall-term">L'addition</span>
+                <span class="recall-badge">Due Today</span>
+              </div>
+            </div>
+
+            <!-- Hands-Free Audio Track Card -->
+            <div class="section-heading">
+              <h3>Hands-Free Audio Track</h3>
+              <span class="sub-head">Pimsleur-style listening</span>
+            </div>
+
+            <div class="audio-strip-card" onclick="openAudioPlayerFromHome()">
+              <div class="audio-cover">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
+              </div>
+              <div class="audio-info">
+                <strong>Ep 4: Navigating the Metro</strong>
+                <span>8 mins · Native Speaker Dialogue</span>
+              </div>
+              <button class="btn-audio-mini">▶</button>
+            </div>
+          </div>
+
+          <!-- TAB 2: MISSIONS (Conversational Dialogue) -->
+          <div class="tab-pane hidden" id="pane-missions">
+            <div class="chat-header">
+              <div class="character-avatar" id="mission-avatar">👩🏻‍🍳</div>
+              <div class="character-meta">
+                <strong id="mission-char-name">Élodie · Barista</strong>
+                <span class="status-online"><span class="dot"></span> Le Café de Flore · Paris</span>
+              </div>
+            </div>
+
+            <div class="dialogue-container" id="chat-stream">
+              <!-- Dynamically populated conversation bubbles -->
+            </div>
+
+            <!-- Speech Action Dock -->
+            <div class="speech-dock">
+              <div class="speech-prompt-title" id="speech-turn-prompt">Your Turn: Order a coffee with oat milk</div>
+              <div class="prompt-options" id="reply-chips-container">
+                <!-- Dynamically populated chips -->
+              </div>
+
+              <!-- Push to Talk Mic Button -->
+              <div class="mic-trigger-wrap">
+                <button class="btn-mic-pulse" id="btn-talk-mic" onclick="handleMicClick()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                </button>
+                <span class="mic-label" id="mic-status-label">Tap to Speak & Practice Accent</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 3: AUDIO (Hands-Free Player) -->
+          <div class="tab-pane hidden" id="pane-audio">
+            <div class="audio-player-screen">
+              <div class="player-art">
+                <div class="art-glow"></div>
+                <div class="art-icon">🎙️</div>
+                <span class="art-badge">NATIVE AUDIO TRACK</span>
+              </div>
+
+              <div class="player-titles">
+                <h2 id="audio-title">Ep 4: Navigating the Metro</h2>
+                <p id="audio-track-desc">Québec French Conversational Series · Module 2</p>
+              </div>
+
+              <!-- Progress Bar -->
+              <div class="player-scrubber" onclick="handleScrub(event)">
+                <div class="scrub-bar">
+                  <div class="scrub-fill" id="audio-scrub-fill" style="width: 32%;"></div>
+                </div>
+                <div class="scrub-times">
+                  <span id="audio-current-time">02:34</span>
+                  <span>08:10</span>
+                </div>
+              </div>
+
+              <!-- Controls -->
+              <div class="player-controls">
+                <button class="ctrl-btn" onclick="adjustAudioTime(-10)">↺ 10s</button>
+                <button class="ctrl-play-main" id="btn-audio-main-play" onclick="toggleAudioPlay()">
+                  <svg id="audio-play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                </button>
+                <button class="ctrl-btn" onclick="adjustAudioTime(10)">10s ↻</button>
+              </div>
+
+              <div class="speed-toggle">
+                <button class="speed-pill active" onclick="setSpeed(1.0, this)">1.0x</button>
+                <button class="speed-pill" onclick="setSpeed(1.25, this)">1.25x</button>
+                <button class="speed-pill" onclick="setSpeed(0.8, this)">0.8x (Slow)</button>
+              </div>
+
+              <!-- Synchronized Subtitle box -->
+              <div class="player-subtitles">
+                <span class="sub-label">ACTIVE TRANSCRIPT</span>
+                <p id="sub-active-text">"Prenez la ligne 2 vers Henri-Bourassa et changez à Berri-UQAM."</p>
+                <small onclick="addPhraseToNotebook()">+ Tap phrase to save in Recall Notebook</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 4: NOTEBOOK (Spaced Repetition) -->
+          <div class="tab-pane hidden" id="pane-notebook">
+            <div class="notebook-header">
+              <h3>Spaced Recall Notebook</h3>
+              <p>Active retrieval based on graduated memory intervals</p>
+            </div>
+
+            <!-- Flashcard 3D flip card -->
+            <div class="flashcard-container" id="flashcard-flip-wrap" onclick="flipFlashcard()">
+              <div class="flashcard-inner">
+                <div class="card-face card-front">
+                  <span class="card-hint">TAP TO REVEAL MEANING</span>
+                  <h2 id="card-term">Un café allongé</h2>
+                  <span class="card-phonetic" id="card-phonetic">/œ̃ ka.fe a.lɔ̃.ʒe/</span>
+                </div>
+                <div class="card-face card-back">
+                  <span class="card-hint">TRANSLATION & USAGE</span>
+                  <h2 id="card-meaning">An Americano (espresso diluted with hot water)</h2>
+                  <p class="card-usage" id="card-usage">"Deux cafés allongés pour la table 4 !"</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-actions-row">
+              <button class="btn-card-action hard" onclick="nextCard('hard')">Hard (1d)</button>
+              <button class="btn-card-action good" onclick="nextCard('good')">Good (3d)</button>
+              <button class="btn-card-action easy" onclick="nextCard('easy')">Easy (7d)</button>
+            </div>
+
+            <div class="notebook-list-section">
+              <h4>Saved Vocabulary (<span id="saved-vocab-count">18</span> Phrases)</h4>
+              <div class="vocab-row">
+                <div><strong>L'addition, s'il vous plaît</strong><br><small>The bill, please</small></div>
+                <span class="v-pill">Mastered</span>
+              </div>
+              <div class="vocab-row">
+                <div><strong>C'est combien ?</strong><br><small>How much is it?</small></div>
+                <span class="v-pill">Mastered</span>
+              </div>
+              <div class="vocab-row">
+                <div><strong>Où sont les toilettes ?</strong><br><small>Where is the restroom?</small></div>
+                <span class="v-pill">Reviewing</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Navigation Bar (4 tabs) -->
+        <nav class="bottom-nav">
+          <button class="nav-tab active" data-pane="home">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+            <span>Learn</span>
+          </button>
+          <button class="nav-tab" data-pane="missions">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            <span>Missions</span>
+          </button>
+          <button class="nav-tab" data-pane="audio">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
+            <span>Audio</span>
+          </button>
+          <button class="nav-tab" data-pane="notebook">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            <span>Recall</span>
+          </button>
+        </nav>
+
+        <!-- Home Indicator -->
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-notify" class="mobile-toast"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

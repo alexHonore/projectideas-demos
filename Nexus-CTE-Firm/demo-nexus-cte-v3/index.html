@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#13233A">
+  <meta name="description" content="Nexus CTE V3 : le système d'exploitation privé de La Firme CTE, de la détection d'un signal de relève jusqu'à la clôture notariée d'une PME québécoise et de son immeuble.">
+  <title>Nexus CTE · Dossier maître (V3)</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <a class="skip" href="#main">Aller au contenu</a>
+
+  <header class="mast" role="banner">
+    <div class="mast-row">
+      <a class="brand" href="#/" aria-label="Nexus CTE, tour de contrôle">
+        <svg class="brand-mark" viewBox="0 0 26 22" aria-hidden="true" focusable="false">
+          <path d="M5 3 L13 7.5 L21 11 L13 14.5 L5 19" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".55"/>
+          <circle cx="5" cy="3" r="2" fill="currentColor"/>
+          <circle cx="13" cy="7.5" r="2" fill="currentColor"/>
+          <circle cx="13" cy="14.5" r="2" fill="currentColor"/>
+          <circle cx="5" cy="19" r="2" fill="currentColor"/>
+          <circle cx="21" cy="11" r="2.6" class="brand-lead"/>
+        </svg>
+        <span class="brand-text"><strong>Nexus CTE</strong><span class="brand-sub">La Firme CTE, transfert d'entreprise</span><span class="brand-demo">Démo, données fictives</span></span>
+      </a>
+      <div class="mast-links">
+        <a class="link-btn" href="../../index.html">← Toutes les démos</a>
+        <button type="button" class="link-btn" data-ui="reset-ask">Réinitialiser la démo</button>
+        <span class="demo-mark demo-mark-ink">Démo, données fictives</span>
+      </div>
+      <div class="mast-tools">
+        <button type="button" class="mast-btn" data-action="palette-open" aria-keyshortcuts="Control+K Meta+K" aria-label="Rechercher (Ctrl K)">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="mast-label">Rechercher</span><kbd class="mast-kbd">Ctrl K</kbd>
+        </button>
+        <button type="button" class="mast-btn" data-action="copilot-open" aria-controls="copilot" aria-label="Ouvrir le copilote">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12v9H9l-4 3v-3H4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <span class="mast-label">Copilote</span>
+        </button>
+        <button type="button" class="mast-btn mast-inbox" id="inbox-btn" data-ui="inbox-open" aria-controls="drawer" aria-label="Boîte de réception">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3a5 5 0 0 0-5 5v3l-1.5 3h13L15 11V8a5 5 0 0 0-5-5zM8 16a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <span class="mast-label">Boîte</span><span class="inbox-badge" id="inbox-badge" hidden>0</span>
+        </button>
+        <button type="button" class="mast-btn mast-lab" data-ui="lab-open" aria-controls="drawer" aria-label="Ouvrir le Labo de test">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 3h4M8.5 3v5L4 16a1 1 0 0 0 .9 1.5h10.2A1 1 0 0 0 16 16l-4.5-8V3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M6.2 12.5h7.6" stroke="currentColor" stroke-width="1.6"/></svg>
+          <span class="mast-label">Labo de test</span>
+        </button>
+        <label class="role-switch">
+          <span class="mast-label sr-only">Voir comme</span>
+          <select id="role-select" data-change="role" aria-label="Voir l'application comme">
+            <option value="courtier">Courtière principale</option>
+            <option value="analyste">Analyste transaction</option>
+            <option value="agent_acheteur">Agente acheteurs</option>
+            <option value="agent_vendeur">Agent vendeur</option>
+          </select>
+        </label>
+        <button type="button" class="mast-btn mast-tour" data-action="tour-start" aria-label="Visite commentée">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4l10 6-10 6z" fill="currentColor"/></svg>
+          <span>Visite commentée</span>
+        </button>
+        <button type="button" class="mast-btn mast-menu" data-action="menu-toggle" aria-expanded="false" aria-controls="utility-sheet">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span class="sr-only">Menu</span>
+        </button>
+      </div>
+    </div>
+    <div class="subbar">
+      <nav class="tabs" aria-label="Navigation principale" id="primary-nav"></nav>
+      <div class="utility" id="utility-sheet">
+        <span class="demo-mark demo-mark-sub">Démo, données fictives</span>
+        <span class="clock" id="clock" title="Horloge de démonstration : avancez-la depuis le Labo de test"></span>
+        <label class="u-role"><span>Voir comme</span>
+          <select data-change="role" class="role-select-2" aria-label="Voir l’application comme (menu)">
+            <option value="courtier">Courtière principale</option>
+            <option value="analyste">Analyste transaction</option>
+            <option value="agent_acheteur">Agente acheteurs</option>
+            <option value="agent_vendeur">Agent vendeur</option>
+          </select>
+        </label>
+        <span class="u-tools"><button type="button" class="btn btn-quiet btn-sm" data-ui="lab-open">Labo de test</button><button type="button" class="btn btn-quiet btn-sm" data-action="copilot-open">Copilote</button></span>
+        <span class="u-links"><span class="demo-mark">Démo, données fictives</span><button type="button" class="link-btn" data-ui="reset-ask">Réinitialiser la démo</button>
+        <a class="link-btn" href="../../index.html">← Toutes les démos</a></span>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1"></main>
+  <footer class="foot"><p>Nexus CTE V3, démonstration. La Firme CTE, ses dossiers, ses clients et ses acheteurs sont fictifs; aucun appel, courriel, signature ni divulgation n’est exécuté. <a href="../../index.html">← Toutes les démos</a></p></footer>
+
+  <nav class="bottom-nav" aria-label="Navigation principale (mobile)" id="bottom-nav"></nav>
+
+  <aside id="copilot" class="drawer" aria-labelledby="copilot-title" hidden></aside>
+  <div id="drawer" class="drawer drawer-wide" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden></div>
+  <div id="scrim" class="scrim" hidden></div>
+  <div id="modal-root"></div>
+  <div id="palette" class="palette" role="dialog" aria-modal="true" aria-label="Recherche et commandes" hidden></div>
+  <div id="tour" class="tour" hidden></div>
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+  <div id="print-root" aria-hidden="true"></div>
+
+  <!-- IA en direct facultative (copie conforme du dossier vendor/ du dépôt), chargée avant l’application. -->
+  <script src="vendor/anthropic-sdk.js"></script>
+  <script src="vendor/live-ai.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/rules.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/view-tower.js"></script>
+  <script src="js/view-radar.js"></script>
+  <script src="js/view-dossier.js"></script>
+  <script src="js/view-dossier2.js"></script>
+  <script src="js/view-buyers.js"></script>
+  <script src="js/view-compliance.js"></script>
+  <script src="js/view-training.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/forms.js"></script>
+  <script src="js/lab.js"></script>
+  <script src="js/copilot.js"></script>
+  <script src="js/tour.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

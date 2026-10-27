@@ -1,0 +1,290 @@
+/* Nexus CTE V3 — dossier de mandat (générique) : sommaire aveugle et cahier, acheteurs, salle de données, LI et clôture. */
+(function (g) {
+  'use strict';
+  var D = g.DATA, U = g.U, E = g.E, S = g.S, R = g.R, UI = g.UI, C = UI.C, esc = U.esc;
+  function buyer(id) { return S.buyer(id) || { id: id, name: id, type: 'strategique', criteria: {}, prefs: {} }; }
+  function ebitdaBand(v) { var lo = Math.floor(v / 200000) * 200000; return (lo / 1000) + ' à ' + ((lo + 200000) / 1000) + ' k$'; }
+  function liveBtn(label, ui, data, key) { var on = g.AI && g.AI.available(); return C.btn(label, ui, { ui: true, variant: 'quiet', icon: 'spark', data: data, key: key, blocked: on ? (g.AI.busy(key) ? 'Requête en cours.' : null) : g.AI ? g.AI.offReason() : 'IA en direct indisponible.' }); }
+
+  /* ================= 3. Sommaire aveugle et cahier ================= */
+  function markLine(t, issues, kept) {
+    var h = esc(t);
+    issues.forEach(function (i) { i.match.split(', ').forEach(function (tok) { var e = esc(tok); if (e.length > 1 && h.indexOf(e) >= 0) h = h.split(e).join('<mark class="tz-issue tz-' + (i.kind === 'nom' ? 'nom' : i.kind === 'chiffre' ? 'chiffre' : 'identifiable') + '">' + e + '</mark>'); }); });
+    kept.forEach(function (i) { i.match.split(', ').forEach(function (tok) { var e = esc(tok); if (e.length > 1 && h.indexOf(e) >= 0) h = h.split(e).join('<span class="tz-kept" title="Conservé avec l’accord du cédant">' + e + '</span>'); }); });
+    return h;
+  }
+  function teaserDoc(m) {
+    var n = E.normalization(m), draft = m.teaser.draft || [], all = R.scanTeaser(draft, m);
+    function lineHtml(i) { var iss = all.filter(function (x) { return x.line === i; }); return markLine(draft[i].t, iss.filter(function (x) { return !(x.canKeep && m.teaser.kept[x.key]); }), iss.filter(function (x) { return x.canKeep && m.teaser.kept[x.key]; })); }
+    var title = draft.findIndex(function (l) { return l.k === 'title'; }), intro = [], hl = [], struct = [];
+    draft.forEach(function (l, i) { if (l.k === 'intro') intro.push(i); else if (l.k === 'hl') hl.push(i); else if (l.k === 'structure') struct.push(i); });
+    var bp = m.blind;
+    return '<article class="doc teaser-doc" aria-label="Brouillon du sommaire aveugle"><header class="doc-head"><span>La Firme CTE</span><span>Sommaire aveugle, référence ' + esc(m.blindRef) + '</span></header>' +
+      '<h3>' + (title >= 0 ? lineHtml(title) : '') + '</h3>' + intro.map(function (i) { return '<p>' + lineHtml(i) + '</p>'; }).join('') +
+      '<dl class="doc-figs"><div><dt>Chiffre d’affaires</dt><dd>' + esc(bp.revenueBand) + '</dd></div><div><dt>BAIIA retraité</dt><dd>' + ebitdaBand(n.conservative[n.base] || 0) + '</dd></div><div><dt>Effectif</dt><dd>' + esc(bp.employeesBand) + '</dd></div><div><dt>Exploitation</dt><dd>' + esc(bp.age) + '</dd></div></dl>' +
+      (hl.length ? '<h4>Points saillants</h4><ul>' + hl.map(function (i) { return '<li>' + lineHtml(i) + '</li>'; }).join('') + '</ul>' : '') +
+      (struct.length ? '<h4>Structure envisagée</h4>' + struct.map(function (i) { return '<p>' + lineHtml(i) + '</p>'; }).join('') : '') +
+      '<p class="doc-foot">Toute demande passe par La Firme CTE, référence ' + esc(m.blindRef) + '. Aucune information additionnelle sans entente de confidentialité signée.</p></article>';
+  }
+  function sommaire(st, m) {
+    var n = E.normalization(m);
+    if (!S.P.financials() && st.role !== 'agent_acheteur') return C.roleNote('Le sommaire et le cahier sont préparés par la courtière et l’analyste.');
+    if (st.role === 'agent_acheteur') return C.section('Sommaire aveugle', m.teaser.approved ? teaserDoc(m) + '<p class="fineprint">Version approuvée, lecture seule. Le cahier de présentation n’est remis qu’aux acheteurs ayant signé une entente.</p>' : C.empty('Sommaire pas encore approuvé', 'La courtière approuve le sommaire avant toute approche d’acheteurs.'), { hid: 'h-tz' });
+    var teaser;
+    if (!m.teaser.draft) {
+      var blockGen = !m.normApproved ? 'Le sommaire se génère à partir du BAIIA retraité approuvé (étape 1).' : null;
+      teaser = '<p>Le brouillon est généré à partir du profil anonymisé et du BAIIA retraité approuvé. La raison sociale n’est jamais envoyée au modèle pour un mandat aveugle; la vérification des noms et le test d’identifiabilité passent sur chaque brouillon, quelle que soit sa provenance.</p><div class="actions actions-wrap">' +
+        C.btn(m.teaserSeed ? 'Générer le brouillon (IA scénarisée)' : 'Générer le brouillon (règles)', 'teaserGenerate', { variant: 'primary', icon: 'spark', data: { m: m.id }, blocked: blockGen, key: 'tz-gen' }) +
+        (blockGen ? '' : liveBtn('Rédiger avec l’IA en direct', 'teaser-ai', { m: m.id }, 'tz-ai-' + m.id)) + '</div>';
+    } else {
+      var issues = R.openIssues(m), all = R.scanTeaser(m.teaser.draft, m), checks = R.nameChecks(m);
+      teaser = '<div class="split split-tz"><div>' + teaserDoc(m) + '<div class="actions">' + C.btn('Modifier le brouillon', 'teaser-edit', { ui: true, small: true, variant: 'ghost', icon: 'edit', data: { m: m.id }, key: 'tz-edit' }) + C.btn('Régénérer', 'teaserGenerate', { small: true, variant: 'ghost', data: { m: m.id }, key: 'tz-regen' }) + (g.AI ? liveBtn('Régénérer avec l’IA en direct', 'teaser-ai', { m: m.id }, 'tz-ai-' + m.id) : '') + '</div></div><div>' +
+        '<p class="prov-line">Provenance du brouillon : ' + C.prov(m.teaser.provenance) + '</p>' +
+        '<h3 class="sub-h">Vérification des noms avant exportation</h3><ul class="checks">' + checks.map(function (x) { var hit = all.filter(function (i) { return i.kind === 'nom' && i.cats.indexOf(x[2]) >= 0; })[0]; return '<li class="' + (x[1] ? 'ok' : 'block') + '">' + C.icon(x[1] ? 'check' : 'x') + '<span>' + esc(x[0]) + (x[1] ? '' : ' : trouvé (« ' + esc(hit.match) + ' »). Exportation bloquée.') + '</span></li>'; }).join('') + '</ul>' +
+        C.ai('Deal Packaging : test d’identifiabilité', 'Moyenne', '<p>Un concurrent du même secteur et de la même région pourrait-il reconnaître l’entreprise ? Lieux plus précis que la région, superlatifs vérifiables, certifications rares, années de fondation exactes et chiffres absents du moteur sont relevés par règles.</p>', '', { source: 'rules' }) +
+        (all.length ? '<ul class="issues">' + all.map(function (i) {
+          var kept = i.canKeep && m.teaser.kept[i.key];
+          return '<li class="is-' + (kept ? 'kept' : 'open') + '"><span class="iss-kind">' + (i.kind === 'nom' ? 'Nom' : i.kind === 'chiffre' ? 'Chiffre non lié au moteur' : 'Détail identifiant') + '</span><p>« ' + esc(m.teaser.draft[i.line].t) + ' »</p><p class="cell-sub">' + esc(i.why) + ' : ' + esc(i.match) + '</p>' +
+            (kept ? '<p class="iss-done">Conservé avec l’accord du cédant</p>' : '<div class="iss-acts">' + (i.fixed ? C.btn('Corriger : « ' + (i.fixed.length > 70 ? i.fixed.slice(0, 67) + '…' : i.fixed) + ' »', 'teaserFix', { small: true, variant: 'ok', data: { m: m.id, key: i.key }, key: 'tz-fix-' + i.line }) : '') +
+              (m.teaser.draft[i.line].k !== 'title' ? C.btn('Supprimer la ligne', 'teaserDropLine', { small: true, variant: 'quiet', data: { m: m.id, line: i.line }, key: 'tz-drop-' + i.line }) : '') + (i.canKeep ? C.btn('Conserver, accord du cédant', 'teaserKeep', { small: true, variant: 'ghost', data: { m: m.id, key: i.key } }) : '') + '</div>') + '</li>';
+        }).join('') + '</ul>' : '<p class="done-line">' + C.icon('check') + '<span>Aucun constat : aucun nom, lieu précis ou chiffre hors moteur.</span></p>') +
+        '<div class="approve-box">' + (m.teaser.approved ? C.stamp(m.teaser.approved, 'Sommaire approuvé') + C.btn('Exporter en PDF (impression)', 'print-teaser', { ui: true, small: true, variant: 'quiet', icon: 'print', data: { m: m.id } }) :
+          C.btn('Approuver le sommaire', 'teaserApprove', { variant: 'brass', icon: 'stamp', data: { m: m.id }, blocked: issues.length ? 'Exportation bloquée : ' + issues.length + ' constat' + (issues.length > 1 ? 's' : '') + ' à traiter.' : !S.P.decideMandate() ? 'Seule la courtière approuve le sommaire.' : null, key: 'tz-approve' })) + '</div></div></div>';
+    }
+    var cim;
+    if (!m.cim.generated) cim = '<p>Douze sections générées à partir des données du mandat, des réponses au questionnaire et des états retraités confirmés. Chaque phrase factuelle doit renvoyer à une pièce révisée; les affirmations du cédant sans source bloquent l’approbation.</p><div class="actions">' + C.btn(E.isSeeded(m) ? 'Générer le cahier (IA scénarisée)' : 'Générer le cahier (règles)', 'cimGenerate', { variant: 'primary', icon: 'spark', data: { m: m.id }, blocked: !m.valApproved ? 'Le cahier se génère à partir de la fourchette validée (étape 2).' : null, key: 'cim-gen' }) + '</div>';
+    else {
+      var open = E.cimOpen(m), reviewed = [];
+      E.roomFolders(m).forEach(function (f) { f.items.forEach(function (it) { if (E.itemStatus(m, it.id) === 'revise') reviewed.push(it); }); });
+      cim = '<ol class="cim">' + E.cimSections(m).map(function (sec) {
+        var bad = sec.s.some(function (x) { return open.some(function (o) { return (x.claim && o.id === x.claim.id) || (!x.claim && o.doc && o.doc === x.src); }); });
+        return '<li><details' + (bad ? ' open' : '') + '><summary><span class="cim-n">' + sec.id + '</span>' + esc(sec.title) + (bad ? C.chip('À sourcer', 'block') : C.chip('Sourcé', 'ok')) + '</summary><ul>' + sec.s.map(function (x) {
+          if (x.claim) {
+            var dcs = m.cim.decisions[x.claim.id];
+            if (dcs && dcs.d === 'deleted') return '<li class="cim-del"><del>' + esc(x.t) + '</del> <span class="cell-sub">Phrase supprimée</span></li>';
+            if (dcs && dcs.d === 'reformulated') return '<li>' + esc(x.claim.alt.t) + ' ' + C.src(x.claim.alt.src, m) + '</li>';
+            if (dcs && dcs.d === 'linked') return '<li>' + esc(x.t) + ' ' + C.src(dcs.doc, m) + '</li>';
+            if (x.src) return '<li>' + esc(x.t) + ' ' + C.src(x.src, m) + '</li>';
+            return '<li class="cim-missing"><span>' + esc(x.t) + '</span> ' + C.src(null) + '<span class="iss-acts">' + (x.claim.alt ? C.btn('Reformuler avec une source', 'cimClaim', { small: true, variant: 'ok', data: { m: m.id, id: x.claim.id, d: 'reformulated' }, key: 'cim-ref-' + x.claim.id }) : '') +
+              (reviewed.length ? '<label class="field field-inline cim-link"><span class="sr-only">Lier à une pièce révisée</span><select data-change="cim-link" data-m="' + m.id + '" data-id="' + x.claim.id + '"><option value="">Lier à une pièce…</option>' + reviewed.map(function (it) { return '<option value="' + it.id + '">' + it.id + ' ' + esc(it.name) + '</option>'; }).join('') + '</select></label>' : '') +
+              C.btn('Supprimer', 'cimClaim', { small: true, variant: 'quiet', data: { m: m.id, id: x.claim.id, d: 'deleted' }, key: 'cim-del-' + x.claim.id }) + '</span></li>';
+          }
+          var unrev = /^\d\d-\d\d$/.test(x.src || '') && E.itemStatus(m, x.src) !== 'revise';
+          return '<li' + (unrev ? ' class="cim-missing"' : '') + '>' + esc(x.t) + ' ' + C.src(x.src, m) + (unrev ? ' <span class="cell-sub">Source non révisée : ' + C.btn('Réviser ' + x.src, 'roomReview', { small: true, variant: 'quiet', data: { m: m.id, id: x.src }, blocked: E.itemStatus(m, x.src) !== 'recu' ? 'La pièce ' + x.src + ' n’est pas encore reçue.' : null }) + '</span>' : '') + '</li>';
+        }).join('') + '</ul></details></li>';
+      }).join('') + '</ol>' +
+        '<div class="approve-box">' + (m.cim.approved ? C.stamp(m.cim.approved, 'Cahier approuvé') : C.btn('Approuver le cahier', 'cimApprove', { variant: 'brass', icon: 'stamp', data: { m: m.id }, blocked: open.length ? 'Approbation bloquée : ' + open.length + ' phrase' + (open.length > 1 ? 's' : '') + ' à sourcer.' : !S.P.decideMandate() ? 'Seule la courtière approuve le cahier.' : null, key: 'cim-approve' })) + '<p class="fineprint">Pied de page de chaque document IA : modèle, date de génération, approbatrice, date d’approbation. Valeur médiane liée au moteur : ' + U.money(E.valuation(m).ev.mid) + '.</p></div>';
+    }
+    return C.section('Sommaire aveugle', teaser, { hid: 'h-tz', sub: 'Une page, zéro information identifiante' }) + C.section('Cahier de présentation', cim, { hid: 'h-cim', sub: 'Remis seulement aux acheteurs ayant signé une entente de confidentialité' });
+  }
+  UI.UIA['cim-link'] = function (p) { if (!p.value) return; UI.run('cimClaim', { m: p.m, id: p.id, d: 'linked', doc: p.value }); };
+
+  /* ================= 4. Acheteurs ================= */
+  var BAND = { correspond: ['Correspond', 'Satisfait chaque critère déclaré'], pourrait: ['Pourrait correspondre', 'Hors d’une borne déclarée, mais critères appris ou signaux favorables'], hypothese: ['Hypothèse', 'Candidat non évident : à juger délibérément'] };
+  var NDA = { envoye: ['Entente envoyée', ''], consulte: ['Entente consultée', 'warn'], signe: ['Entente signée', 'ok'], refuse: ['A décliné', 'block'], retire: ['S’est retiré', 'block'] };
+  function prefsFit(m, b) { var ids = (m.sellerPrefs || []).map(function (p) { return p.id; }); var met = ids.filter(function (k) { return b.prefs && b.prefs[k]; }).length; return { met: met, total: ids.length }; }
+  function buyerRow(x, st, m) {
+    var b = x.b, r = x.r, inList = m.shortlist.indexOf(b.id) >= 0, fr = E.freshness(b.lastVerified, st.clock.d), pf = prefsFit(m, b), nda = m.nda[b.id];
+    var locked = !!m.listLocked;
+    var check = r.excluded ? '<span class="excl">' + C.icon('lock') + 'Exclu</span>' : '<label class="pick"><input type="checkbox" data-change="ui-shortlist" data-m="' + m.id + '" data-id="' + b.id + '"' + (inList ? ' checked' : '') + (locked || !(S.P.buyersWrite() || S.P.decideMandate()) ? ' disabled' : '') + ' data-key="pick-' + b.id + '"><span class="sr-only">Retenir ' + esc(b.name) + '</span></label>';
+    var learned = (b.inferred || []);
+    return '<li class="b-row' + (r.excluded ? ' is-excluded' : '') + (inList ? ' is-in' : '') + '">' + check +
+      '<span class="b-score"><strong>' + (r.excluded ? '0' : r.score) + '</strong>' + (r.excluded ? '<span>score brut ' + r.raw + '</span>' : '') + '</span>' +
+      '<div class="b-main"><p class="b-name"><a href="#/acheteurs/' + b.id + '">' + esc(b.name) + '</a></p><p class="b-meta">' + esc(D.BUYER_TYPES[b.type]) + ', ' + esc(b.city) + ', approche ' + esc(String(b.angle || '').toLowerCase()) + '</p>' +
+      '<p class="b-chips">' + r.chips.map(function (c) { return C.chip(c, ''); }).join('') + '</p>' +
+      (r.excluded ? '<p class="b-risk">' + C.icon('lock') + esc(r.reason) + '. Un score élevé ne lève pas une contrainte ferme.</p>' : '') + (m.cautions[b.id] ? '<p class="b-risk">' + C.icon('alert') + esc(m.cautions[b.id]) + '</p>' : '') +
+      (x.refused ? '<p class="b-risk">' + C.icon('x') + 'A décliné le ' + U.date(x.refused.date) + ' : ' + esc(x.refused.reason) + '. Reste admissible pour d’autres dossiers.</p>' : '') +
+      '<details class="b-why"><summary>Pourquoi ce score</summary><table class="mini"><tbody>' + r.parts.map(function (p) { return '<tr><th scope="row">' + esc(p.label) + '</th><td class="num">' + p.sub + ' × ' + p.w + ' %</td><td class="num">' + U.num(p.pts, 1) + '</td></tr>'; }).join('') + '</tbody></table><p class="cell-sub">Thèse : ' + esc(b.thesis) + '</p>' + (learned.length ? '<p class="cell-sub">Critères appris (distincts des déclarés) : ' + esc(learned.join('; ')) + '</p>' : '') + '</details></div>' +
+      '<div class="b-side"><span class="fresh fresh-' + fr.level + '">' + esc(fr.label) + '</span><span>' + (b.fundingEvidence ? C.icon('check') + 'Financement documenté' : C.icon('alert') + 'Financement non prouvé') + '</span><span>Préférences du cédant : ' + pf.met + ' sur ' + pf.total + (b.notes ? ', ' + esc(b.notes.charAt(0).toLowerCase() + b.notes.slice(1)) : '') + '</span>' + (nda ? C.chip(NDA[nda][0], NDA[nda][1]) : '') +
+      (S.P.decideMandate() && !r.excluded && !nda ? C.btn('Exclure (cédant)', 'exclude-ask', { ui: true, small: true, variant: 'ghost', data: { m: m.id, id: b.id } }) : r.excluded && S.P.decideMandate() ? C.btn('Lever l’exclusion', 'exclusionSet', { small: true, variant: 'ghost', data: { m: m.id, id: b.id, reason: '' } }) : '') + '</div></li>';
+  }
+  function acheteurs(st, m) {
+    if (!m.fin.entered) return '<div class="notice">' + C.icon('lock') + '<span>L’appariement part du BAIIA et de la valeur du mandat. <a href="#/dossier/' + m.id + '/retraitement">Saisir les états financiers</a>.</span></div>';
+    var version = st.weights, list = E.ranked(m, st, version), fn = E.funnel(m, st), maxN = fn[0].n || 1;
+    var funnel = '<ol class="funnel">' + fn.map(function (s, i) { return '<li><button type="button" class="fn-step" data-ui="funnel" data-m="' + m.id + '" data-i="' + i + '"><span class="fn-bar" style="width:' + Math.max(6, s.n / maxN * 100) + '%"></span><span class="fn-n">' + s.n + '</span><span class="fn-l">' + esc(s.label) + '<span class="cell-sub">' + esc(s.note) + (s.excluded && i === fn.length - 1 ? ', dont ' + s.excluded + ' exclu par contrainte ferme' : '') + '</span></span></button></li>'; }).join('') + '</ol>' +
+      '<p class="fineprint">C’est le dernier chiffre qui compte. Univers de ' + fn[0].n + ' sociétés : ' + (fn[0].n >= 30 ? '30 ou plus, risque d’identification standard pour une approche aveugle.' : 'sous le seuil de 30, risque d’identification élevé : accord écrit du cédant requis avant l’approche.') + ' Recalculé à chaque changement du CRM acheteurs et de l’horloge.</p>';
+    var bands = ['correspond', 'pourrait', 'hypothese'].map(function (bd) {
+      var items = list.filter(function (x) { return x.r.band === bd && !x.r.excluded; });
+      return '<h3 class="band-h">' + esc(BAND[bd][0]) + ' <span class="count">' + items.length + '</span><span class="cell-sub">' + esc(BAND[bd][1]) + '</span></h3><ul class="b-list">' + items.map(function (x) { return buyerRow(x, st, m); }).join('') + '</ul>';
+    }).join('') + '<h3 class="band-h">Exclus <span class="count">' + list.filter(function (x) { return x.r.excluded; }).length + '</span></h3><ul class="b-list">' + list.filter(function (x) { return x.r.excluded; }).map(function (x) { return buyerRow(x, st, m); }).join('') + '</ul>';
+    var wsw = '<div class="seg-group" role="radiogroup" aria-label="Barème de pondération">' + ['nexus', 'plan'].map(function (k) { return '<button type="button" role="radio" aria-checked="' + (version === k) + '" class="seg' + (version === k ? ' is-on' : '') + '" data-ui="weights" data-value="' + k + '"><strong>' + esc(D.WEIGHTS[k].label) + '</strong><span>' + D.WEIGHTS[k].dims.map(function (d) { return d.w; }).join(' / ') + '</span></button>'; }).join('') + '</div>';
+    var side = '<h3 class="sub-h">Liste retenue</h3>' + (m.shortlist.length ? '<ol class="short">' + m.shortlist.map(function (id) { var nd = m.nda[id]; return '<li><span>' + esc(buyer(id).name) + '</span>' + (nd ? C.chip(NDA[nd][0], NDA[nd][1]) : '') + '</li>'; }).join('') + '</ol>' : '<p class="cell-sub">Cochez des acheteurs dans le classement.</p>');
+    if (!m.listLocked) side += '<div class="approve-box">' + C.btn('Verrouiller la liste', 'listLock', { variant: 'brass', icon: 'stamp', data: { m: m.id }, blocked: !S.P.decideMandate() ? 'La courtière approuve et verrouille la liste.' : !m.shortlist.length ? 'La liste est vide.' : null, key: 'list-lock' }) + '</div>';
+    else side += C.stamp(m.listLocked, 'Liste verrouillée') + (m.teasersSent ? '' : C.btn('Déverrouiller', 'listUnlock', { small: true, variant: 'ghost', data: { m: m.id } }));
+    side += '<h3 class="sub-h">Protocole d’approche anonyme</h3>' + (m.script ? C.stamp(m.script, 'Script consigné') : '<p class="cell-sub">Ce qui peut être dit, et la liste rouge, avant toute approche.</p>' + C.btn('Consigner le script de divulgation', 'script-open', { ui: true, variant: 'quiet', data: { m: m.id }, key: 'script-open', blocked: S.P.decideMandate() ? null : 'Seule la courtière consigne le script de divulgation.' }));
+    if (m.stage === 'marche' || m.teasersSent) {
+      side += '<h3 class="sub-h">Mise en marché</h3>';
+      if (!m.teasersSent) side += C.btn('Transmettre sommaires et ententes (simulé)', 'teasersSend', { variant: 'primary', data: { m: m.id }, key: 'send', blocked: m.leak || m.hold || m.sellerConsentWithdrawn ? 'Envois gelés pour ce dossier.' : null });
+      else {
+        var waiting = Object.keys(m.nda).filter(function (id) { return m.nda[id] === 'envoye' || m.nda[id] === 'consulte'; }).length;
+        side += '<p class="cell-sub">Transmis le ' + U.date(m.teasersSent) + '. ' + E.ndaSigned(m).length + ' entente' + (E.ndaSigned(m).length > 1 ? 's' : '') + ' signée' + (E.ndaSigned(m).length > 1 ? 's' : '') + (waiting ? ', ' + waiting + ' en attente' : '') + '.</p>' + (waiting ? C.btn('Avancer l’horloge de trois semaines (réponses)', 'clock-weeks', { ui: true, variant: 'primary', icon: 'clock', data: { weeks: 3 }, key: 'sim-market' }) : '');
+      }
+    } else if (m.stage === 'preparation' || m.stage === 'signe') side += '<p class="fineprint">La transmission s’ouvre à l’étape Mise en marché, une fois les conditions remplies.</p>';
+    m.pendingRefusals.forEach(function (x) { side += '<form class="refusal" data-ui-form="refusal" data-m="' + m.id + '" data-id="' + x.buyer + '"><h3 class="sub-h">Refus à consigner : ' + esc(buyer(x.buyer).name) + '</h3><p class="cell-sub">Un motif structuré est requis avant de fermer la fiche. Ce n’est pas un retrait des communications.</p><label class="field"><span>Motif</span><select name="reason" data-key="refusal-reason-' + x.buyer + '">' + D.REFUSAL_REASONS.map(function (r) { return '<option' + (r === x.reason ? ' selected' : '') + '>' + esc(r) + '</option>'; }).join('') + '</select></label><label class="field"><span>Précision (facultatif)</span><input name="note" type="text" value=""></label><button type="submit" class="btn btn-primary btn-sm" data-key="refusal-submit-' + x.buyer + '">Consigner le refus</button></form>'; });
+    if ((m.afterRefusal || []).length) side += '<h3 class="sub-h">Après les refus</h3><ul class="risks">' + m.afterRefusal.map(function (ev) { return '<li>' + C.icon('arrow') + '<span>' + (ev.href ? '<a href="' + ev.href + '">' + esc(ev.text) + '</a>' : esc(ev.text)) + '</span></li>'; }).join('') + '</ul>';
+    side += '<div class="actions">' + C.btn('Carte des acheteurs anonymisée (PDF)', 'print-buyermap', { ui: true, small: true, variant: 'quiet', icon: 'print', data: { m: m.id } }) + '</div><p class="fineprint">Pour la rencontre de mandat : nombre par type, capacité, géographie, financement. Aucun nom.</p>';
+    var prop = '';
+    if (m.property) {
+      var inv = m.property.investor ? S.buyer(m.property.investor) : null, yieldPct = m.property.marketRent / m.property.value * 100;
+      var cand = inv || st.buyers.filter(function (b) { return b.type === 'investisseur_immobilier' && !b.archived && b.criteria.propertyMin <= m.property.value && b.criteria.propertyMax >= m.property.value; })[0];
+      prop = cand ? '<div class="prop"><p><strong>' + esc(cand.name) + '</strong>, ' + esc(D.BUYER_TYPES[cand.type].toLowerCase()) + '. ' + esc(cand.thesis) + '</p><ul class="checks"><li class="ok">' + C.icon('check') + '<span><strong>Prix</strong> ' + C.money(m.property.value) + ' dans la bande ' + C.money(cand.criteria.propertyMin) + ' à ' + C.money(cand.criteria.propertyMax) + '</span></li><li class="' + (yieldPct >= 7 ? 'ok' : 'warn') + '">' + C.icon(yieldPct >= 7 ? 'check' : 'alert') + '<span><strong>Rendement brut</strong> ' + (S.P.financials() ? U.pct(yieldPct, 1) : 'masqué') + ' pour une cible de ' + esc(cand.criteria.yieldTarget) + ' (loyer marchand)</span></li><li class="ok">' + C.icon('check') + '<span><strong>Bail</strong> ' + esc(cand.criteria.lease) + '</span></li>' + (cand.buyerMandate ? '<li class="warn">' + C.icon('alert') + '<span><strong>Mandat d’achat rémunéré</strong> client de la firme : représentation multiple à divulguer</span></li>' : '') + '</ul></div>' :
+        '<p class="cell-sub">Aucun investisseur immobilier du CRM ne correspond à ' + C.money(m.property.value) + ' : l’immeuble suivra l’entreprise ou sera loué au marché.</p>';
+    }
+    return '<div class="split split-buy"><div>' +
+      C.section('Liquidité acheteur', funnel, { hid: 'h-funnel', sub: 'De l’univers théorique aux acheteurs ayant déjà manifesté un intérêt pour ce type de dossier' }) +
+      C.section('Classement explicable', '<div class="rank-tools">' + wsw + '</div>' + C.ai('Buyer Discovery & Matching', 'Moyenne', '<p>Filtres fermes d’abord, puis note paramétrable calculée à partir des critères déclarés du CRM acheteurs. Modifiez un profil et le classement se recalcule. Le score est un rang relatif, pas une probabilité de clôture.</p>', '', { source: 'rules' }) + bands, { hid: 'h-rank' }) +
+      '</div><aside class="sticky">' + C.section('Liste et approche', side, { hid: 'h-short', cls: 'sheet-key' }) + (m.property ? C.section('Jambe immobilière', prop, { hid: 'h-prop', sub: 'Montage P1 : scission immobilière et cession-bail' }) : '') + '</aside></div>';
+  }
+
+  /* ================= 5. Salle de données ================= */
+  function grantLabel(m, id, st) {
+    var gr = m.grants[id]; if (!gr) return '—';
+    var state = gr.revoked ? 'Révoqué le ' + U.date(gr.revoked) : U.diffDays(gr.expires, st.clock.d) > 0 ? 'Expiré le ' + U.date(gr.expires) : 'Jusqu’au ' + U.date(gr.expires);
+    return (gr.folders.length === 12 ? 'Les 12 dossiers' : 'Dossiers ' + gr.folders.join(', ')) + '<span class="cell-sub">' + state + ', filigrane nominatif</span>';
+  }
+  function salle(st, m) {
+    if (!S.P.room()) return C.roleNote('La salle de données est réservée à la courtière et à l’analyste. Les acheteurs y accèdent par dossier, après entente, avec une date d’expiration.');
+    var r = E.room(m), docs = m.room.docs || [];
+    var folders = '<div class="folders">' + E.roomFolders(m).map(function (f) {
+      var items = f.items.map(function (it) {
+        var s = E.itemStatus(m, it.id), due = m.room.due && m.room.due[it.id], late = due && (s === 'demande') && U.diffDays(due, st.clock.d) > 0;
+        var att = docs.filter(function (d) { return d.item === it.id; });
+        return '<li class="it-' + s + '"><span class="it-id">' + it.id + '</span><span class="it-name">' + esc(it.name) + (late ? '<span class="cell-sub txt-brick">En retard depuis le ' + U.date(due) + '</span>' : due && s === 'demande' ? '<span class="cell-sub">Attendu au plus tard le ' + U.date(due) + '</span>' : '') + att.map(function (d) { return '<span class="cell-sub">' + C.icon('doc', 'ico ico-sm') + esc(d.name) + (d.hash ? ', SHA-256 ' + esc(d.hash.slice(0, 10)) + '…' : '') + ' <button type="button" class="link-btn" data-ui="doc-preview" data-m="' + m.id + '" data-id="' + d.id + '">Aperçu filigrané</button></span>'; }).join('') + '</span>' +
+          '<span class="it-acts">' + (s === 'recu' ? C.btn('Réviser', 'roomReview', { small: true, variant: 'ok', data: { m: m.id, id: it.id }, key: 'rev-' + it.id }) : C.chip(D.ITEM_STATUS[s] || s, s === 'revise' ? 'ok' : s === 'demande' ? 'warn' : s === 'probleme' ? 'block' : '')) +
+          (s !== 'revise' && s !== 'sans_objet' ? '<label class="up-btn" title="Téléverser la pièce ' + it.id + '"><input type="file" data-change="ui-file" data-m="' + m.id + '" data-item="' + it.id + '" aria-label="Téléverser la pièce ' + it.id + '">' + C.icon('upload', 'ico ico-sm') + '</label>' : '') + '</span></li>';
+      }).join('');
+      var loose = docs.filter(function (d) { return d.folder === f.id && !d.item; }).map(function (d) { return '<li class="it-recu"><span class="it-id">+</span><span class="it-name">' + esc(d.name) + '<span class="cell-sub">' + U.num(d.size / 1024, 0) + ' Ko' + (d.hash ? ', SHA-256 ' + esc(d.hash.slice(0, 12)) + '…' : '') + ' <button type="button" class="link-btn" data-ui="doc-preview" data-m="' + m.id + '" data-id="' + d.id + '">Aperçu filigrané</button></span></span><span class="it-acts">' + C.btn('Retirer', 'docDelete', { small: true, variant: 'ghost', data: { m: m.id, id: d.id } }) + '</span></li>'; }).join('');
+      return '<section class="folder"><h3><span>' + f.id + '</span> ' + esc(f.name) + '</h3><ul>' + items + loose + '</ul></section>';
+    }).join('') + '</div>';
+    var recu = r.byStatus.recu || 0, dem = r.byStatus.demande || 0, ask = r.byStatus.a_demander || 0;
+    var od = E.overdueItems(m, st);
+    var head = '<div class="room-head"><div class="room-meter"><span class="room-pct">' + U.pct(r.pct) + '</span><span>révisé ou sans objet (' + r.done + ' pièces sur ' + r.total + ')</span>' + C.bar(r.pct, r.pct >= 80 ? 'ok' : 'warn') + '</div><div class="actions actions-wrap">' +
+      C.btn('Envoyer la demande de documents (simulé)', 'roomRequest', { variant: 'quiet', data: { m: m.id }, blocked: !ask && !dem ? 'Aucune pièce à demander au cédant pour l’instant.' : m.leak ? 'Protocole de fuite actif.' : null, key: 'room-req' }) +
+      (dem ? C.btn('Simuler le dépôt par le cédant', 'roomDepositNow', { variant: 'quiet', data: { m: m.id }, key: 'room-dep' }) : '') +
+      (od.length || dem ? C.btn('Relancer le cédant', 'roomRemind', { variant: 'ghost', data: { m: m.id }, key: 'room-remind' }) : '') +
+      C.btn(recu === 1 ? 'Réviser la pièce reçue' : recu ? 'Réviser les ' + recu + ' pièces reçues' : 'Réviser les pièces reçues', 'roomReviewAll', { variant: 'primary', data: { m: m.id }, blocked: recu ? null : 'Aucune pièce reçue en attente de révision.', key: 'room-rev' }) + '</div></div>' +
+      '<p class="fineprint">Le cédant reçoit un lien sans compte qui ne montre que ses pièces manquantes; rappels automatiques J+3, J+7 et J+14, échéance à 14 jours. Les dépôts arrivent au fil de l’horloge de démonstration.</p>' +
+      '<label class="drop"><input type="file" data-change="ui-file" data-m="' + m.id + '" data-folder="12" multiple><span>' + C.icon('download') + 'Déposer une pièce dans « 12 Divulgations » : le navigateur lit le nom, la taille, calcule l’empreinte SHA-256 et prépare un aperçu filigrané (texte et images). Le contenu reste dans cet onglet.</span></label>';
+    var parties = Object.keys(m.nda);
+    var access = parties.length ? '<div class="table-wrap"><table class="ledger"><thead><tr><th scope="col">Acheteur</th><th scope="col">Entente</th><th scope="col">Accès</th><th scope="col"></th></tr></thead><tbody>' + parties.map(function (id) {
+      var gr = m.grants[id], nd = m.nda[id], active = E.grantActive(m, id, st);
+      return '<tr><th scope="row">' + esc(buyer(id).name) + '</th><td>' + C.chip(NDA[nd][0], NDA[nd][1]) + '</td><td>' + grantLabel(m, id, st) + '</td><td class="num acts">' +
+        (active ? C.btn('Modifier', 'grant-edit', { ui: true, small: true, variant: 'quiet', data: { m: m.id, id: id }, key: 'gedit-' + id }) + C.btn('Révoquer', 'revoke', { small: true, variant: 'ghost', data: { m: m.id, id: id } }) : C.btn(gr ? 'Renouveler' : 'Accorder', gr ? 'grant-edit' : 'grant', { ui: !!gr, small: true, variant: 'ok', data: { m: m.id, id: id }, blocked: nd !== 'signe' ? 'Accès refusé : aucune entente signée pour ce dossier.' : null, key: 'grant-' + id })) +
+        C.btn('Voir comme cet acheteur', 'buyer-preview', { ui: true, small: true, variant: 'ghost', icon: 'eye', data: { m: m.id, id: id }, key: 'bprev-' + id }) + '</td></tr>';
+    }).join('') + '</tbody></table></div><div class="actions">' + C.btn('Accorder aux signataires', 'grantAllSigned', { variant: 'primary', data: { m: m.id }, key: 'grant-all', blocked: !E.ndaSigned(m).filter(function (id) { return !E.grantActive(m, id, st); }).length ? 'Aucun signataire sans accès actif.' : null }) + '</div>' : C.empty('Aucune entente transmise', 'Les ententes sont transmises avec le sommaire, à l’étape Mise en marché. Un accès exige une entente signée pour ce dossier.');
+    var log = (m.accessLog || []).slice(0, 12), views = {};
+    (m.views || []).forEach(function (v) { views[v.buyer] = views[v.buyer] || []; views[v.buyer].push(v); });
+    var vk = Object.keys(views);
+    var vlog = (vk.length ? '<table class="ledger"><thead><tr><th scope="col">Acheteur</th><th scope="col">Consultation</th><th scope="col" class="num">Minutes</th></tr></thead><tbody>' + vk.map(function (id) { var tot = U.sum(views[id], function (x) { return x.min; }); return '<tr><th scope="row">' + esc(buyer(id).name) + '</th><td>' + views[id].map(function (x) { return x.folder + ' (' + x.min + ' min, ' + U.date(x.date) + ')'; }).join(', ') + '</td><td class="num">' + tot + '</td></tr>'; }).join('') + '</tbody></table><p class="fineprint">Un acheteur qui passe 40 minutes dans « 02 Financiers » est sérieux; c’est un signal faible, jamais une preuve d’intention.</p>' : '') +
+      (log.length ? '<h3 class="sub-h">Journal d’accès</h3><ul class="access-log">' + log.map(function (a) { return '<li class="' + (a.ok ? 'ok' : 'no') + '">' + C.icon(a.ok ? 'eye' : 'lock') + '<span><strong>' + esc(a.who) + '</strong> ' + esc(a.what) + ' : ' + esc(a.action) + '<span class="cell-sub">' + esc(a.at.replace(/^(\d{4}-\d\d-\d\d)/, function (d) { return U.date(d); })) + '</span></span></li>'; }).join('') + '</ul>' : '');
+    var leak = m.leak ? '<div class="leak-on"><p><strong>Envois et accès gelés.</strong> Incident consigné au registre.</p><ol class="script"><li>Identifier la source probable (journal d’accès).</li><li>Évaluer l’exposition : qui a vu quoi, depuis quand.</li><li>Préparer le message aux employés.</li><li>Préparer le message aux acheteurs.</li></ol>' + C.btn('Lever le gel (administratrice)', 'leakResolve', { variant: 'quiet', data: { m: m.id } }) + '</div>' : '<p>Un clic gèle tous les envois du dossier, consigne un incident, avise l’administratrice et ouvre la liste de contrôle des six premières heures.</p>' + C.btn('Signaler une fuite', 'leak', { variant: 'danger', icon: 'alert', data: { m: m.id }, key: 'leak' });
+    return C.section('Salle de données en 12 dossiers', head + folders, { hid: 'h-room', sub: 'À constituer avant la mise en marché, pas pendant la diligence' }) +
+      '<div class="grid-2">' + C.section('Accès des acheteurs', access, { hid: 'h-access', sub: 'Par acheteur, par dossier, avec expiration, révocation et barrière d’entente' }) +
+      '<div class="stack">' + (vlog ? C.section('Consultations et journal d’accès', vlog, { hid: 'h-views' }) : '') + C.section('Protocole de fuite', leak, { hid: 'h-leak' }) + '</div></div>';
+  }
+
+  /* ================= 6. LI et clôture ================= */
+  function edge(n, tx, ty) { var dx = tx - n.x, dy = ty - n.y; if (!dx && !dy) return [n.x, n.y]; var t = Math.min(dx ? 100 / Math.abs(dx) : Infinity, dy ? 28 / Math.abs(dy) : Infinity); return [Math.round(n.x + dx * t), Math.round(n.y + dy * t)]; }
+  function canvas(m) {
+    var loi = E.loiOf(m), signed = !!m.loiSigned, done = m.stage === 'conclu', b = loi ? buyer(loi.buyer) : null, pd = E.propertyDeal(m, loi), F = E.financing(m, loi);
+    var stt = function (k) { if (done) return 'done'; if (k === 'J4') return E.financingOk(m) ? 'cond' : 'open'; return signed ? 'cond' : 'open'; };
+    var idn = S.P.identity(), p = m.profile;
+    var nodes = [
+      { id: 'ced', x: 120, y: 62, t: idn ? p.owner : 'Cédant', s: 'Cédant, ' + (m.structure === 'actifs' ? 'vendeur des actifs' : '100 % des actions') },
+      { id: 'acq', x: 600, y: 62, t: signed ? b.name.replace(/ inc\.$/, '') : 'Acquéreur à déterminer', s: signed ? 'Acquéreur' : 'Lettre d’intention à venir' },
+      { id: 'op', x: 330, y: 172, t: idn ? p.company : 'Société d’exploitation', s: 'Société d’exploitation' }
+    ];
+    if (F.senior > 0) nodes.push({ id: 'lend', x: 600, y: 172, t: 'Caisse d’économie Chaudière', s: 'Prêteur senior (fictif)' });
+    if (m.property) nodes.push({ id: 'pc', x: 120, y: 286, t: idn && p.propco ? p.propco : 'Société immobilière sœur', s: 'Propriétaire de l’immeuble' });
+    if (pd && pd.to === 'investisseur') nodes.push({ id: 'inv', x: 600, y: 286, t: buyer(m.property.investor).name, s: 'Investisseur immobilier' });
+    var N = {}; nodes.forEach(function (n) { N[n.id] = n; });
+    var legs = [{ k: 'J1', a: 'ced', b: 'acq', t: signed ? (m.structure === 'actifs' ? 'Actifs, ' : 'Actions, ') + U.moneyShort(loi.ev) : 'Actions, prix à négocier' }];
+    legs.push({ k: 'J5', a: 'ced', b: 'acq', t: !signed ? 'BPV possible, financement vendeur' : loi.bpv ? 'BPV ' + U.moneyShort(loi.bpv.amount) + ', financement vendeur' : 'Aucune BPV', curve: 34 });
+    if (N.lend) legs.push({ k: 'J4', a: 'lend', b: 'acq', t: signed ? 'Prêt senior ' + U.moneyShort(F.senior) : 'Prêt senior à obtenir', dx: -82, dy: 6 });
+    if (pd && pd.to === 'investisseur') { legs.push({ k: 'J2', a: 'pc', b: 'inv', t: 'Immeuble, ' + U.moneyShort(pd.price) }); legs.push({ k: 'J3', a: 'inv', b: 'op', t: 'Bail 10 ans, ' + U.moneyShort(m.property.marketRent) + ' par an', dx: -40, dy: 30 }); }
+    else if (m.property) legs.push({ k: 'J2', a: 'pc', b: 'acq', t: 'Immeuble, ' + (pd && pd.to === 'acquereur' ? U.moneyShort(pd.price) : 'à négocier'), dx: -70, dy: 64 });
+    var svg = '<div class="canvas-wrap"><svg class="canvas" viewBox="0 0 720 330" role="img" aria-labelledby="cv-t cv-d"><title id="cv-t">Montage du dossier ' + esc(m.codename) + '</title><desc id="cv-d">' + legs.map(function (l) { return l.k + ' : ' + esc(l.t); }).join('; ') + '</desc>' +
+      '<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>' +
+      legs.map(function (l) { var A = N[l.a], B = N[l.b], cv = l.curve || 0, cx = (A.x + B.x) / 2, cy = (A.y + B.y) / 2 - 2 * cv, p1 = edge(A, cx, cy), p2 = edge(B, cx, cy), lx = (A.x + B.x) / 2 + (l.dx || 0), ly = (A.y + B.y) / 2 - cv - 8 + (l.dy || 0);
+        return '<g class="leg leg-' + stt(l.k) + '"><path d="M' + p1[0] + ' ' + p1[1] + ' Q' + cx + ' ' + cy + ' ' + p2[0] + ' ' + p2[1] + '" fill="none" marker-end="url(#ar)"/><text x="' + lx + '" y="' + ly + '" text-anchor="middle"><tspan class="leg-k">' + l.k + '</tspan> ' + esc(l.t) + '</text></g>'; }).join('') +
+      nodes.map(function (n) { var t = n.t.length > 30 ? n.t.slice(0, 29) + '…' : n.t; return '<g class="node"><rect x="' + (n.x - 96) + '" y="' + (n.y - 24) + '" width="192" height="48" rx="6"/><text x="' + n.x + '" y="' + (n.y - 3) + '" text-anchor="middle" class="node-t">' + esc(t) + '</text><text x="' + n.x + '" y="' + (n.y + 14) + '" text-anchor="middle" class="node-s">' + esc(n.s) + '</text></g>'; }).join('') + '</svg></div>';
+    var deps = pd && pd.to === 'investisseur' ? ['J3 bail : conditionnel à J2 (l’investisseur doit posséder l’immeuble)', 'J2 immeuble : simultané avec J1, même séance chez le notaire', 'J1 actions : conditionnel à J3 (l’acquéreur exige le bail)'] : m.property ? ['J2 immeuble : vendu à l’acquéreur avec J1', 'Pas de cession-bail : l’acquéreur finance aussi l’immeuble'] : ['Aucune jambe immobilière : locaux loués à un tiers'];
+    if (N.lend) deps.push('J4 prêt senior : finance J1 (déboursement avant la remise des fonds)');
+    return svg + '<ul class="deps">' + deps.map(function (d) { return '<li>' + esc(d) + '</li>'; }).join('') + '</ul><p class="legend"><span class="lg lg-open"></span>À négocier <span class="lg lg-cond"></span>Signé, sous conditions <span class="lg lg-done"></span>Complété</p>';
+  }
+  function copilotText(m, cmp) {
+    if (cmp.length < 2) return '<p>Une seule lettre active : comparez-la à la fourchette validée (' + U.money(E.valuation(m).ev.low) + ' à ' + U.money(E.valuation(m).ev.high) + ') et aux préférences du cédant avant de la retenir.</p>';
+    var bv = function (n) { return '<b class="bound">' + U.money(n) + '</b>'; };
+    var byCash = cmp.slice().sort(function (a, b) { return b.certain - a.certain; }), top = byCash[0], second = byCash[1];
+    var sameEv = cmp.filter(function (c) { return c.loi.ev === cmp[0].loi.ev; }).length > 1;
+    var cont = cmp.filter(function (c) { return c.contingent; }).sort(function (a, b) { return b.contingent - a.contingent; })[0];
+    return '<p>' + (sameEv ? 'Deux offres affichent ' + bv(cmp[0].loi.ev) + ' : elles ne sont pas équivalentes. ' : '') + esc(buyer(top.loi.buyer).name) + ' verse ' + bv(top.certain - second.certain) + ' de plus comptant à la clôture que ' + esc(buyer(second.loi.buyer).name) + ' après l’ajustement de fonds de roulement.' + (cont ? ' ' + esc(buyer(cont.loi.buyer).name) + ' laisse ' + bv(cont.contingent) + ' conditionnels à un BAIIA futur.' : '') + ' Compromis à arbitrer par la courtière et le cédant : prix, certitude de clôture, emplois, avenir de l’immeuble.</p><p class="fineprint">Préparation seulement : l’humain négocie, aucune offre n’est acceptée par l’IA. Chaque montant en gras est une variable du moteur de comparaison.</p>';
+  }
+  function cloture(st, m) {
+    if (!S.P.financials()) return C.roleNote('Les offres, le financement et la clôture sont réservés à la courtière et à l’analyste. Les agents acheteurs voient leurs propres jambes, anonymisées.');
+    if (!m.fin.entered) return '<div class="notice">' + C.icon('lock') + '<span>Saisissez d’abord les états financiers.</span></div>';
+    var out = '', early = ['signe', 'preparation', 'marche'].indexOf(m.stage) >= 0, active = (m.lois || []).filter(function (l) { return l.status !== 'retirée'; });
+    if (!m.loiDeadline && !active.length) {
+      var def = m.plan && m.plan.loiDeadline && U.diffDays(st.clock.d, m.plan.loiDeadline) >= 7 ? m.plan.loiDeadline : U.addDays(st.clock.d, 28);
+      out += C.section('Fenêtre de lettres d’intention', '<p>Les lettres d’intention arrivent après la mise en marché, à la date limite fixée par la courtière. Mettre plusieurs acheteurs en tension augmente le prix et la certitude.</p><form class="mini-form inline-form" data-ui-form="loi-deadline" data-m="' + m.id + '"><label class="field field-inline"><span>Date limite</span><input type="date" name="date" value="' + def + '" min="' + U.addDays(st.clock.d, 7) + '" data-key="loi-date"></label>' +
+        (m.stage === 'marche' && S.P.decideMandate() ? '<button type="submit" class="btn btn-quiet" data-key="loi-deadline">Fixer la date limite</button>' : C.btn('Fixer la date limite', null, { variant: 'quiet', blocked: m.stage !== 'marche' ? 'La date limite se fixe à l’étape Mise en marché.' : 'Réservé à la courtière.', key: 'loi-deadline' })) + '</form>', { hid: 'h-win' });
+    } else if (m.loiDeadline && !active.length) {
+      var dl = U.diffDays(st.clock.d, m.loiDeadline);
+      out += C.section('Fenêtre de lettres d’intention', '<p>Date limite : <strong>' + U.date(m.loiDeadline) + '</strong>' + (dl > 0 ? ', dans ' + U.days(dl) : '') + '. Cahier remis aux signataires; les lettres arrivent à la date limite si un accès à la salle est actif.</p><div class="actions">' + (dl > 0 ? C.btn('Avancer l’horloge à la date limite (simulé)', 'clock-to', { ui: true, variant: 'primary', icon: 'clock', data: { date: m.loiDeadline }, key: 'sim-lois' }) : '') + C.btn('Consigner une lettre reçue', 'loi-new', { ui: true, variant: 'quiet', icon: 'plus', data: { m: m.id }, key: 'loi-new' }) + '</div>', { hid: 'h-win' });
+    }
+    if (active.length || (m.lois || []).length) {
+      var cmp = active.map(function (l) { return E.loiCompare(m, l); });
+      var row = function (label, f, cls) { return '<tr' + (cls ? ' class="' + cls + '"' : '') + '><th scope="row">' + label + '</th>' + cmp.map(function (c) { var v = f(c); return '<td class="' + (m.loiSelected === c.loi.id ? 'is-sel ' : '') + (typeof v === 'number' ? 'num' : '') + '">' + (typeof v === 'number' ? U.money(v) : v) + '</td>'; }).join('') + '</tr>'; };
+      var table = cmp.length ? '<div class="table-wrap"><table class="ledger loi"><thead><tr><th scope="col">Lettre d’intention</th>' + cmp.map(function (c) { return '<th scope="col"' + (m.loiSelected === c.loi.id ? ' class="is-sel"' : '') + '>' + esc(buyer(c.loi.buyer).name) + '<span class="cell-sub">' + esc(c.loi.source || '') + ', ' + U.date(c.loi.received) + '</span></th>'; }).join('') + '</tr></thead><tbody>' +
+        row('Prix affiché (valeur d’entreprise)', function (c) { return c.loi.ev; }, 'is-key') + row('Multiple implicite', function (c) { return U.x(c.implied); }) + row('Ajustement de fonds de roulement estimé', function (c) { return c.wcAdj; }) + row('Comptant certain à la clôture', function (c) { return c.certain; }, 'is-key') +
+        row('Différé contractuel (balance de prix de vente)', function (c) { return c.loi.bpv ? U.money(c.deferred) + '<span class="cell-sub">' + c.loi.bpv.years + ' ans à ' + U.pct(c.loi.bpv.rate * 100, 1) + '</span>' : '—'; }) +
+        row('Conditionnel (complément de prix)', function (c) { return c.contingent ? U.money(c.contingent) + '<span class="cell-sub">' + esc(c.loi.earnoutCond) + '</span>' : '—'; }) +
+        row('Total sans le conditionnel', function (c) { return c.nonContingent; }) + row('Total maximal', function (c) { return c.max; }) + row('Financement', function (c) { return esc(c.loi.financing); }) +
+        row('Conditions', function (c) { return '<ul class="cell-list">' + c.loi.conditions.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>'; }) +
+        row('Exclusivité et clôture visée', function (c) { return c.loi.exclusivity + ' jours, ' + U.date(c.loi.close); }) + row('Emplois et transition', function (c) { return esc(c.loi.employees) + '<span class="cell-sub">Transition : ' + esc(c.loi.transition) + '</span>'; }) +
+        row('Immeuble', function (c) { return esc(c.loi.property); }) + row('Préférences du cédant respectées', function (c) { return c.loi.prefsMet + ' sur ' + m.sellerPrefs.length; }) +
+        (S.P.fees() ? row('Honoraires, Politique ' + m.feePolicy, function (c) { return U.money(c.fee) + (c.feeContingent ? '<span class="cell-sub">dont ' + U.money(c.feeContingent) + ' payables si le complément est encaissé</span>' : ''); }) : '') +
+        '</tbody><tfoot><tr><th scope="row">Décision</th>' + cmp.map(function (c) { return '<td>' + (m.loiSigned ? (m.loiSelected === c.loi.id ? C.chip('Signée', 'ok') : '') : C.btn(m.loiSelected === c.loi.id ? 'Retenue' : 'Retenir', 'loiSelect', { small: true, variant: m.loiSelected === c.loi.id ? 'brass' : 'quiet', data: { m: m.id, id: c.loi.id }, key: 'loi-' + c.loi.id }) + '<span class="loi-tools">' + C.btn('Modifier', 'loi-edit', { ui: true, small: true, variant: 'ghost', icon: 'edit', data: { m: m.id, id: c.loi.id }, label: 'Modifier la lettre de ' + buyer(c.loi.buyer).name }) + C.btn('Retirer', 'loiDelete', { small: true, variant: 'ghost', icon: 'trash', data: { m: m.id, id: c.loi.id }, label: 'Retirer la lettre de ' + buyer(c.loi.buyer).name }) + '</span>') + '</td>'; }).join('') + '</tr></tfoot></table></div>' : C.empty('Aucune lettre active', 'Toutes les lettres ont été retirées.');
+      var withdrawn = (m.lois || []).filter(function (l) { return l.status === 'retirée'; });
+      var sign = m.loiSigned ? '<div class="done-line">' + C.icon('check') + '<span><strong>Lettre signée le ' + U.date(m.loiSigned) + '</strong> avec ' + esc(buyer(E.loiOf(m).buyer).name) + ' (signature électronique simulée; certificat conservé). Exclusivité jusqu’au ' + U.date(m.exclusivityEnd) + '.</span></div>' :
+        '<div class="actions">' + C.btn('Faire signer la lettre retenue (simulé)', 'loiSign', { variant: 'primary', data: { m: m.id }, blocked: !m.loiSelected ? 'Retenez d’abord une lettre.' : m.stage !== 'negociation' ? 'La signature se fait à l’étape Négociation.' : null, key: 'loi-sign' }) + C.btn('Consigner une lettre reçue', 'loi-new', { ui: true, variant: 'quiet', icon: 'plus', data: { m: m.id }, key: 'loi-new' }) + '</div>';
+      out += C.section('Comparaison des lettres d’intention', table + (cmp.length ? C.ai('Negotiation Copilot', 'Moyenne', copilotText(m, cmp), '', { source: 'rules' }) : '') + (withdrawn.length ? '<p class="fineprint">Lettres retirées : ' + withdrawn.map(function (l) { return esc(buyer(l.buyer).name); }).join(', ') + '.</p>' : '') + sign, { hid: 'h-lois', sub: 'Champ par champ : prix, comptant, différé, conditionnel, conditions et préférences' });
+    }
+    if (m.loiSigned) {
+      var loi = E.loiOf(m), parties = E.conflictParties(m);
+      if (parties.length) out += C.section('Représentation multiple', '<p class="notice">' + C.icon('alert') + '<span>La firme représente le cédant (mandat exclusif) et l’investisseur immobilier (mandat d’achat rémunéré) dans le même montage. La progression au-delà de la négociation est bloquée tant que chaque partie représentée n’a pas signé une divulgation. Pour la jambe immobilière, les règles de l’OACIQ s’appliquent : exigences à valider.</span></p><table class="ledger"><tbody>' +
+        parties.map(function (p) { return '<tr><th scope="row">' + esc(S.P.identity() ? p.label : p.blindLabel) + '</th><td>' + (m.conflict[p.id] ? C.chip('Divulgation signée le ' + U.date(m.conflict[p.id]), 'ok') : C.btn('Transmettre pour signature (simulé)', 'conflictSign', { small: true, variant: 'quiet', data: { m: m.id, party: p.id }, key: 'conf-' + p.id })) + '</td></tr>'; }).join('') + '</tbody></table><p class="fineprint">Murs d’information : chaque participant ne voit que ses propres jambes et ce qui lui a été divulgué.</p>', { hid: 'h-conf' });
+      var fin = E.financing(m, loi);
+      var grid = '<table class="ledger dscr"><caption class="sr-only">Ratio de couverture du service de la dette sous stress</caption><thead><tr><th scope="col">Choc sur le BAIIA</th>' + ['Taux actuel', '+100 pb', '+200 pb', '+300 pb'].map(function (x) { return '<th scope="col" class="num">' + x + '</th>'; }).join('') + '</tr></thead><tbody>' + fin.grid.map(function (r) { return '<tr><th scope="row">' + (r.shock ? '−' + (r.shock * 100) + ' %' : 'Retraité') + '</th>' + r.cells.map(function (c) { return '<td class="num ' + (c.pass ? 'pass' : 'fail') + '">' + U.num(c.dscr, 2) + '×</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table>';
+      out += C.section('Montage financier de l’acquéreur', '<div class="grid-2 grid-tight"><div><table class="ledger"><thead><tr><th scope="col">Sources</th><th scope="col" class="num">Montant</th></tr></thead><tbody>' + fin.sources.map(function (s) { return '<tr><th scope="row">' + esc(s.label) + '</th><td class="num">' + U.money(s.v) + '</td></tr>'; }).join('') + '</tbody><tfoot><tr><th scope="row">Total des sources = emplois</th><td class="num total">' + U.money(U.sum(fin.sources, function (s) { return s.v; })) + '</td></tr></tfoot></table>' +
+        '<table class="ledger"><tbody><tr><th scope="row">BAIIA retraité conservateur</th><td class="num">' + U.money(fin.base) + '</td></tr><tr><th scope="row">Moins : investissements de maintien, impôts estimés<span class="cell-sub">Hypothèses à confirmer par le CPA de l’acquéreur</span></th><td class="num">' + U.money(-(fin.capex + fin.taxes)) + '</td></tr><tr><th scope="row">Service annuel de la dette<span class="cell-sub">Senior ' + U.money(Math.round(fin.seniorPay)) + ', BPV ' + U.money(Math.round(fin.bpvPay)) + '</span></th><td class="num">' + U.money(Math.round(fin.debtService)) + '</td></tr></tbody><tfoot><tr><th scope="row">Ratio de couverture (seuil ' + U.num(fin.threshold, 2) + '×)</th><td class="num total ' + (fin.dscr >= fin.threshold ? 'txt-teal' : 'txt-brick') + '">' + U.num(fin.dscr, 2) + '×</td></tr></tfoot></table></div><div>' + grid + '<p class="fineprint">Seuil de planification modifiable, pas une règle universelle des prêteurs. Le complément de prix n’entre pas dans le service de la dette mais reste visible comme contrepartie conditionnelle.</p>' +
+        (E.financingOk(m) ? '<p class="done-line">' + C.icon('check') + '<span>' + esc(m.financingApproved ? 'Approbation conditionnelle du prêteur reçue' : loi.financing) + '</span></p>' : '<p class="cell-sub">Décision du prêteur attendue environ trois semaines après la signature (horloge de démonstration).</p>' + C.btn('Simuler l’approbation conditionnelle du prêteur', 'financingApprove', { variant: 'quiet', data: { m: m.id }, key: 'fin-approve' })) + '</div></div>', { hid: 'h-fin', sub: fin.lender });
+    }
+    out += C.section('Montage : entreprise' + (m.property ? ' et immeuble' : ''), canvas(m), { hid: 'h-canvas', sub: m.property ? 'Six participants au plus, jambes liées : l’objet Deal n’est jamais une paire vendeur-acheteur' : 'Sans jambe immobilière : locaux loués' });
+    if (m.stage === 'diligence' || m.dd.indexed) {
+      var fs = E.ddFindings(m), opened = fs.filter(function (d) { return m.dd.status[d.id] !== 'resolu'; }).length;
+      var dd = m.dd.indexed ? '<ul class="dd">' + fs.map(function (d) { var r2 = m.dd.status[d.id] === 'resolu', docSt = d.needsDoc ? E.itemStatus(m, d.needsDoc) : null; return '<li class="' + (r2 ? 'ok' : '') + '"><div><p>' + esc(d.text) + (d.severity ? ' ' + C.chip('Gravité ' + d.severity, d.severity === 'élevée' ? 'block' : d.severity === 'moyenne' ? 'warn' : '') : '') + (d.source === 'injecté' ? ' ' + C.chip('Événement injecté', '') : '') + '</p><p class="cell-sub">' + C.icon('doc') + 'Citation : ' + esc(d.cite) + (r2 ? '. Résolution : ' + esc(d.resolve) : d.needsDoc ? '. Pièce ' + d.needsDoc + ' : ' + esc(D.ITEM_STATUS[docSt] || docSt) : '') + '</p></div>' + (r2 ? C.chip('Résolu', 'ok') : C.btn('Résoudre', 'ddResolve', { small: true, variant: 'ok', data: { m: m.id, id: d.id }, blocked: d.needsDoc && docSt !== 'revise' ? 'Révisez d’abord la pièce ' + d.needsDoc + ' dans la salle de données.' : null, key: 'dd-' + d.id })) + '</li>'; }).join('') + '</ul><p class="fineprint">' + opened + ' constat' + (opened > 1 ? 's' : '') + ' ouvert' + (opened > 1 ? 's' : '') + '. Réponses avec citation de pièce et de page; l’IA ne certifie jamais l’absence de passif.</p>' :
+        '<p>Volets financier, fiscal, juridique, opérationnel et environnemental. Les constats sont indexés à partir des pièces autorisées, environ deux semaines après le début de l’étape.</p><div class="actions">' + C.btn('Indexer les pièces maintenant (simulé)', 'ddIndexNow', { variant: 'primary', data: { m: m.id }, key: 'dd-index' }) + C.btn('Avancer l’horloge de huit semaines', 'clock-weeks', { ui: true, variant: 'quiet', icon: 'clock', data: { weeks: 8 }, key: 'sim-dd' }) + '</div>';
+      out += C.section('Vérification diligente', (m.dd.indexed ? C.ai('Due Diligence Analyst', 'Moyenne', '<p>Constats à transmettre ou à résoudre avant la levée des conditions.</p>', '', C.provOf(fs.map(C.itemProv))) : '') + dd, { hid: 'h-dd' });
+    }
+    if (m.stage === 'cloture' || m.stage === 'conclu') {
+      var rs = E.runSheet(m);
+      out += C.section('Feuille de route de clôture', '<ol class="run">' + rs.map(function (k, i) { var dn = m.run[k.id]; return '<li class="' + (dn ? 'ok' : '') + '"><label class="check"><input type="checkbox" data-action="run" data-m="' + m.id + '" data-id="' + k.id + '"' + (dn ? ' checked' : '') + (m.stage === 'conclu' ? ' disabled' : '') + ' data-key="run-' + k.id + '"><span><strong>' + (i + 1) + '.</strong> ' + esc(k.text) + '<span class="cell-sub">' + esc(k.who) + '</span></span></label></li>'; }).join('') + '</ol>' +
+        '<p class="fineprint">Ordre généré à partir du graphe de dépendances du montage. Les actes notariés restent au notaire : le système les suit, il ne les signe pas. La firme ne détient aucun fonds.</p>' +
+        (m.stage === 'conclu' ? '<div class="done-line">' + C.icon('check') + '<span><strong>Conclu le ' + U.date(m.concluded) + '.</strong> Mémoire institutionnelle mise à jour : durées par intervalle, relation « a acquis », issue du dossier.</span></div>' : '<div class="actions">' + C.btn('Conclure le dossier', 'conclude', { variant: 'brass', icon: 'stamp', data: { m: m.id }, blocked: !rs.every(function (k) { return m.run[k.id]; }) ? 'Complétez la feuille de route de clôture.' : null, key: 'conclude' }) + '</div>'), { hid: 'h-run', sub: 'Séance de clôture simultanée chez le notaire' });
+    }
+    if (S.P.fees() && m.loiSelected && E.loiOf(m)) {
+      var l = E.loiOf(m), fJ1 = E.fee(m.feePolicy, l.ev), pd2 = E.propertyDeal(m, l), comm = pd2 ? Math.round(pd2.price * 0.05) : 0;
+      out += C.section('Honoraires par jambe', '<table class="ledger"><tbody><tr><th scope="row">J1, honoraires de succès CTE (Politique ' + m.feePolicy + ')<span class="cell-sub">Sur ' + U.money(l.ev) + '</span></th><td class="num">' + U.money(fJ1.gross) + '</td></tr><tr><th scope="row">Frais de préparation et d’évaluation<span class="cell-sub">Encaissés à la signature du mandat</span></th><td class="num">' + U.money(m.prepFee) + '</td></tr>' + (pd2 ? '<tr><th scope="row">J2, commission immobilière (agence partenaire)<span class="cell-sub">Hypothèse 5 % de ' + U.money(pd2.price) + '; partage, permis et contrat de courtage à valider</span></th><td class="num">' + U.money(comm) + '</td></tr>' : '') + '</tbody><tfoot><tr><th scope="row">Revenu brut du dossier, avant partages, frais et impôts</th><td class="num total">' + U.money(fJ1.gross + m.prepFee + comm) + '</td></tr></tfoot></table><p class="fineprint">Une jambe qui échoue n’entraîne les autres que si une dépendance « conditionnel à » le prévoit.</p>', { hid: 'h-fees2' });
+    }
+    return out;
+  }
+
+  UI.VIEWS['dossier-sommaire'] = sommaire;
+  UI.VIEWS['dossier-acheteurs'] = acheteurs;
+  UI.VIEWS['dossier-salle'] = salle;
+  UI.VIEWS['dossier-cloture'] = cloture;
+  UI.DOSSIER.canvas = canvas;
+  UI.DOSSIER.teaserDoc = teaserDoc;
+  UI.DOSSIER.NDA = NDA;
+})(window);

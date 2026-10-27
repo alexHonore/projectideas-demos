@@ -1,0 +1,124 @@
+/* TradeDesk V3 — Physical book (CT-19, CT-04, CT-06, CT-09), bids and counterparties, and management review (CT-20, CT-21). */
+(function () {
+  'use strict';
+  const TD = (window.TD = window.TD || {});
+  const D = TD.DATA; const u = TD.u; const E = TD.engine;
+  const { esc, icon } = u;
+  const V = TD.views;
+
+  V.bookCsv = function (state) {
+    const rows = [['commodity', 'bought_t', 'sold_t', 'uncovered_t', 'tentative_not_firm_t', 'in_transit_t', 'delivered_t', 'mtm_cad']];
+    E.position(state).forEach((r) => rows.push([V.commodityName(r.commodity), r.bought.toFixed(2), r.sold.toFixed(2), r.uncovered.toFixed(2), r.tentative.toFixed(2), r.moving.toFixed(2), r.delivered.toFixed(2), (r.mtm / 100).toFixed(2)]));
+    rows.push([]); rows.push(['demand', 'buyer', 'kind', 'status', 'quantity_t', 'allocated_before_t', 'reserved_t', 'open_t', 'price_cad_t']);
+    state.demands.forEach((d) => { const o = E.demandOpen(state, d); const dp = E.demandPrice(state, d); rows.push([d.id, '"' + E.party(state, d.buyer).name + '"', d.kind, E.bidStatus(state, d), d.qty, d.priorAllocated, E.reservedOnDemand(state, d.id), o.open, dp.price != null ? dp.price.toFixed(2) : '']); });
+    rows.push([]); rows.push(['# Fictional demo data. TradeDesk V3 snapshot, ' + u.dayLong(state.now) + ' ' + u.hhmm(state.now)]);
+    return rows.map((r) => r.join(',')).join('\n');
+  };
+
+  function bidChip(state, d) {
+    const st = E.bidStatus(state, d);
+    return V.chip({ open: d.kind === 'Contract' ? 'contracted' : 'open', expired: 'expired', withdrawn: 'withdrawn', closed: 'closed' }[st], st === 'open' ? (d.kind === 'Contract' ? 'Contract' : 'Open bid') : null);
+  }
+
+  V.book = function (state, route) {
+    const pos = E.position(state);
+    const hl = route && route.id;
+    const tot = pos.reduce((a, r) => { ['bought', 'sold', 'uncovered', 'tentative', 'moving', 'delivered', 'mtm'].forEach((k) => { a[k] = (a[k] || 0) + r[k]; }); return a; }, {});
+    const posTbl = '<div class="table-wrap"><table class="econ book" id="position"><caption class="sr-only">Physical position by commodity, tonnes, with mark-to-market</caption><thead><tr><th scope="col">Commodity</th><th scope="col" class="r">Bought</th><th scope="col" class="r">Sold</th><th scope="col" class="r">Uncovered</th><th scope="col" class="r">Tentative<small>not in firm book</small></th><th scope="col" class="r">In transit</th><th scope="col" class="r">Delivered</th><th scope="col" class="r">Mark-to-market<small>CAD, uncovered vs futures</small></th></tr></thead><tbody>' +
+      pos.map((r) => '<tr><th scope="row">' + u.kernel(r.commodity, 13) + V.commodityName(r.commodity) + '<small>' + r.contracts.join(', ') + '</small></th><td class="r num">' + u.t1(r.bought) + '</td><td class="r num">' + u.t1(r.sold) + '</td><td class="r num' + (r.uncovered ? ' warn-t' : '') + '">' + (r.uncovered ? (r.uncovered > 0 ? 'Long ' : 'Short ') + u.t1(Math.abs(r.uncovered)) : '0.0') + '</td><td class="r num">' + u.t1(r.tentative) + '</td><td class="r num">' + u.t1(r.moving) + '</td><td class="r num">' + u.t1(r.delivered) + '</td><td class="r num' + (r.mtm < 0 ? ' neg' : '') + '" id="mtm-' + r.commodity + '">' + (r.mtmNote.length ? u.money(r.mtm, { plus: true }) + '<small>' + esc(r.mtmNote.join('; ')) + '</small>' : '—') + '</td></tr>').join('') +
+      '<tr class="tot"><th scope="row">All</th><td class="r num">' + u.t1(tot.bought || 0) + '</td><td class="r num">' + u.t1(tot.sold || 0) + '</td><td class="r num">' + u.t1(tot.uncovered || 0) + '</td><td class="r num">' + u.t1(tot.tentative || 0) + '</td><td class="r num">' + u.t1(tot.moving || 0) + '</td><td class="r num">' + u.t1(tot.delivered || 0) + '</td><td class="r num">' + u.money(tot.mtm || 0, { plus: true }) + '</td></tr></tbody></table></div>';
+
+    const bench = ['CZ26', 'SX26', 'USDCAD'].map((k) => {
+      const b = E.benchmark(state, k); const f = b.commodity ? E.futuresCad(state, k) : null;
+      return '<li class="bm-row" id="bm-' + k + '"><div><strong>' + esc(k) + '</strong><small>' + esc(b.label) + '</small></div><div class="num bm-v"><strong>' + b.value.toFixed(4) + '</strong> <small>' + esc(b.unit) + (f ? ' = ' + u.rate(f.value) + ' CAD/t' : '') + '</small></div><div>' + V.chip(b.stale ? 'stale' : 'fresh', (b.stale ? 'Stale: ' : 'Entered ') + V.when(b.at)) + '<small>by ' + esc(b.by || '—') + '</small></div><div class="bm-act">' + V.btn('Enter', 'form', { cls: 'small', icon: 'edit', data: { form: 'benchmark', id: k }, id: 'bm-edit-' + k }) + '</div></li>';
+    }).join('');
+
+    const dem = state.demands.slice().sort((a, b) => (E.bidStatus(state, a) === 'open' ? 0 : 1) - (E.bidStatus(state, b) === 'open' ? 0 : 1) || a.id.localeCompare(b.id)).map((d) => {
+      const o = E.demandOpen(state, d); const res = E.reservedOnDemand(state, d.id); const dp = E.demandPrice(state, d);
+      const pct = Math.min(100, ((d.priorAllocated + res) / d.qty) * 100);
+      const st = E.bidStatus(state, d);
+      const canDelete = !res && !d.priorAllocated;
+      return '<tr id="dem-' + d.id + '" class="' + (hl === d.id ? 'is-hl' : '') + '"><th scope="row">' + d.id + '<small>' + V.partyLink(d.buyer) + ' · ' + esc(V.commodityName(d.commodity)) + (d.grade ? ' ' + esc(d.grade) : '') + '</small></th><td>' + bidChip(state, d) + '<small>' + (d.validUntil != null ? (st === 'expired' ? 'Expired ' : 'Valid to ') + esc(V.when(d.validUntil)) : 'No expiry') + '</small></td><td class="r num">' + (dp.price != null ? u.rate(dp.price) : '—') + '<small>' + esc(d.priceType === 'basis' ? d.month + (d.basis >= 0 ? ' +' : ' ') + u.rate(d.basis) + (dp.stale ? ' · stale' : '') : 'flat') + '</small></td><td class="r num">' + u.t1(d.qty) + '<small>±' + d.tolPct + '%</small></td><td class="r num">' + u.t1(d.priorAllocated + res) + '</td><td class="r num">' + u.t1(o.open) + '<div class="meter thin" role="img" aria-label="' + pct.toFixed(0) + '% allocated"><span style="width:' + pct.toFixed(1) + '%"></span></div></td><td class="small">' + esc(u.dayShort(d.windowStart)) + ' – ' + esc(u.dayShort(d.windowEnd)) + '<small>to ' + esc(E.destTown(state, d)) + (E.siteOf(state, d) && !E.siteOf(state, d).main ? ' (' + esc(E.siteOf(state, d).name) + ')' : d.destTown ? ' (not a site on file)' : '') + '</small></td><td class="actc">' + V.btn('Edit', 'form', { cls: 'small ghost', data: { form: 'demand-edit', id: d.id }, label: 'Edit ' + d.id }) + (d.kind !== 'Contract' && st !== 'withdrawn' ? V.btn('Withdraw', 'demand-withdraw', { cls: 'small ghost', data: { id: d.id }, label: 'Withdraw ' + d.id }) : '') + (canDelete ? V.btn('Delete', 'demand-delete', { cls: 'small ghost', data: { id: d.id }, label: 'Delete ' + d.id }) : '') + '</td></tr>';
+    }).join('');
+    const ledger = state.ledger.length ? '<ol class="ledger">' + state.ledger.slice().reverse().slice(0, 30).map((e) => '<li class="' + (e.tonnes < 0 ? 'is-rev' : '') + '"><time class="num">' + esc(u.dayShort(e.at).slice(4)) + '</time><span><strong>' + (e.tonnes > 0 ? '+' : u.minus) + u.t1(Math.abs(e.tonnes)) + ' t</strong> ' + esc(e.trade) + ' → ' + esc(e.demand) + ' · ' + esc(e.note) + '</span><small>' + esc(e.by) + '</small></li>').join('') + '</ol>' : '<p class="muted small">No reservations yet.</p>';
+    const buyers = Object.values(state.parties).filter((p) => p.kind === 'Buyer').map((p) => {
+      const ex = E.exposure(state, p.id); const lim = u.toCents(p.creditLimit || 0);
+      const pc = lim ? Math.min(100, (ex.current / lim) * 100) : 0;
+      return '<li><div class="cr-top">' + V.partyLink(p.id) + (p.status === 'On hold' ? V.chip('hold', 'Credit hold') : p.status === 'Pending' ? V.chip('pending') : pc > 85 ? V.chip('warn', pc.toFixed(1) + '% used') : V.chip('ok', pc.toFixed(1) + '% used')) + '</div><div class="meter' + (pc > 85 ? ' is-warn' : '') + '" role="img" aria-label="' + pc.toFixed(1) + '% of credit used"><span style="width:' + pc.toFixed(1) + '%"></span></div><small class="num">' + u.cad(ex.current) + ' of ' + u.cad(lim) + ' · headroom ' + u.cad(Math.max(0, lim - ex.current)) + '</small></li>';
+    }).join('');
+    return V.band('<div class="page-head"><div><h1>Physical book</h1><p>What you own, have sold, have allocated and have moving, in tonnes, marked against manual futures entries. Tentative supply never counts as firm inventory.</p></div><div class="row-actions">' + V.btn('New bid or contract', 'form', { cls: 'primary on-dark', icon: 'plus', data: { form: 'demand-new' }, id: 'new-demand' }) + V.btn('New counterparty', 'form', { cls: 'ghost on-dark', icon: 'user', data: { form: 'party-new' }, id: 'new-party' }) + V.btn('Export book (CSV)', 'book-export', { cls: 'ghost on-dark', icon: 'download' }) + '</div></div>', 'band-page') +
+      '<div class="wrap"><section class="panel" aria-labelledby="ps-h"><div class="panel-head"><h2 id="ps-h">Position</h2><span class="muted small">Ownership is not custody. MTM marks uncovered approved purchases against the futures level at approval.</span></div>' + posTbl + '</section>' +
+      '<section class="panel" aria-labelledby="bm-h"><div class="panel-head"><h2 id="bm-h">Benchmarks</h2>' + V.chip('simulated', 'Manual entries, not a live feed') + '</div><ul class="bm-list">' + bench + '</ul><p class="small muted">USD/bu × USD/CAD × bushels per tonne = CAD/t. A price older than 4 hours stays visible but cannot support an executable basis sale. Move futures from the Test lab to test re-pricing.</p></section>' +
+      '<section class="panel" aria-labelledby="bd-h"><div class="panel-head"><h2 id="bd-h">Bids and contracts</h2>' + V.chip('ok', E.invariants(state).checks[0].ok ? 'No demand over-allocated' : 'Over-allocation') + '</div><div class="table-wrap"><table class="mini" id="demands"><caption class="sr-only">Buyer bids and sale contracts</caption><thead><tr><th scope="col">Demand</th><th scope="col">Status</th><th scope="col" class="r">Price CAD/t</th><th scope="col" class="r">Quantity</th><th scope="col" class="r">Allocated</th><th scope="col" class="r">Open</th><th scope="col">Delivery</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>' + dem + '</tbody></table></div></section>' +
+      '<div class="two"><section class="panel" aria-labelledby="ad-h"><div class="panel-head"><h2 id="ad-h">Allocation ledger</h2><span class="muted small">' + state.ledger.length + ' entries · reservations and reversals, never edited</span></div>' + ledger + '</section>' +
+      '<section class="panel" aria-labelledby="cr-h"><div class="panel-head"><h2 id="cr-h">Buyer credit</h2><span class="muted small">Receivables + committed, unbilled sales</span></div><ul class="credit">' + buyers + '</ul></section></div>' +
+      parties(state) +
+      '<section class="panel" aria-labelledby="sr-h"><div class="panel-head"><h2 id="sr-h">Who owns which record</h2>' + V.chip('simulated', 'ERP sync simulated') + '</div><div class="table-wrap"><table class="mini"><caption class="sr-only">System of record map</caption><tbody><tr><th scope="row">Opportunities, lots, tasks</th><td>TradeDesk</td></tr><tr><th scope="row">Signed contracts</th><td>ERP (TradeDesk keeps drafts and versions)</td></tr><tr><th scope="row">Official inventory</th><td>ERP; pending sync shown here</td></tr><tr><th scope="row">Posted invoices, payments</th><td>Accounting; imported, never set here</td></tr><tr><th scope="row">Futures and hedges</th><td>Existing tools, read-only import</td></tr></tbody></table></div></section></div>';
+  };
+
+  /* Counterparty directory (CT-03): institutional memory, each row opens the passport. */
+  function parties(state) {
+    const groups = [['Supplier', 'Suppliers'], ['Buyer', 'Buyers'], ['Carrier', 'Carriers']];
+    const fact = (p) => {
+      if (p.status === 'Pending') return 'Pending approval · created by ' + (p.createdBy || '—');
+      if (p.kind === 'Carrier') return p.perf.onTime + ' of ' + p.perf.loads + ' loads on time' + (p.perf.loads < 10 ? ' (small sample)' : '') + (p.perf.cancels90 ? ' · ' + p.perf.cancels90 + ' cancellations in 90 days' : '') + (p.verifiedPayload ? '' : ' · axles not declared');
+      if (p.kind === 'Buyer') { const ex = E.exposure(state, p.id); return 'credit ' + (p.creditLimit ? Math.round((ex.current / u.toCents(p.creditLimit)) * 100) : 0) + '% used' + ((p.rule || {}).maxMoisture != null ? ' · moisture max ' + p.rule.maxMoisture.toFixed(1) + '%' : ''); }
+      return ((p.observations || [])[0] || {}).text || 'No observations yet';
+    };
+    return '<section class="panel" aria-labelledby="cp-h"><div class="panel-head"><h2 id="cp-h">Counterparties</h2>' + V.btn('New counterparty', 'form', { cls: 'small', icon: 'plus', data: { form: 'party-new' } }) + '</div><p class="muted small">Observations stay separate from verified requirements. New counterparties start pending: finance approves buyers and suppliers, logistics approves carriers, and the creator cannot approve.</p><div class="cp-grid">' +
+      groups.map((g) => '<div><h3 class="h3">' + g[1] + '</h3><ul class="cp-list">' + Object.values(state.parties).filter((p) => p.kind === g[0]).sort((a, b) => (a.status === 'Pending' ? 0 : 1) - (b.status === 'Pending' ? 0 : 1)).map((p) => '<li><button type="button" class="cp-row" data-act="party" data-id="' + p.id + '" id="cp-' + p.id + '"><span><strong>' + esc(p.name) + '</strong><small>' + esc(p.town) + ' · ' + esc(fact(p)) + '</small></span>' + (p.status === 'On hold' ? V.chip('hold') : p.status === 'Pending' ? V.chip('pending', 'Pending') : '') + u.icon('chevron', 15) + '</button></li>').join('') + '</ul></div>').join('') + '</div></section>';
+  }
+
+  /* ---------------- Review ---------------- */
+  V.policyLive = function (state) {
+    const pol = state.policy;
+    const sim = E.policyReplay(pol);
+    const live = Object.values(state.exceptions).filter((x) => x.status === 'resolved' && x.chosen).map((x) => {
+      const l = E.load(state, x.load); const q = E.quotedLoadLines(state, l); const after = q ? (E.contrib(q) - x.extra) / 100 / l.planned : 0;
+      const auto = x.extra / 100 <= pol.maxExtra && after >= pol.minContrib && x.chosen.buffer >= pol.minBuffer && !x.chosen.contractChange;
+      return { x: x, l: l, after: after, auto: auto };
+    });
+    return '<div class="pol-res" aria-live="polite"><p><strong class="num">' + sim.handled + '</strong> handled · <strong class="num">' + sim.escalated + '</strong> escalated · <strong class="num' + (sim.nearMiss ? ' neg' : '') + '">' + sim.nearMiss + '</strong> near miss' + (sim.nearMiss === 1 ? '' : 'es') + '</p><small>Near miss: the rule would have auto-accepted a replacement that then arrived late.</small></div>' +
+      '<div class="table-wrap"><table class="mini"><caption class="sr-only">Shadow replay of the policy on historical cancellations</caption><thead><tr><th scope="col">Case</th><th scope="col" class="r">Extra</th><th scope="col" class="r">After</th><th scope="col" class="r">Buffer</th><th scope="col">Policy</th><th scope="col">What happened</th></tr></thead><tbody>' +
+      sim.cases.map((c) => '<tr class="' + (c.nearMiss ? 'is-bad' : '') + '"><th scope="row">' + c.date + '<small>' + c.load + '</small></th><td class="r num">' + u.rate(c.extra) + '</td><td class="r num">' + u.rate(c.contrib) + '</td><td class="r num">' + c.buffer + '</td><td>' + (c.auto ? V.chip(c.nearMiss ? 'fail' : 'ok', c.nearMiss ? 'Auto, near miss' : 'Auto') : V.chip('warn', 'Escalate')) + (c.reasons.length ? '<small>' + esc(c.reasons.join('; ')) + '</small>' : '') + '</td><td class="small">' + esc(c.outcome) + '</td></tr>').join('') +
+      live.map((r) => '<tr><th scope="row">' + esc(u.dayShort(r.x.resolvedAt).slice(4)) + '<small>' + r.l.id + '</small></th><td class="r num">' + u.money(r.x.extra) + '</td><td class="r num">' + u.rate(r.after) + '</td><td class="r num">' + r.x.chosen.buffer + '</td><td>' + (r.auto ? V.chip('ok', 'Would auto') : V.chip('warn', 'Escalate')) + '</td><td class="small">Approved by ' + esc(r.x.approvedBy) + ' in this workspace</td></tr>').join('') + '</tbody></table></div>';
+  };
+
+  V.review = function (state) {
+    const r = E.review(state);
+    const dq = r.actual - r.quoted;
+    const pol = state.policy;
+    const causes = [['quality', 'Quality (moisture, grade)'], ['quantity', 'Quantity (weights)'], ['freight', 'Freight and accessorials'], ['rebooking', 'Rebooking'], ['exceptions', 'Detention and exceptions']];
+    const maxAbs = Math.max.apply(null, causes.map((c) => Math.abs(r.causes[c[0]]))) || 1;
+    const bars = causes.map((c) => {
+      const v = r.causes[c[0]]; const w = (Math.abs(v) / maxAbs) * 100;
+      return '<li><span class="lk-l">' + c[1] + '</span><span class="lk-bar"><span class="lk-b ' + (v < 0 ? 'is-neg' : 'is-pos') + '" style="width:' + w.toFixed(1) + '%"></span></span><span class="lk-v num">' + u.money(v, { plus: true }) + '</span></li>';
+    }).join('');
+    const sumC = causes.reduce((s, c) => s + r.causes[c[0]], 0);
+    const loadRows = r.rows.map((x) => '<tr><th scope="row"><a href="#/settle/' + x.load.id + '">' + x.load.id + '</a><small>' + x.trade.id + '</small></th><td class="r num">' + u.money(x.quoted) + '</td><td class="r num">' + u.money(x.actual) + '</td><td class="r num' + (x.actual < x.quoted ? ' neg' : '') + '">' + u.money(x.actual - x.quoted, { plus: true }) + '</td><td class="small">' + Object.keys(x.attr).filter((k) => x.attr[k]).map((k) => k + ' ' + u.money(x.attr[k], { plus: true })).join(', ') + '</td></tr>').join('');
+    const sess = state.session.offerOpenedAt && state.session.comparedAt ? Math.max(1, Math.round((state.session.comparedAt - state.session.offerOpenedAt) / 1000)) : null;
+    const ladderLv = [['Observe', 'Read and structure', true], ['Recommend', 'Suggest an action', true], ['Draft', 'Prepare, you approve', true, 'Current'], ['Execute within policy', 'Inside deterministic limits', false, pol.status === 'simulation' ? 'Simulating' : 'Not enabled'], ['Routine automation', 'Predefined low-risk classes', false, 'Locked']];
+    const slider = (k, label, min, max, step, val, fmt) => '<div class="scen-f"><label for="pol-' + k + '">' + label + ' <output class="num" id="pol-' + k + '-o">' + fmt(val) + '</output></label><input type="range" id="pol-' + k + '" min="' + min + '" max="' + max + '" step="' + step + '" value="' + val + '" data-input="policy" data-k="' + k + '"' + (pol.status === 'simulation' ? ' disabled' : '') + '></div>';
+    const isMgr = state.role === 'manager';
+    let polAct;
+    if (pol.status === 'draft') polAct = V.btn('Submit for manager review', 'policy-submit', { icon: 'arrow' });
+    else if (pol.status === 'submitted') polAct = isMgr ? V.btn('Approve a 30-day simulation period', 'policy-approve', { cls: 'primary', icon: 'check', id: 'policy-approve' }) : '<span class="small">Submitted by ' + esc(pol.submittedBy) + '. </span>' + V.btn('Switch to Jean-François (manager)', 'role', { cls: 'small ghost', data: { role: 'manager' } });
+    else polAct = '<p class="small">' + icon('check', 14) + ' Simulation approved by ' + esc(pol.approvedBy) + '. Would-be actions are logged, never executed.</p>' + V.btn('Withdraw to draft', 'policy-withdraw', { cls: 'small ghost' });
+    const inv = E.invariants(state);
+    return V.band('<div class="page-head"><div><h1>Review, Oct 1 – ' + esc(u.dayShort(state.now).slice(4)) + '</h1><p>Contribution per trader-hour, expected versus actual, and where the margin leaked. Every figure links to loads.</p></div></div>', 'band-page') +
+      '<div class="wrap"><section class="figs" aria-label="Month to date"><div><span class="fig-l">Contribution per trader-hour</span><strong class="num">CAD ' + u.money(Math.round(r.perHour)) + '</strong><small>' + u.money(r.actual) + ' realized ÷ ' + r.hours + ' trader-hours</small></div><div><span class="fig-l">Realized vs quoted</span><strong class="num" id="rv-delta">' + u.money(dq, { plus: true }) + '</strong><small>' + u.money(r.actual) + ' of ' + u.money(r.quoted) + ' quoted (' + u.pct((dq / r.quoted) * 100) + ')</small></div><div><span class="fig-l">Loads reconciled</span><strong class="num" id="rv-loads">' + r.loads + '</strong><small>' + u.t1(r.tonnes) + ' t received · all with attribution</small></div><div><span class="fig-l">Rebooking cost still open</span><strong class="num">' + u.money(r.rebookCurrent) + '</strong><small>counts as actual once those loads reconcile</small></div></section>' +
+      '<div class="two"><section class="panel" aria-labelledby="lk-h"><div class="panel-head"><h2 id="lk-h">Where expected became actual</h2></div><ol class="leak">' + bars + '</ol><p class="small muted">Causes sum to ' + u.money(sumC, { plus: true }) + ' = realized minus quoted. Archived ' + esc(D.archive.label) + ' (' + D.archive.loads + ' loads) plus the loads below.</p>' +
+      '<div class="table-wrap"><table class="mini"><caption class="sr-only">Reconciled loads in this workspace</caption><thead><tr><th scope="col">Load</th><th scope="col" class="r">Quoted</th><th scope="col" class="r">Actual</th><th scope="col" class="r">Change</th><th scope="col">Attribution</th></tr></thead><tbody>' + (loadRows || '<tr><td colspan="5" class="muted">No reconciled loads beyond the archive yet.</td></tr>') + '</tbody></table></div></section>' +
+      '<section class="panel" aria-labelledby="pi-h"><div class="panel-head"><h2 id="pi-h">Pilot measures</h2>' + V.chip('simulated', 'Fictional pilot') + '</div><div class="table-wrap"><table class="mini"><caption class="sr-only">Pilot objectives against baseline</caption><thead><tr><th scope="col">Measure</th><th scope="col">Baseline</th><th scope="col">October</th><th scope="col">Target</th></tr></thead><tbody>' +
+      D.pilot.map((p) => '<tr><th scope="row">' + esc(p.label) + '</th><td>' + esc(p.baseline) + '</td><td class="num"><strong>' + esc(p.now) + '</strong> ' + esc(p.change) + '</td><td>' + esc(p.target) + '</td></tr>').join('') + '</tbody></table></div>' +
+      '<p class="small">' + (sess ? icon('clock', 14) + ' Measured in this browser: <strong>' + Math.floor(sess / 60) + ' min ' + (sess % 60) + ' s</strong> from opening an offer to testing a delivered-margin scenario.' : 'Open an offer and test a scenario: this page will show how long it took, measured in your browser.') + '</p>' +
+      '<h3 class="h3">Controls that must always hold</h3><ul class="checks">' + inv.checks.map((c) => '<li class="' + (c.ok ? 'is-ok' : 'is-block') + '">' + icon(c.ok ? 'check' : 'x', 15) + '<span>' + esc(c.text) + '</span></li>').join('') + '</ul></section></div>' +
+      '<section class="panel policy" aria-labelledby="po-h"><div class="panel-head"><h2 id="po-h">Automation policy: replacement carriers</h2>' + V.chip(pol.status === 'simulation' ? 'simulated' : pol.status === 'submitted' ? 'requested' : 'draft', pol.status === 'simulation' ? 'Simulation period' : pol.status === 'submitted' ? 'Awaiting manager' : 'Draft') + '</div>' +
+      '<p>Would TradeDesk accept a replacement carrier on its own? Replay the rule over past cancellations, and every replacement approved in this workspace, before deciding. Nothing executes: the MVP stops at drafts and approved, user-triggered actions.</p>' +
+      '<ol class="autonomy" aria-label="Autonomy ladder">' + ladderLv.map((l, i) => '<li class="' + (l[2] ? 'is-on' : '') + (l[3] === 'Current' ? ' is-cur' : '') + '"><span class="au-n">' + (i + 1) + '</span><strong>' + l[0] + '</strong><small>' + l[1] + '</small>' + (l[3] ? '<em>' + l[3] + '</em>' : '') + '</li>').join('') + '</ol>' +
+      '<div class="pol-grid"><div class="pol-ctl"><h3 class="h3">Rule</h3><p class="small">Auto-accept when insurance is current, the carrier is qualified, no contract term changes, and:</p>' +
+      slider('maxExtra', 'Extra freight per load at most', 0, 250, 5, pol.maxExtra, (v) => 'CAD ' + v) + slider('minContrib', 'Contribution after at least', 0, 16, 0.5, pol.minContrib, (v) => u.rate(Number(v)) + '/t') + slider('minBuffer', 'Cutoff buffer at least', 0, 120, 5, pol.minBuffer, (v) => v + ' min') +
+      '<div class="row-actions">' + polAct + '</div><p class="kill">' + icon('pause', 15) + '<span><strong>Kill switch on.</strong> No outbound automation runs; read-only help and the audit trail stay available.</span></p></div>' +
+      '<div id="pol-live">' + V.policyLive(state) + '</div></div></section></div>';
+  };
+})();

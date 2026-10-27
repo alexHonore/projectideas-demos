@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f5f0">
+  <meta name="description" content="Five interactive platform demos, built from original project blueprints. Compare Version 3 (Claude), Version 2 (Antigravity Redesign) and Version 1 (Classic Preserved).">
+  <title>Project Studio · Five Platform Demos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./studio.css">
+</head>
+<body>
+  <!-- Studio Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-symbol">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" rx="2"></rect>
+          <rect x="14" y="3" width="7" height="7" rx="2"></rect>
+          <rect x="3" y="14" width="7" height="7" rx="2"></rect>
+          <path d="M17.5 14v7M14 17.5h7"></path>
+        </svg>
+      </div>
+      <div>
+        <span class="brand-name">Project Studio</span>
+        <span class="brand-sub">LOCAL · INTERACTIVE · 5 PLATFORMS</span>
+      </div>
+    </div>
+
+    <!-- Interactive Segmented Version Toggle -->
+    <div class="toggle-container">
+      <button class="toggle-btn" id="btn-v3" onclick="setVersion('v3')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l2.6 5.6L20 9.3l-4 4 1 5.7-5-2.8-5 2.8 1-5.7-4-4 5.4-.7z"></path></svg>
+        <span>Version 3</span>
+        <span class="badge-tag-mini v3">Claude</span>
+      </button>
+      <button class="toggle-btn" id="btn-v2" onclick="setVersion('v2')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        <span>Version 2</span>
+        <span class="badge-tag-mini v2">Pro UI/UX</span>
+      </button>
+      <button class="toggle-btn" id="btn-v1" onclick="setVersion('v1')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path></svg>
+        <span>Version 1</span>
+        <span class="badge-tag-mini v1">Classic</span>
+      </button>
+    </div>
+
+    <div class="header-status">
+      <span class="pulse-dot"></span>
+      <span>Static demos · no server</span>
+    </div>
+  </header>
+
+  <!-- Hero Intro -->
+  <main>
+    <div class="intro-section">
+      <div>
+        <div class="eyebrow" id="eyebrow-text">THE DEMO COLLECTION / 01—05</div>
+        <h1 id="hero-title">Five platforms.<br><span id="hero-sub">Rebuilt from the source docs.</span></h1>
+      </div>
+      <div>
+        <p class="intro-desc" id="hero-desc">
+          Version 3 starts from each project’s specifications, research and reference assets. Every record runs the full workflow, including ones you create. Each demo has a Test lab (scenarios, injected events, a demo clock, save and reload of a test state), search, a guided tour, optional live AI with your own key, and Playwright-tested desktop and mobile layouts.
+        </p>
+        <div class="version-banner-strip">
+          <span class="banner-title" id="banner-mode">Active: Version 3 (Claude · rebuilt from the source docs)</span>
+          <span class="banner-hint">Toggle above anytime to compare</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards Grid Container -->
+    <div class="cards-grid" id="grid-container">
+      <!-- Injected via JavaScript based on active toggle -->
+    </div>
+
+    <!-- Side-by-side comparison -->
+    <section class="compare" aria-labelledby="compare-title">
+      <div class="compare-head">
+        <div>
+          <div class="eyebrow">COMPARE / V1 · V2 · V3</div>
+          <h2 id="compare-title">Open any project in all three versions.</h2>
+        </div>
+        <p>Each version is self-contained and keeps its own local data, so you can open them in separate tabs and walk the same workflow side by side.</p>
+      </div>
+      <div class="compare-table" role="table" aria-label="Demo versions by project">
+        <div class="compare-row compare-labels" role="row">
+          <span role="columnheader">Project</span>
+          <span role="columnheader">Version 3 · Claude</span>
+          <span role="columnheader">Version 2 · Pro UI/UX</span>
+          <span role="columnheader">Version 1 · Classic</span>
+        </div>
+        <div id="compare-rows"></div>
+      </div>
+    </section>
+
+    <!-- Information Bar -->
+    <div class="info-bar">
+      <div class="info-bar-left">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        <div>
+          <h3>Three versions, side by side</h3>
+          <p>Versions 1, 2 and 3 are fully preserved and run independently from their own directories, with separate local data.</p>
+        </div>
+      </div>
+      </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <span>Original project resources & blueprints strictly preserved in respective directories.</span>
+    <span>Simulated frontend demonstrations with zero external API dependencies.</span>
+  </footer>
+
+  <script>
+    const catalog = {
+      v3: [
+        {
+          title: "TradeDesk",
+          tag: "WEB APP · PHYSICAL GRAIN DESK",
+          link: "./CommTrader-platform/demo-commtrader-v3/index.html",
+          desc: "A Saint-Hyacinthe grain desk, from a French supplier email to a settled load. Every extracted field links to its words, the delivered-economics ladder shows why the highest bid isn’t the best, and LD-4072’s four documents reconcile to the cent.",
+          features: ["Evidence-linked capture", "Delivered economics", "4-document reconciliation"],
+          artClass: "art-comm-v3",
+          artHtml: `
+            <div class="v3-comm">
+              <p class="v3-comm-quote">J’aurais <mark>probablement</mark> <mark>10 voyages</mark> de maïs… <mark>238 $ la tonne à la ferme</mark>.</p>
+              <div class="v3-comm-ladder">
+                <span>Moulée Richelieu</span><i style="--w:62%"></i><b>14.65</b>
+                <span>Éthanol St-Laurent</span><i style="--w:55%"></i><b>12.98</b>
+                <span>Terminal Laviolette</span><i style="--w:53%"></i><b>12.60</b>
+              </div>
+            </div>
+          `
+        },
+        {
+          title: "LangQuest",
+          tag: "MOBILE APP + CONTENT STUDIO",
+          link: "./LangQuest/demo-langquest-v3/index.html",
+          desc: "Speak from the first minute: listen, anticipate before the reveal, then role-play with Lucía in a Madrid café, with paraphrases accepted and negations caught. Honest speech capture with no invented scores, 30 courses, and a studio whose uploads reach the learner.",
+          features: ["Anticipate → compare", "Branching role-play", "Studio → learner ripple"],
+          artClass: "art-lang-v3",
+          artHtml: `
+            <div class="v3-lang-phone">
+              <img src="./LangQuest/demo-langquest-v3/assets/mascot/orbit-happy.svg" alt="">
+              <div class="v3-lang-bubble">¿Qué le pongo?</div>
+              <div class="v3-lang-bubble me">Un café con leche, por favor.</div>
+              <div class="v3-lang-pill">Anticipate, then compare</div>
+            </div>
+          `
+        },
+        {
+          title: "Tayoo",
+          tag: "VOICE-FIRST BROKER ASSISTANT",
+          link: "./Tayoo/demo-tayoo-v3/index.html",
+          desc: "Talk once after a showing. Tayoo matches the right Sarah, shows exactly how it read your words, proposes a Memory Diff, task and email in one Action Card, and acts only on what you approve. The receipt states what was really done and what was simulated.",
+          features: ["One conversation", "Memory Diff", "Consent-aware recovery"],
+          artClass: "art-tayoo-v3",
+          artHtml: `
+            <div class="v3-tayoo">
+              <div class="v3-tayoo-orb"></div>
+              <div class="v3-tayoo-card">
+                <span class="v3-tayoo-chip">Ready for review</span>
+                <strong>Follow through after Sarah’s showing</strong>
+                <span class="v3-tayoo-diff"><s>C$775,000</s> → C$825,000</span>
+              </div>
+            </div>
+          `
+        },
+        {
+          title: "Nexus CTE",
+          tag: "WEB APP · CESSION DE PME",
+          link: "./Nexus-CTE-Firm/demo-nexus-cte-v3/index.html",
+          desc: "Le dossier Outarde, du signal de relève à la clôture notariée : chaîne de valeur BAIIA → multiple → honoraires, retraitements proposés par l’IA et décidés par une personne, sommaire aveugle, salle de données sous NDA et comparaison des LI.",
+          features: ["Chaîne de valeur vivante", "Étapes verrouillées", "Vues par rôle"],
+          artClass: "art-nexus-v3",
+          artHtml: `
+            <div class="v3-nexus">
+              <div class="v3-nexus-title">Projet Outarde <span>M-2026-014</span></div>
+              <div class="v3-nexus-eq">
+                <span>420 000 $<small>BAIIA retraité</small></span><em>×</em>
+                <span>4,0×<small>multiple</small></span><em>=</em>
+                <span class="gold">1 680 000 $<small>valeur d’entreprise</small></span>
+              </div>
+            </div>
+          `
+        },
+        {
+          title: "TenderStrike",
+          tag: "WEB APP · SOUMISSIONS SEAO",
+          link: "./TenderStrike/demo-tenderstrike-v3/index.html",
+          desc: "Le brief de 7 h 30, puis la radiographie : 21 exigences citées au mot près, chacune liée à sa page surlignée du devis. Ensuite l’oracle de prix expliqué en cinq étapes, le bouclier de conformité alimenté par le coffre-fort, et un manifeste exportable après revue.",
+          features: ["Citations au devis", "Oracle de prix expliqué", "Bouclier de conformité"],
+          artClass: "art-tender-v3",
+          artHtml: `
+            <div class="v3-tender">
+              <div class="v3-tender-time">7 h 30</div>
+              <div class="v3-tender-sheet">
+                <p><mark class="red">Attestation de Revenu Québec expire le 2 novembre</mark>, trois jours avant la clôture. <span class="v3-page">p. 16</span></p>
+                <p><mark>Visite obligatoire faite</mark> le 21 octobre. <span class="v3-page">p. 5</span></p>
+              </div>
+            </div>
+          `
+        }
+      ],
+      v2: [
+        {
+          title: "TradeDesk OS",
+          tag: "WEB APP · COMMODITY TRADING",
+          link: "./CommTrader-platform/demo-commtrader-v2/index.html",
+          desc: "Plan, allocate and deliver. Interactive delivered margin simulator, live Québec Highway 20 route radar, allocation ledger, and scale ticket reconciliation.",
+          features: ["Delivered Margin Lab", "Route Radar", "Ticket Reconciliation"],
+          artClass: "art-comm-v2",
+          artHtml: `
+            <div class="v2-desk-graphic">
+              <div class="v2-desk-top">
+                <span style="font-size: 10px; color: #94a3b8; font-weight: 600;">OPERATIONS RADAR</span>
+                <span class="v2-badge-green">+$26.50 / t Net</span>
+              </div>
+              <div class="v2-route-line">
+                <span>Ste-Rosalie ➔ St-Bernard</span>
+                <strong>42.8 MT Corn</strong>
+              </div>
+              <div class="v2-radar-bar"><div class="v2-radar-fill"></div></div>
+            </div>
+          `
+        },
+        {
+          title: "LangQuest",
+          tag: "MOBILE ADAPTED · DUAL VIEWPORT",
+          link: "./LangQuest/demo-langquest-v2/index.html",
+          desc: "Conversation-first language learning with iPhone 16 Pro frame. Oral dialogue mission with barista Élodie, audio course player, and 3D flip spaced recall.",
+          features: ["iPhone 16 Pro Frame", "Voice Missions", "3D Flip Flashcards"],
+          artClass: "art-lang-v2",
+          artHtml: `
+            <div class="v2-floating-badge">30 Tracks · B1 Conversational</div>
+            <div class="v2-lang-phone">
+              <div class="v2-phone-notch-bar"></div>
+              <div class="v2-chat-bubble-mini">"Bonjour ! Qu'est-ce que je vous sers ?"</div>
+              <div class="v2-mic-pill-mini">🎙️ 98% Pronunciation Score</div>
+            </div>
+          `
+        },
+        {
+          title: "Tayoo Voice",
+          tag: "MOBILE ADAPTED · AI VOICE CRM",
+          link: "./Tayoo/demo-tayoo-v2/index.html",
+          desc: "The AI real estate CRM that brokers speak to. Obsidian & neural glow interface with animated soundwave canvas, Action Cards (Propose → Confirm → Execute), and conflict resolver.",
+          features: ["Soundwave Canvas", "Action Cards", "Conflict Resolver"],
+          artClass: "art-tayoo-v2",
+          artHtml: `
+            <div class="v2-tayoo-orb-stage">
+              <div class="v2-glowing-sphere"></div>
+              <div class="v2-voice-action-card">⚡ Action Card: Showing 420 Saint-Denis</div>
+            </div>
+          `
+        },
+        {
+          title: "Nexus CTE",
+          tag: "WEB APP · CONSEIL M&A BOUTIQUE",
+          link: "./Nexus-CTE-Firm/demo-nexus-cte-v2/index.html",
+          desc: "High-stakes M&A workstation for Québec SME successions: interactive EBITDA normalizer, confidential virtual dataroom (VDR) with watermarked viewer, and buyer matching.",
+          features: ["Normalisation EBITDA", "Dataroom Virtuelle", "Matrice Repreneurs"],
+          artClass: "art-nexus-v2",
+          artHtml: `
+            <div class="v2-nexus-board">
+              <div class="v2-nexus-title">
+                <span>Mandat : Atelier Boréal</span>
+                <span class="v2-gold-pill">4,2 M$ VE</span>
+              </div>
+              <div class="v2-kanban-row">
+                <div class="v2-kanban-box">Valorisation<strong>820 k$ Norm.</strong></div>
+                <div class="v2-kanban-box" style="border: 1px solid #06b6d4;">Dataroom<strong style="color: #06b6d4;">FTQ Capital</strong></div>
+              </div>
+            </div>
+          `
+        },
+        {
+          title: "TenderStrike",
+          tag: "WEB APP · SEAO INTELLIGENCE",
+          link: "./TenderStrike/demo-tenderstrike-v2/index.html",
+          desc: "Autonomous public procurement engine: 180-page instant PDF X-Ray, competitor pricing oracle with win probability slider, and 100% compliance shield.",
+          features: ["180p X-Ray Devis", "Oracle Prix 7 Ans", "Bouclier Disqualification"],
+          artClass: "art-tender-v2",
+          artHtml: `
+            <div class="v2-tender-sheet">
+              <div class="v2-tender-head">
+                <span>Saint-Bruno · Déneigement</span>
+                <span class="v2-shield-tag">🛡️ 100% Conforme</span>
+              </div>
+              <div class="v2-tender-win-strip">
+                <span>Probabilité de Victoire</span>
+                <strong>87.4%</strong>
+              </div>
+            </div>
+          `
+        }
+      ],
+      v1: [
+        {
+          title: "TradeDesk (Classic)",
+          tag: "WEB APP · COMMODITY OPERATIONS",
+          link: "./CommTrader-platform/demo-commtrader/index.html",
+          desc: "Plan, allocate and deliver. Compare freight, record evidence and reconcile each load. (Classic original version preserved)",
+          features: ["Original Workflows", "Classic Style"],
+          artClass: "comm",
+          artHtml: `
+            <div class="mini-desk" aria-hidden="true">
+              <div class="mini-nav"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="mini-main">
+                <div class="tiny-title">Your trading day, connected.</div>
+                <div class="tiny-sub">QUÉBEC GRAIN DESK</div>
+                <div class="tiny-metrics"><div><i></i>$24,680</div><div><i></i>4 loads</div><div><i></i>1,210 t</div></div>
+              </div>
+            </div>
+          `
+        },
+        {
+          title: "LangQuest (Classic)",
+          tag: "MOBILE FIRST · ORIGINAL",
+          link: "./LangQuest/demo-langquest/index.html",
+          desc: "Branching missions, saved phrases and spaced recall. Pick up exactly where you left off. (Classic original version preserved)",
+          features: ["30 Tracks", "Classic Layout"],
+          artClass: "lang",
+          artHtml: `
+            <span class="float-badge" aria-hidden="true">A little progress. Every day.</span>
+            <div class="phone" aria-hidden="true">
+              <h3>Your next adventure.</h3>
+              <p>FRENCH · FIRST CONVERSATIONS</p>
+              <div class="tiny-button">Start your café mission</div>
+            </div>
+            <span class="float-badge second" aria-hidden="true">30 language tracks</span>
+          `
+        },
+        {
+          title: "Tayoo (Classic)",
+          tag: "MOBILE FIRST · ORIGINAL",
+          link: "./Tayoo/demo-tayoo/index.html",
+          desc: "Review actions, resolve scheduling conflicts and follow every client commitment through. (Classic original version preserved)",
+          features: ["Voice Card", "Classic Timeline"],
+          artClass: "tayoo",
+          artHtml: `
+            <div class="orb" aria-hidden="true"></div>
+            <div class="voice-card" aria-hidden="true">After a showing.<small>One recap. Every next step.</small></div>
+            <div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          `
+        },
+        {
+          title: "Nexus CTE (Classic)",
+          tag: "WEB APP · ORIGINAL",
+          link: "./Nexus-CTE-Firm/demo-nexus-cte/index.html",
+          desc: "Move a mandate forward. Diligence, reviewed offers, valuation scenarios and controlled access. (Classic original version preserved)",
+          features: ["Diligence Gates", "Classic Board"],
+          artClass: "nexus",
+          artHtml: `
+            <div class="nexus-board" aria-hidden="true">
+              <div class="nexus-title">Nexus<span>CONSEIL</span></div>
+              <div class="pipeline">
+                <div><label>QUALIFICATION</label><article>Atelier Boréal<strong>4,2 M$</strong></article></div>
+                <div><label>PRÉPARATION</label><article>Groupe Méridien<strong>8,6 M$</strong></article></div>
+              </div>
+            </div>
+          `
+        },
+        {
+          title: "TenderStrike (Classic)",
+          tag: "WEB APP · ORIGINAL",
+          link: "./TenderStrike/demo-tenderstrike/index.html",
+          desc: "Build an estimate, compare scenarios and coordinate the evidence behind a reviewed bid. (Classic original version preserved)",
+          features: ["Line-Item Math", "Classic Dossier"],
+          artClass: "tender",
+          artHtml: `
+            <div class="tender-sheet" aria-hidden="true">
+              <h3>Votre prochain contrat.</h3>
+              <p>SAINT-BRUNO · DÉNEIGEMENT</p>
+              <div class="tiny-row"><span class="tiny-check">✓</span>Identité entreprise</div>
+              <div class="tiny-row"><span class="tiny-check">✓</span>Assurance 5 M$</div>
+            </div>
+            <span class="tender-badge" aria-hidden="true">96% pertinence</span>
+          `
+        }
+      ]
+    };
+
+    const versions = {
+      v3: {
+        sub: "Rebuilt from the source docs.",
+        desc: "Version 3 starts from each project’s specifications, research and reference assets. Every record runs the full workflow, including ones you create. Each demo has a Test lab (scenarios, injected events, a demo clock, save and reload of a test state), search, a guided tour, optional live AI with your own key, and Playwright-tested desktop and mobile layouts.",
+        banner: "Active: Version 3 (Claude · rebuilt from the source docs)"
+      },
+      v2: {
+        sub: "Reimagined with Pro UI/UX.",
+        desc: "Modern visual hierarchy, zero data clutter, and domain-authentic workflows. Mobile-adapted experiences for LangQuest and Tayoo with real device frames, plus high-stakes SaaS web apps for TradeDesk, Nexus CTE, and TenderStrike.",
+        banner: "Active: Version 2 (Antigravity Redesign · Pro UI/UX)"
+      },
+      v1: {
+        sub: "Classic Preserved Versions.",
+        desc: "Original demo implementations built previously. Retained completely untouched and accessible for full comparison.",
+        banner: "Active: Version 1 (Classic Preserved)"
+      }
+    };
+
+    let currentVer = 'v3';
+    try { currentVer = localStorage.getItem('project_studio_ver_3') || 'v3'; } catch {}
+    if (!catalog[currentVer]) currentVer = 'v3';
+
+    function setVersion(ver) {
+      currentVer = catalog[ver] ? ver : 'v3';
+      try { localStorage.setItem('project_studio_ver_3', currentVer); } catch {}
+      render();
+    }
+
+    function render() {
+      const items = catalog[currentVer];
+      const grid = document.getElementById("grid-container");
+
+      grid.innerHTML = items.map(item => `
+        <a class="project-card" href="${item.link}">
+          <div class="card-art ${item.artClass}">
+            ${item.artHtml}
+          </div>
+          <div class="card-details">
+            <span class="card-tag">${item.tag}</span>
+            <div class="card-title-row">
+              <h2>${item.title}</h2>
+              <span class="arrow-icon">↗</span>
+            </div>
+            <p class="card-desc">${item.desc}</p>
+            <div class="card-features-list">
+              ${item.features.map(f => `<span class="feat-chip">${f}</span>`).join('')}
+            </div>
+          </div>
+        </a>
+      `).join("");
+
+      for (const ver of Object.keys(versions)) {
+        const btn = document.getElementById("btn-" + ver);
+        btn.classList.toggle("active", currentVer === ver);
+        btn.setAttribute("aria-pressed", String(currentVer === ver));
+      }
+      document.getElementById("hero-sub").textContent = versions[currentVer].sub;
+      document.getElementById("hero-desc").textContent = versions[currentVer].desc;
+      document.getElementById("banner-mode").textContent = versions[currentVer].banner;
+
+      document.getElementById("compare-rows").innerHTML = catalog.v3.map((item, i) => `
+        <div class="compare-row" role="row">
+          <span role="cell" class="compare-name">${item.title}</span>
+          ${['v3', 'v2', 'v1'].map(ver => `
+            <span role="cell"><a class="compare-link ${ver}" href="${catalog[ver][i].link}">Open ${ver.toUpperCase()} <span aria-hidden="true">↗</span></a></span>
+          `).join('')}
+        </div>
+      `).join("");
+    }
+
+    document.addEventListener("DOMContentLoaded", render);
+  </script>
+</body>
+</html>

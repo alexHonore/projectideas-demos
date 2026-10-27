@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090e1a">
+  <meta name="description" content="TenderStrike v2 — Moteur Autonome d'Appels d'Offres Publics SEAO & CanadaBuys.">
+  <title>TenderStrike · Intelligence & Soumission d'Appels d'Offres SEAO</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">Tender<span class="amber-text">Strike</span></span>
+          <span class="brand-sub">MOTEUR PUBLIC SEAO · QUÉBEC</span>
+        </div>
+      </div>
+
+      <div class="scan-pill">
+        <span class="scan-dot"></span>
+        <span>SEAO Scraping Actif (6:00 AM)</span>
+      </div>
+
+      <nav class="nav-menu">
+        <div class="nav-section-title">SOUMISSION AUTOMATISÉE</div>
+        <button class="nav-item active" data-tab="radar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          <span>Radar Appels d'Offres SEAO</span>
+          <span class="nav-badge count-new">3 Nouveaux</span>
+        </button>
+        <button class="nav-item" data-tab="xray">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <span>Radiographie PDF (180p X-Ray)</span>
+        </button>
+        <button class="nav-item" data-tab="oracle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          <span>Oracle Prix Concurrents</span>
+          <span class="nav-badge rate-badge">IA 7 Ans</span>
+        </button>
+        <button class="nav-item" data-tab="shield">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          <span>Bouclier Disqualification</span>
+          <span class="nav-badge check-badge">100% Conforme</span>
+        </button>
+        <button class="nav-item" data-tab="assembly">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+          <span>Auto-Assemblage Dossier (80%)</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="vault-chip">
+          <div class="vault-icon">🏢</div>
+          <div class="vault-info">
+            <span class="vault-name">Excavation & Déneigement Rive-Sud</span>
+            <span class="vault-license">Licence RBQ : 8349-2101-01</span>
+          </div>
+        </div>
+        <a href="../../index.html" class="back-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          Retour au Studio Démo
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Viewport -->
+    <main class="main-viewport">
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="breadcrumb">
+            <span>TenderStrike</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            <strong id="active-breadcrumb">Radar Appels d'Offres SEAO</strong>
+          </div>
+          <div class="vault-status">
+            <span>Coffre-fort Entreprise : <strong>14 pièces à jour (Revenu Québec, CNESST, AMP)</strong></span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <button class="btn btn-amber" id="btn-export-dossier-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Exporter Dossier de Soumission
+          </button>
+          <div class="closing-clock">
+            <span>Clôture Prochain Contrat : <strong>5j 18h 42m</strong></span>
+          </div>
+        </div>
+      </header>
+
+      <!-- View Containers -->
+      <!-- VIEW 1: RADAR APAR / SEAO FEED -->
+      <div class="view-content" id="view-radar">
+        <!-- Top Metrics -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-title">VALEUR DES CONTRATS EN MATCH</span>
+              <span class="kpi-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>
+            </div>
+            <div class="kpi-val">4,85 M$ <small>CAD</small></div>
+            <div class="kpi-foot positive">3 contrats municipaux dans votre rayon de 45 km</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-title">PROBABILITÉ DE VICTOIRE (ESTIMÉE)</span>
+              <span class="kpi-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></span>
+            </div>
+            <div class="kpi-val">87.4% <small>Oracle</small></div>
+            <div class="kpi-foot">Basé sur 7 années d'ouvertures de soumissions SEAO</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-title">TEMPS DE PRÉPARATION GAGNÉ</span>
+              <span class="kpi-icon emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></span>
+            </div>
+            <div class="kpi-val">22,5 h <small>Épargnées</small></div>
+            <div class="kpi-foot positive">Annexes administratives pré-remplies à 80%</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span class="kpi-title">RISQUE DE DISQUALIFICATION</span>
+              <span class="kpi-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span>
+            </div>
+            <div class="kpi-val">0.0% <small>Sécurisé</small></div>
+            <div class="kpi-foot positive">Toutes attestations valides jusqu'au 15 déc.</div>
+          </div>
+        </div>
+
+        <!-- Radar Tenders List -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Opportunités Prioritaires SEAO Détectées Ce Matin</h3>
+              <p class="card-desc">Filtre actif : Licence RBQ 1.1 / 1.3 · Rayon Montérégie & Rive-Sud de Montréal</p>
+            </div>
+            <div class="filter-pills">
+              <span class="f-pill active">Tout (3)</span>
+              <span class="f-pill">Déneigement (1)</span>
+              <span class="f-pill">Génie Civil (1)</span>
+              <span class="f-pill">CVC / Bâtiment (1)</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="tenders-list">
+              <!-- Item 1: Primary Demo Contract -->
+              <div class="tender-row featured" id="tender-featured">
+                <div class="tender-meta-left">
+                  <div class="t-badges">
+                    <span class="badge-amber">SEAO #1894210</span>
+                    <span class="badge-cyan">96% Compatibilité</span>
+                    <span class="badge-timer">⏰ Ferme dans 5j 18h</span>
+                  </div>
+                  <h4 class="t-title">Ville de Saint-Bruno · Déneigement des Chaussées et Trottoirs (Secteur Ouest · 3 Saisons)</h4>
+                  <div class="t-tags">
+                    <span>Donneur d'ouvrage : <strong>Ville de Saint-Bruno-de-Montarville</strong></span>
+                    <span>Territoire : <strong>Montérégie</strong></span>
+                    <span>Cautionnement requis : <strong>10% (120 000 $)</strong></span>
+                  </div>
+                </div>
+
+                <div class="tender-pricing-insight">
+                  <span class="insight-label">CORRIDOR PRIX ESTIMÉ ORACLE</span>
+                  <div class="insight-num">1 180 000 $ - 1 245 000 $</div>
+                  <small>Gagnant 2023 : Déneigement Rive-Nord (1 194 000 $)</small>
+                </div>
+
+                <div class="tender-actions">
+                  <button class="btn btn-amber btn-sm" onclick="openXRayForFeatured()">Radiographie 180p</button>
+                  <button class="btn btn-outline btn-sm" onclick="openOracleSimulator()">Simulateur Prix</button>
+                </div>
+              </div>
+
+              <!-- Item 2 -->
+              <div class="tender-row">
+                <div class="tender-meta-left">
+                  <div class="t-badges">
+                    <span class="badge-subtle">SEAO #1895044</span>
+                    <span class="badge-cyan">88% Compatibilité</span>
+                    <span class="badge-timer">⏰ Ferme dans 11j</span>
+                  </div>
+                  <h4 class="t-title">Ville de Longueuil · Réfection d'Aqueduc et Trottoirs Béton (Rue Saint-Charles)</h4>
+                  <div class="t-tags">
+                    <span>Donneur d'ouvrage : <strong>Ville de Longueuil</strong></span>
+                    <span>Budget Estimé : <strong>2,4 M$</strong></span>
+                  </div>
+                </div>
+                <div class="tender-pricing-insight">
+                  <span class="insight-label">CORRIDOR CONCURRENTIEL</span>
+                  <div class="insight-num">2 240 000 $ - 2 390 000 $</div>
+                  <small>3 soumissionnaires habituels identifiés</small>
+                </div>
+                <div class="tender-actions">
+                  <button class="btn btn-outline btn-sm" onclick="loadTender('longueuil'); const xrayTab = document.querySelector('[data-tab=\'xray\']'); if(xrayTab) xrayTab.click();">Analyser</button>
+                </div>
+              </div>
+
+              <!-- Item 3 -->
+              <div class="tender-row">
+                <div class="tender-meta-left">
+                  <div class="t-badges">
+                    <span class="badge-subtle">SEAO #1896120</span>
+                    <span class="badge-cyan">82% Compatibilité</span>
+                    <span class="badge-timer">⏰ Ferme dans 14j</span>
+                  </div>
+                  <h4 class="t-title">CSS des Patriotes · Entretien Préventif des Systèmes CVC (12 Écoles Primaires)</h4>
+                  <div class="t-tags">
+                    <span>Donneur d'ouvrage : <strong>Centre de Services Scolaire</strong></span>
+                    <span>Contrat 2 ans : <strong>850 000 $</strong></span>
+                  </div>
+                </div>
+                <div class="tender-pricing-insight">
+                  <span class="insight-label">CORRIDOR CONCURRENTIEL</span>
+                  <div class="insight-num">815 000 $ - 860 000 $</div>
+                  <small>Faible concurrence historique (2 offres)</small>
+                </div>
+                <div class="tender-actions">
+                  <button class="btn btn-outline btn-sm" onclick="loadTender('csspatriotes'); const xrayTab = document.querySelector('[data-tab=\'xray\']'); if(xrayTab) xrayTab.click();">Analyser</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 2: 180-PAGE INSTANT PDF X-RAY -->
+      <div class="view-content hidden" id="view-xray">
+        <div class="xray-grid">
+          <!-- Left: Scorecard & Traps -->
+          <div class="card xray-summary">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Scorecard Go / No-Go & Pièges Détectés</h3>
+                <p class="card-desc">Analyse IA multimodale de 184 pages de devis administratif et technique</p>
+              </div>
+              <span class="badge badge-emerald">DÉCISION : GO (FORT)</span>
+            </div>
+            <div class="card-body">
+              <div class="scorecard-hero">
+                <div class="score-circle">
+                  <span class="score-val">96%</span>
+                  <span class="score-lbl">MATCH TECHNIQUE</span>
+                </div>
+                <div class="score-desc">
+                  <strong>Contrat parfaitement adapté à votre équipement</strong>
+                  <p>Votre flotte de 4 chargeuses sur roues avec gratte réversible et 2 souffleuses répond à 100% des exigences du Devis Technique § 4.2.</p>
+                </div>
+              </div>
+
+              <!-- Traps / Poison Pills Detected -->
+              <div class="traps-box">
+                <div class="traps-title">⚠️ 3 CLAUSES CRITIQUES EXTRAITES (PIÈGES À ÉVITER)</div>
+                <div class="trap-item">
+                  <div class="trap-icon">📍</div>
+                  <div class="trap-content">
+                    <strong>Visite des lieux obligatoire : Ce jeudi 24 oct. à 10h00</strong>
+                    <p>Présence obligatoire signée au garage municipal. Défaut = Rejet automatique de la soumission sans recours (Clause 1.4).</p>
+                  </div>
+                </div>
+                <div class="trap-item">
+                  <div class="trap-icon">⏱️</div>
+                  <div class="trap-content">
+                    <strong>Temps de réponse maximal : 45 minutes</strong>
+                    <p>Pénalité de 500 $ / heure de retard lors d'accumulations de neige supérieures à 5 cm (Clause 8.1).</p>
+                  </div>
+                </div>
+                <div class="trap-item">
+                  <div class="trap-icon">🛡️</div>
+                  <div class="trap-content">
+                    <strong>Assurance responsabilité civile : 5 000 000 $ requise</strong>
+                    <p>Votre certificat en coffre-fort couvre 5 000 000 $ (Intact Assurance valide jusqu'au 31 août 2027) · <strong class="emerald-text">Conforme</strong>.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Citation Viewer from Official PDF -->
+          <div class="card xray-citations">
+            <div class="card-header">
+              <h3 class="card-title">Extraits Authentifiés du Devis SEAO</h3>
+              <span class="badge badge-cyan">Page 42 / 184</span>
+            </div>
+            <div class="card-body">
+              <div class="pdf-mock-viewer">
+                <div class="pdf-header">
+                  <span>DOCUMENT OFFICIEL VILLE DE SAINT-BRUNO · DEVIS APPEL D'OFFRES #1894210</span>
+                </div>
+                <div class="pdf-content">
+                  <div class="pdf-page-num">SECTION 4.2 — ÉQUIPEMENTS MINIMAUX OBLIGATOIRES</div>
+                  <p class="pdf-para">
+                    « L'adjudicataire doit être propriétaire ou locataire à long terme, au moment du dépôt de la soumission, d'un minimum de <strong>trois (3) chargeuses sur pneus</strong> d'une puissance minimale de 130 HP équipées de grattes à neige réversibles certifiées pour trottoirs et bordures. »
+                  </p>
+                  <div class="pdf-check-match">
+                    <span class="check-icon">✓</span>
+                    <div>
+                      <strong>Vérification automatique Coffre-fort TenderStrike :</strong><br>
+                      Votre inventaire compte 4 chargeuses Cat 926M (148 HP) avec numéros de série vérifiés. Exigence validée.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="btn-group-full">
+                <button class="btn btn-amber btn-block" onclick="openOracleSimulator()">
+                  Passer à l'Oracle des Prix Concurrents ➔
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 3: COMPETITOR PRICING ORACLE -->
+      <div class="view-content hidden" id="view-oracle">
+        <div class="oracle-container">
+          <div class="card oracle-sim">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Simulateur de Prix Gagnant & Courbe de Victoire SEAO</h3>
+                <p class="card-desc">Basé sur les procès-verbaux d'ouverture publique des soumissions de Saint-Bruno (2018-2025)</p>
+              </div>
+              <span class="badge badge-gold">Intelligence Prédictive</span>
+            </div>
+            <div class="card-body">
+              <!-- Competitors Historical Registry -->
+              <div class="historical-competitors-box">
+                <span class="box-title">RÉSULTAT HISTORIQUE DU DERNIER CYCLE (3 SAISONS PRÉCÉDENTES)</span>
+                <div class="comp-table">
+                  <div class="comp-row winner">
+                    <span>1. Gagnant : Déneigement Rive-Nord</span>
+                    <strong>1 194 000 $ CAD</strong>
+                    <span class="badge badge-emerald">Gagnant</span>
+                  </div>
+                  <div class="comp-row">
+                    <span>2. 2e place : Pavages & Déneigement Richelieu</span>
+                    <strong>1 248 500 $ CAD</strong>
+                    <small>Écart : +4.5% (54 500 $ laissés sur table)</small>
+                  </div>
+                  <div class="comp-row">
+                    <span>3. 3e place : Groupe Bâtisseurs Montérégie</span>
+                    <strong>1 315 000 $ CAD</strong>
+                    <small>Écart : +10.1%</small>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Interactive Bid Slider -->
+              <div class="bid-slider-section">
+                <div class="bid-slider-head">
+                  <span>Votre Prix Total Proposé (3 Saisons)</span>
+                  <strong id="disp-bid-price">1 210 000 $ CAD</strong>
+                </div>
+                <input type="range" id="slider-bid" min="1120000" max="1350000" value="1210000" step="5000" class="range-slider">
+                <div class="slider-marks">
+                  <span>1 120 000 $ (Risque marge)</span>
+                  <span>1 210 000 $ (Optimal)</span>
+                  <span>1 350 000 $ (Perte probable)</span>
+                </div>
+              </div>
+
+              <!-- Real-time calculation readout -->
+              <div class="bid-metrics-readout">
+                <div class="bm-card">
+                  <span class="bm-lbl">PROBABILITÉ DE VICTOIRE</span>
+                  <div class="bm-val emerald-text" id="disp-win-prob">87.4%</div>
+                  <small id="disp-win-sub">Prix agressif mais rentable</small>
+                </div>
+                <div class="bm-card">
+                  <span class="bm-lbl">MARGE BRUTE ESTIMÉE</span>
+                  <div class="bm-val" id="disp-bid-margin">26.8% (324 280 $)</div>
+                  <small>Après carburant & main d'œuvre</small>
+                </div>
+                <div class="bm-card">
+                  <span class="bm-lbl">PRIX PAR SAISON</span>
+                  <div class="bm-val" id="disp-season-price">403 333 $ / an</div>
+                  <small>Paiements mensuels municipaux</small>
+                </div>
+              </div>
+
+              <div class="oracle-action-row">
+                <button class="btn btn-amber" id="btn-lock-price">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  Appliquer ce Prix dans le Bordereau Officiel
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Competitor Profile Card -->
+          <div class="card comp-profile">
+            <div class="card-header">
+              <h3 class="card-title">Profil du Concurrent Principal</h3>
+              <span class="badge badge-amber">Rivaux Directs</span>
+            </div>
+            <div class="card-body">
+              <div class="rival-card">
+                <h4>Déneigement Rive-Nord Inc.</h4>
+                <div class="rival-stats">
+                  <div>Taux de victoire SEAO : <strong>42% (14 victoires)</strong></div>
+                  <div>Stratégie tarifaire : <strong>Soumissionne 3-5% sous l'estimation</strong></div>
+                  <div>Capacité matérielle : <strong>Saturée par 2 nouveaux contrats Longueuil</strong></div>
+                </div>
+                <div class="rival-intel-box">
+                  <span class="intel-tag">ANALYSE TENDERSTRIKE</span>
+                  <p>Leur récente acquisition du contrat de Longueuil mobilise 60% de leur flotte. Leur prix à Saint-Bruno sera probablement rehaussé de 6% pour compenser le manque de machinerie locale.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 4: DISQUALIFICATION SHIELD -->
+      <div class="view-content hidden" id="view-shield">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Bouclier Anti-Disqualification (Vérification Rigoureuse en Temps Réel)</h3>
+              <p class="card-desc">Contrôle binaire des conformités éliminatoires avant dépôt de l'offre (99% conforme = 100% disqualifié)</p>
+            </div>
+            <span class="badge badge-emerald">Statut : 100% Éligible</span>
+          </div>
+          <div class="card-body">
+            <div class="checklist-grid">
+              <div class="check-item-card valid">
+                <div class="chk-icon">✓</div>
+                <div class="chk-body">
+                  <strong>Attestation de Revenu Québec (ARQ)</strong>
+                  <p>Certificat valide émis le 14 octobre 2026 · Numéro de confirmation : RQ-2026-9921401</p>
+                  <small>Expire dans 84 jours (15 janvier 2027)</small>
+                </div>
+                <span class="status-badge green">Vérifié API</span>
+              </div>
+
+              <div class="check-item-card valid">
+                <div class="chk-icon">✓</div>
+                <div class="chk-body">
+                  <strong>Lettre de Conformité CNESST</strong>
+                  <p>Dossier en règle sans cotisation impayée · Taux de conformité SST 100%</p>
+                  <small>Attestation de conformité rattachée</small>
+                </div>
+                <span class="status-badge green">Vérifié API</span>
+              </div>
+
+              <div class="check-item-card valid">
+                <div class="chk-icon">✓</div>
+                <div class="chk-body">
+                  <strong>Licence RBQ (Régie du bâtiment du Québec)</strong>
+                  <p>Sous-catégories 1.1 (Bâtiments) et 1.3 (Ouvrages de génie civil) actives et sans ordonnance</p>
+                  <small>Numéro 8349-2101-01 vérifié au registre public</small>
+                </div>
+                <span class="status-badge green">Vérifié API</span>
+              </div>
+
+              <div class="check-item-card valid">
+                <div class="chk-icon">✓</div>
+                <div class="chk-body">
+                  <strong>Cautionnement de Soumission (Bid Bond 10%)</strong>
+                  <p>Cautionnement numérique émis par La Capitale / Beneva Assurance (121 000 $)</p>
+                  <small>Sceau numérique et signature d'officier authentifiés</small>
+                </div>
+                <span class="status-badge green">Prêt au dépôt</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 5: 80% AUTO-ASSEMBLY DOSSIER -->
+      <div class="view-content hidden" id="view-assembly">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Auto-Assemblage & Génération du Dossier SEAO</h3>
+              <p class="card-desc">Génération automatisée des formulaires officiels municipaux avec vos données certifiées</p>
+            </div>
+            <span class="badge badge-emerald">Dossier Complété à 100%</span>
+          </div>
+          <div class="card-body">
+            <div class="assembly-layout">
+              <div class="assembly-files">
+                <h4>Pièces Administratives Générées</h4>
+                <div class="doc-row">
+                  <span>📄 Annexe A — Formulaire Officiel de Soumission (Saint-Bruno)</span>
+                  <strong class="emerald-text">Complété & Signé</strong>
+                </div>
+                <div class="doc-row">
+                  <span>📄 Annexe B — Bordereau des Prix Unitaires (1 210 000 $ CAD)</span>
+                  <strong class="emerald-text">Complété & Signé</strong>
+                </div>
+                <div class="doc-row">
+                  <span>📄 Annexe C — Déclaration Solennelle de Non-Collusion</span>
+                  <strong class="emerald-text">Complété & Signé</strong>
+                </div>
+                <div class="doc-row">
+                  <span>📄 Annexe D — Fiches de 3 Projets Comparables Réalisés (2023-2025)</span>
+                  <strong class="emerald-text">Sélectionnés Auto</strong>
+                </div>
+                <div class="doc-row">
+                  <span>📄 Cautionnement Numérique 10% (Beneva)</span>
+                  <strong class="emerald-text">Scellé</strong>
+                </div>
+              </div>
+
+              <div class="export-final-box">
+                <div class="export-hero">
+                  <div class="export-icon">📦</div>
+                  <h3>Votre Paquet de Soumission est Prêt</h3>
+                  <p>Tous les formulaires sont horodatés, scellés électroniquement et vérifiés contre les critères d'exclusion de la Ville de Saint-Bruno.</p>
+                  <button class="btn btn-amber btn-block" id="btn-final-download">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Télécharger le Paquet de Soumission Scellé (ZIP / PDF)
+                  </button>
+                  <small style="color: var(--text-dim); display: block; margin-top: 10px;">
+                    Prêt pour téléversement direct sur le portail SEAO.
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

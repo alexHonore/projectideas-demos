@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1329">
+  <meta name="description" content="Nexus CTE v2 — Plateforme M&A d'intelligence d'affaires et de relève de PME québécoises.">
+  <title>Nexus CTE · Conseil M&A et Relève d'Entreprises</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5"></path>
+            <path d="M2 12l10 5 10-5"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">NEXUS <span class="gold-text">CTE</span></span>
+          <span class="brand-tag">RELÈVE PME QUÉBEC</span>
+        </div>
+      </div>
+
+      <div class="firm-stat-pill">
+        <span class="stat-dot"></span>
+        <span>4 Mandats Actifs · 31,4 M$</span>
+      </div>
+
+      <nav class="nav-menu">
+        <div class="nav-section-title">ESPACE CONSEILLER</div>
+        <button class="nav-item active" data-tab="pipeline">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <span>Tour de Contrôle Mandats</span>
+          <span class="badge-count">4</span>
+        </button>
+        <button class="nav-item" data-tab="valuation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          <span>Normalisation & Valorisation</span>
+        </button>
+        <button class="nav-item" data-tab="dataroom">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span>Dataroom Virtuelle (VDR)</span>
+          <span class="badge-lock">Chiffré</span>
+        </button>
+        <button class="nav-item" data-tab="buyers">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>Repreneurs Qualifiés</span>
+        </button>
+        <button class="nav-item" data-tab="radar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="m14.31 8 5.74 9.94M9.69 8h11.48M7.38 12l5.74-9.94M9.69 16 3.95 6.06M14.31 16H2.83m13.79-4-5.74 9.94"></path></svg>
+          <span>Radar de Succession REQ</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="advisor-chip">
+          <div class="advisor-av">PL</div>
+          <div class="advisor-info">
+            <span class="advisor-name">Pierre-Luc Fortin</span>
+            <span class="advisor-title">Associé Directeur M&A</span>
+          </div>
+        </div>
+        <a href="../../index.html" class="back-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          Retour au Studio Démo
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Viewport -->
+    <main class="main-viewport">
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="breadcrumb">
+            <span>Nexus CTE</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            <strong id="active-breadcrumb">Tour de Contrôle Mandats</strong>
+          </div>
+          <div class="market-badge">
+            <span>TERRITOIRE : Chaudière-Appalaches / Capitale-Nationale</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <button class="btn btn-gold" id="btn-nouveau-mandat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Nouveau Mandat de Vente
+          </button>
+          <div class="nda-security-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <span>Conformité Loi 25 · NDA Actif</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- View Containers -->
+      <!-- VIEW 1: PIPELINE BOARD -->
+      <div class="view-content" id="view-pipeline">
+        <!-- KPI Row -->
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-label">VOLUME TOTAL SOUS MANDAT</div>
+            <div class="kpi-value">31,4 M$ <small>CAD</small></div>
+            <div class="kpi-trend positive">4 entreprises cédantes exclusives</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">EBITDA NORMALISÉ MOYEN</div>
+            <div class="kpi-value">1,48 M$ <small>CAD</small></div>
+            <div class="kpi-trend">Marge opérationnelle saine (18.4%)</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">REPRENEURS EN AUDIT DATAROOM</div>
+            <div class="kpi-value">7 <small>Fonds & Privés</small></div>
+            <div class="kpi-trend positive">3 offres d'achat (LOI) reçues</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">HONORAIRES SUCCÈS ESTIMÉS</div>
+            <div class="kpi-value">1,12 M$ <small>CAD</small></div>
+            <div class="kpi-trend gold">Clôtures ciblées T1 2027</div>
+          </div>
+        </div>
+
+        <!-- Kanban Board -->
+        <div class="board-header">
+          <h3>Progression des Mandats de Cession</h3>
+          <span class="sub-text">Workflow rigoureux : De la qualification confidentielle au closing notarié</span>
+        </div>
+
+        <div class="kanban-grid">
+          <!-- Col 1: Préparation & Valorisation -->
+          <div class="kanban-col">
+            <div class="col-head">
+              <span class="col-title">VALORISATION & TEASER</span>
+              <span class="col-count">1</span>
+            </div>
+            <div class="mandate-card">
+              <div class="m-card-top">
+                <span class="tag-industry">Usinage & Métal</span>
+                <span class="m-val">4,2 M$</span>
+              </div>
+              <h4>Atelier Boréal Inc.</h4>
+              <p class="m-desc">Saint-Georges · 28 employés · Fondateur 63 ans prêt pour retraite progressive.</p>
+              <div class="m-metrics">
+                <div>Chiffre d'Affaires : <strong>3,8 M$</strong></div>
+                <div>EBITDA Norm. : <strong>820 k$</strong></div>
+              </div>
+              <div class="m-footer">
+                <span class="m-status badge-gold">Teaser Anonyme Prêt</span>
+                <button class="btn-xs" onclick="openValuationFor('Atelier Boréal Inc.', 3800000, 820000, 4.8)">Calculer</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Col 2: Diligence & Dataroom -->
+          <div class="kanban-col">
+            <div class="col-head">
+              <span class="col-title">DATAROOM & VÉRIFICATION</span>
+              <span class="col-count">1</span>
+            </div>
+            <div class="mandate-card highlight-card">
+              <div class="m-card-top">
+                <span class="tag-industry">Distribution Électrique</span>
+                <span class="m-val">8,6 M$</span>
+              </div>
+              <h4>Groupe Méridien Inc.</h4>
+              <p class="m-desc">Lévis / Québec · 45 employés · 3 acheteurs stratégiques sous NDA strict.</p>
+              <div class="m-metrics">
+                <div>Chiffre d'Affaires : <strong>7,9 M$</strong></div>
+                <div>EBITDA Norm. : <strong>1,65 M$</strong></div>
+              </div>
+              <div class="m-footer">
+                <span class="m-status badge-cyan">2 Repreneurs en Audit</span>
+                <button class="btn-xs" onclick="openDataroomFor('Groupe Méridien')">Accès VDR</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Col 3: Négociation & LOI -->
+          <div class="kanban-col">
+            <div class="col-head">
+              <span class="col-title">OFFRE FERME & FINANCEMENT</span>
+              <span class="col-count">1</span>
+            </div>
+            <div class="mandate-card">
+              <div class="m-card-top">
+                <span class="tag-industry">Transport & Logistique</span>
+                <span class="m-val">12,4 M$</span>
+              </div>
+              <h4>Logistique Saint-Laurent</h4>
+              <p class="m-desc">Trois-Rivières · Flotte 38 camions · Repreneur soutenu par Desjardins Capital.</p>
+              <div class="m-metrics">
+                <div>Chiffre d'Affaires : <strong>11,2 M$</strong></div>
+                <div>EBITDA Norm. : <strong>2,30 M$</strong></div>
+              </div>
+              <div class="m-footer">
+                <span class="m-status badge-emerald">LOI Acceptée · En Clôture</span>
+                <button class="btn-xs" onclick="showToast('LOI signée de 12,4 M$ par Groupe Investissement Capitale.')">Voir LOI</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Col 4: Cession Conclue -->
+          <div class="kanban-col">
+            <div class="col-head">
+              <span class="col-title">CLÔTURE & TRANSITION</span>
+              <span class="col-count">1</span>
+            </div>
+            <div class="mandate-card success-card">
+              <div class="m-card-top">
+                <span class="tag-industry">Agroalimentaire B2B</span>
+                <span class="m-val">6,2 M$</span>
+              </div>
+              <h4>Salaisons Bellechasse</h4>
+              <p class="m-desc">Saint-Anselme · Cession 100% complétée à un duo de cadres repreneurs québécois.</p>
+              <div class="m-metrics">
+                <div>Honoraires Honorés : <strong>248 k$</strong></div>
+                <div>Transition : <strong>6 mois assurée</strong></div>
+              </div>
+              <div class="m-footer">
+                <span class="m-status badge-emerald">Transaction Finalisée</span>
+                <button class="btn-xs" onclick="showToast('Dossier archivé · Relève réussie sans perte d\'emplois.')">Détails</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 2: VALUATION & NORMALIZATION LAB -->
+      <div class="view-content hidden" id="view-valuation">
+        <div class="val-container">
+          <div class="card val-form">
+            <div class="card-header">
+              <div>
+                <h3 class="card-title">Calculateur de Normalisation d'EBITDA & Valeur d'Entreprise</h3>
+                <p class="card-desc">Retraitement rigoureux des dépenses discrétionnaires du propriétaire pour révéler la rentabilité réelle transférable</p>
+              </div>
+              <span class="badge badge-gold">Modèle M&A Québec</span>
+            </div>
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Mandat Sélectionné</label>
+                  <select id="val-mandate-select" class="input-field">
+                    <option value="boreal">Atelier Boréal Inc. (Usinage - Chaudière-Appalaches)</option>
+                    <option value="meridien">Groupe Méridien Inc. (Distribution - Lévis)</option>
+                    <option value="logistique">Logistique Saint-Laurent (Transport - Mauricie)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Chiffre d'Affaires Annuel (CAD)</label>
+                  <input type="number" id="val-revenue" class="input-field" value="3800000" step="50000">
+                </div>
+                <div class="form-group">
+                  <label>BAIIA / EBITDA Comptable Déclaré</label>
+                  <input type="number" id="val-reported-ebitda" class="input-field" value="540000" step="10000">
+                </div>
+                <div class="form-group">
+                  <label>Ajustement Salaire Dirigeant vs Marché</label>
+                  <input type="number" id="val-salary-adj" class="input-field" value="140000" step="10000">
+                </div>
+              </div>
+
+              <!-- Retraitements Normalisés -->
+              <div class="adjustments-panel">
+                <span class="adj-title">RETRAITEMENTS DISCRÉTIONNAIRES APPROUVÉS</span>
+                <div class="adj-grid">
+                  <label class="adj-item">
+                    <input type="checkbox" id="chk-vehicules" checked>
+                    <span>Véhicules personnels & voyages non-liés (+35 000 $)</span>
+                  </label>
+                  <label class="adj-item">
+                    <input type="checkbox" id="chk-loyer" checked>
+                    <span>Ajustement loyer propriété liée à valeur marchande (+65 000 $)</span>
+                  </label>
+                  <label class="adj-item">
+                    <input type="checkbox" id="chk-nonrec" checked>
+                    <span>Dépenses exceptionnelles (Frais juridiques litige réglé) (+40 000 $)</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Multiple Slider -->
+              <div class="slider-box">
+                <div class="slider-head">
+                  <span>Multiple de Valorisation (EBITDA Révisé)</span>
+                  <strong id="disp-multiple">4.8x Multiple</strong>
+                </div>
+                <input type="range" id="slider-multiple" min="3.0" max="7.0" value="4.8" step="0.1" class="range-slider">
+                <div class="slider-scale">
+                  <span>3.0x (Secteur sous tension)</span>
+                  <span>4.8x (Norme PME Québec)</span>
+                  <span>7.0x (Prime de rareté)</span>
+                </div>
+              </div>
+
+              <div class="val-actions">
+                <button class="btn btn-gold" id="btn-save-valuation">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  Générer Working Paper & Teaser Anonyme
+                </button>
+                <button class="btn btn-outline" id="btn-reset-val">Rétablir Valeurs Initiales</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Valuation Summary Result -->
+          <div class="card val-result">
+            <div class="card-header">
+              <h3 class="card-title">Fourchette de Valorisation</h3>
+              <span class="badge badge-emerald">Confiance Élevée (94%)</span>
+            </div>
+            <div class="card-body">
+              <div class="val-hero">
+                <span class="hero-sublabel">VALEUR D'ENTREPRISE ESTIMÉE (VE)</span>
+                <div class="hero-big-number" id="disp-ev">3 936 000 $ <small>CAD</small></div>
+                <div class="hero-context" id="disp-ebitda-norm">Sur un EBITDA normalisé de <strong>820 000 $ CAD</strong></div>
+              </div>
+
+              <div class="norm-breakdown">
+                <div class="norm-row">
+                  <span>EBITDA Comptable Initial</span>
+                  <strong id="disp-base-ebitda">540 000 $</strong>
+                </div>
+                <div class="norm-row plus">
+                  <span>Normalisation Rémunération Dirigeant</span>
+                  <strong id="disp-add-salary">+140 000 $</strong>
+                </div>
+                <div class="norm-row plus">
+                  <span>Dépenses Personnelles Retirées</span>
+                  <strong id="disp-add-perks">+35 000 $</strong>
+                </div>
+                <div class="norm-row plus">
+                  <span>Loyer Marchand & Éléments Uniques</span>
+                  <strong id="disp-add-rent">+105 000 $</strong>
+                </div>
+                <div class="norm-divider"></div>
+                <div class="norm-row total">
+                  <span>EBITDA Normalisé Certifié</span>
+                  <strong class="gold-text" id="disp-final-norm">820 000 $ CAD</strong>
+                </div>
+                <div class="norm-row multiple-row">
+                  <span>Multiple d'Évaluation Appliqué</span>
+                  <strong id="disp-multiple-applied">4.80x</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 3: VIRTUAL DATAROOM (VDR) -->
+      <div class="view-content hidden" id="view-dataroom">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Dataroom Virtuelle Sécurisée (VDR) · Mandat Groupe Méridien Inc.</h3>
+              <p class="card-desc">Accès sous mandat strict · Filigrane dynamique · Journal d'audit conforme Loi 25</p>
+            </div>
+            <span class="badge badge-cyan">Filigrane Actif : F.T.Q. CAPITAL</span>
+          </div>
+          <div class="card-body">
+            <div class="vdr-grid">
+              <div class="vdr-files-list">
+                <h4>Documents Vérifiés sous Séquestre</h4>
+                <div class="vdr-file-item active" onclick="previewDoc('Etats_Financiers_Audites_2024_2025.pdf')">
+                  <div class="file-icon">📄</div>
+                  <div class="file-meta">
+                    <strong>États_Financiers_Audités_2024_2025.pdf</strong>
+                    <small>Certifié par Mallette SENCRL · 18 pages</small>
+                  </div>
+                  <span class="badge-tag">Audité</span>
+                </div>
+
+                <div class="vdr-file-item" onclick="previewDoc('Bail_Commercial_Lévis_2022_2032.pdf')">
+                  <div class="file-icon">📄</div>
+                  <div class="file-meta">
+                    <strong>Bail_Commercial_Lévis_2022_2032.pdf</strong>
+                    <small>Édifice industriel 24 000 pi² · Indexation IPC</small>
+                  </div>
+                  <span class="badge-tag">Légal</span>
+                </div>
+
+                <div class="vdr-file-item" onclick="previewDoc('Inventaire_Equipements_Valeur_Liquidative.pdf')">
+                  <div class="file-icon">📄</div>
+                  <div class="file-meta">
+                    <strong>Inventaire_Équipements_Valeur_Liquidative.pdf</strong>
+                    <small>Évaluation certifiée machines CNC & outillage</small>
+                  </div>
+                  <span class="badge-tag">Actifs</span>
+                </div>
+
+                <div class="vdr-file-item" onclick="previewDoc('Organigramme_Personnel_Cle_Retention.pdf')">
+                  <div class="file-icon">📄</div>
+                  <div class="file-meta">
+                    <strong>Organigramme_Personnel_Clé_Rétention.pdf</strong>
+                    <small>45 postes · Clauses de fidélité 24 mois</small>
+                  </div>
+                  <span class="badge-tag">RH</span>
+                </div>
+              </div>
+
+              <!-- Watermarked PDF Mock Preview -->
+              <div class="vdr-preview-box">
+                <div class="vdr-watermark">CONFIDENTIEL · PROPRIÉTÉ NEXUS CTE · ACCÈS FTQ CAPITAL</div>
+                <div class="doc-sheet">
+                  <div class="doc-header">
+                    <span>MALLETTE SENCRL · RAPPORT DE L'AUDITEUR INDÉPENDANT</span>
+                    <span>OCTOBRE 2026</span>
+                  </div>
+                  <h3 id="preview-doc-title">Groupe Méridien Inc. — États Financiers Audités</h3>
+                  <div class="doc-body-text">
+                    <p>Aux actionnaires de Groupe Méridien Inc. :</p>
+                    <p>Nous avons audité les états financiers ci-joints qui comprennent le bilan au 30 septembre 2026, l'état des résultats, l'état des variations des capitaux propres et le tableau des flux de trésorerie.</p>
+                    <div class="doc-table">
+                      <div class="doc-tr"><span>Produits des activités ordinaires (Ventes)</span><strong>7 894 210 $</strong></div>
+                      <div class="doc-tr"><span>Coût des marchandises vendues</span><strong>4 620 180 $</strong></div>
+                      <div class="doc-tr"><span>Bénéfice brut d'exploitation</span><strong>3 274 030 $</strong></div>
+                      <div class="doc-tr highlight"><span>BAIIA Normalisé selon Rapport Nexus CTE</span><strong>1 650 000 $</strong></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 4: REPRENEURS (BUYER MATCHMAKER) -->
+      <div class="view-content hidden" id="view-buyers">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Matrice de Correspondance Repreneurs & Fonds d'Investissement</h3>
+              <p class="card-desc">Appariement confidentiel basé sur la capacité d'équité vérifiée et la thèse d'acquisition</p>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="showToast('Rapport de correspondance exporté en PDF confidentiel.')">Exporter Matrice</button>
+          </div>
+          <div class="card-body">
+            <div class="table-container">
+              <table class="pro-table">
+                <thead>
+                  <tr>
+                    <th>REPRENEUR / FONDS</th>
+                    <th>CAPACITÉ D'ÉQUITÉ</th>
+                    <th>THÈSE D'ACQUISITION</th>
+                    <th>SCORE CORRESPONDANCE</th>
+                    <th>STATUT NDA</th>
+                    <th>ACTION</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <span class="table-cell-title">Fonds de Solidarité FTQ (Relève)</span>
+                      <span class="table-cell-sub">Investisseur Institutionnel QC</span>
+                    </td>
+                    <td><strong>5 M$ - 25 M$</strong></td>
+                    <td>Manufacturier & Usinage Québec</td>
+                    <td><span class="badge badge-emerald">98% Match</span></td>
+                    <td><span class="badge badge-cyan">NDA Signé · Actif</span></td>
+                    <td><button class="btn btn-outline btn-sm" onclick="showToast('Accès Dataroom autorisé pour FTQ Relève.')">Autoriser VDR</button></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <span class="table-cell-title">Duo Repreneurs (Bouchard & Roy)</span>
+                      <span class="table-cell-sub">Cadres Dirigeants Usinage</span>
+                    </td>
+                    <td><strong>1,2 M$ Équité + Banque</strong></td>
+                    <td>Reprise PME Usinage / Beauce</td>
+                    <td><span class="badge badge-emerald">94% Match</span></td>
+                    <td><span class="badge badge-cyan">NDA Signé · Actif</span></td>
+                    <td><button class="btn btn-outline btn-sm" onclick="showToast('Invitation rencontre tripartite envoyée.')">Planifier Rencontre</button></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <span class="table-cell-title">Desjardins Capital Cession</span>
+                      <span class="table-cell-sub">Fonds d'équité privée</span>
+                    </td>
+                    <td><strong>2 M$ - 15 M$</strong></td>
+                    <td>Distribution & Agro B2B</td>
+                    <td><span class="badge badge-gold">86% Match</span></td>
+                    <td><span class="badge badge-amber">En Attente Signature</span></td>
+                    <td><button class="btn btn-outline btn-sm" onclick="showToast('Relance automatique envoyée au directeur de compte.')">Relancer</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VIEW 5: RADAR DE SUCCESSION REQ -->
+      <div class="view-content hidden" id="view-radar">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Radar de Détection de Relève · Registre des Entreprises du Québec (REQ)</h3>
+              <p class="card-desc">Identification proactive d'entreprises rentables dont les administrateurs approchent l'âge de la retraite</p>
+            </div>
+            <span class="badge badge-gold">Données Légales Surchargées</span>
+          </div>
+          <div class="card-body">
+            <div class="radar-list">
+              <div class="radar-card">
+                <div class="radar-top">
+                  <span class="radar-neq">NEQ : 1172849102</span>
+                  <span class="radar-badge high">Signal Fort (92%)</span>
+                </div>
+                <h4>Outillage Précision Chaudière Inc.</h4>
+                <div class="radar-details">
+                  <span>Secteur : SCIAN 332710 (Usinage)</span>
+                  <span>Âge Administrateur Principal : <strong>64 ans</strong></span>
+                  <span>Année Fondation : 1988 (38 ans d'existence)</span>
+                  <span>Localisation : Sainte-Marie (Beauce)</span>
+                </div>
+                <div class="radar-action">
+                  <span>Chiffre d'Affaires Modélisé : <strong>2,8 M$ - 4,5 M$</strong></span>
+                  <button class="btn btn-sm btn-gold" onclick="showToast('Ajouté aux pistes d\'approche discrète Nexus CTE.')">Créer Piste d'Approche</button>
+                </div>
+              </div>
+
+              <div class="radar-card">
+                <div class="radar-top">
+                  <span class="radar-neq">NEQ : 1168492011</span>
+                  <span class="radar-badge med">Signal Moyen (78%)</span>
+                </div>
+                <h4>Équipements Hydrauliques Lévis Inc.</h4>
+                <div class="radar-details">
+                  <span>Secteur : SCIAN 417230 (Machinerie)</span>
+                  <span>Âge Administrateur : <strong>62 ans</strong></span>
+                  <span>Fondation : 1994 (32 ans)</span>
+                  <span>Localisation : Lévis</span>
+                </div>
+                <div class="radar-action">
+                  <span>Chiffre d'Affaires Modélisé : <strong>4,0 M$ - 6,2 M$</strong></span>
+                  <button class="btn btn-sm btn-gold" onclick="showToast('Piste ajoutée au CRM.')">Créer Piste d'Approche</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

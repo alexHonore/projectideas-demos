@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#091312">
+  <meta name="description" content="TradeDesk OS v2 — Physical Commodity Trading & Logistics Platform for Grain Merchants.">
+  <title>TradeDesk OS · Québec Grain Desk</title>
+  <link rel="icon" href="../demo-commtrader/assets/mark.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
+          </svg>
+        </div>
+        <div class="brand-info">
+          <span class="brand-name">TradeDesk<span class="pro-tag">OS v2</span></span>
+          <span class="brand-sub">QUÉBEC GRAIN & FEED DESK</span>
+        </div>
+      </div>
+
+      <div class="market-pill">
+        <div class="pulse-dot"></div>
+        <span>CBOT / MATIF Connected</span>
+        <strong id="market-clock">14:45 EST</strong>
+      </div>
+
+      <nav class="nav-menu">
+        <div class="nav-label">OPERATIONS</div>
+        <button class="nav-item active" data-tab="hub">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <span>Operations Hub</span>
+          <span class="nav-badge live">4 Active</span>
+        </button>
+        <button class="nav-item" data-tab="opportunities">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          <span>Trade Opportunities</span>
+          <span class="nav-badge count">6 Lots</span>
+        </button>
+        <button class="nav-item" data-tab="margin-lab">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M12 11v6"></path></svg>
+          <span>Delivered Margin Lab</span>
+        </button>
+        <button class="nav-item" data-tab="radar-map">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+          <span>Corridor Radar Map</span>
+        </button>
+        <button class="nav-item" data-tab="allocations">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+          <span>Physical Allocation</span>
+        </button>
+        <button class="nav-item" data-tab="settlements">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+          <span>Ticket Reconciliation</span>
+          <span class="nav-badge alert">1 Review</span>
+        </button>
+
+        <div class="nav-label">NETWORK & AI</div>
+        <button class="nav-item" data-tab="counterparties">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>Counterparties</span>
+        </button>
+        <button class="nav-item" data-tab="ai-intake">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          <span>AI Offer Parser</span>
+          <span class="nav-badge new">NLP</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div class="user-av">MD</div>
+          <div>
+            <strong class="user-name">Marc Desjardins</strong>
+            <small class="user-role">Senior Grain Merchant</small>
+          </div>
+        </div>
+        <a href="../../index.html" class="back-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          Back to Demo Studio
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Viewport Area -->
+    <main class="main-viewport">
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="breadcrumb">
+            <span>TradeDesk OS</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            <strong id="active-breadcrumb-label">Operations Hub</strong>
+          </div>
+          <div class="ticker-strip">
+            <span class="ticker-tag">CORN #2: <strong>$284.50/t</strong> (+1.8%)</span>
+            <span class="ticker-tag">SOYBEANS IP: <strong>$542.00/t</strong> (+0.6%)</span>
+            <span class="ticker-tag">FEED WHEAT: <strong>$312.20/t</strong> (-0.4%)</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="global-search-input" placeholder="Search lots, trades, carriers...">
+          </div>
+          <button class="btn btn-primary" onclick="openNewMatchModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            New Trade Match
+          </button>
+        </div>
+      </header>
+
+      <!-- View 1: Operations Hub (Today) -->
+      <div class="view-panel" id="view-hub">
+        <!-- Executive KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span>TODAY'S NET MARGIN</span>
+              <span class="kpi-icon emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></span>
+            </div>
+            <div class="kpi-val">$28,490 <small>CAD</small></div>
+            <div class="kpi-foot positive">+$23.50/t avg margin (+14% vs baseline)</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span>ACTIVE TONNAGE IN MOTION</span>
+              <span class="kpi-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg></span>
+            </div>
+            <div class="kpi-val">1,420 <small>Tonnes</small></div>
+            <div class="kpi-foot">34 bulk B-train loads on Hwy 20 corridor</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span>ALLOCATION COMMITTED</span>
+              <span class="kpi-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>
+            </div>
+            <div class="kpi-val">84.6% <small>Reserved</small></div>
+            <div class="kpi-foot">380t unallocated (St-Hyacinthe Elevator)</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-top">
+              <span>DISCREPANCY VARIANCE</span>
+              <span class="kpi-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span>
+            </div>
+            <div class="kpi-val">0.14% <small>Variance</small></div>
+            <div class="kpi-foot positive">Well below 0.50% commercial tolerance</div>
+          </div>
+        </div>
+
+        <!-- Main Dashboard Split -->
+        <div class="dash-columns">
+          <!-- Live Pipeline -->
+          <div class="card dash-main-card">
+            <div class="card-head">
+              <div>
+                <h3>Live Execution Pipeline & Tenders</h3>
+                <p>Contracted movements with real-time GPS telemetry and margin tracking</p>
+              </div>
+              <div class="filter-pills">
+                <button class="pill-btn active" onclick="filterPipeline('all', this)">All (4)</button>
+                <button class="pill-btn" onclick="filterPipeline('transit', this)">In Transit (2)</button>
+                <button class="pill-btn" onclick="filterPipeline('unloading', this)">Unloading (1)</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="pro-table">
+                <thead>
+                  <tr>
+                    <th>TRADE & COMMODITY</th>
+                    <th>ORIGIN → DESTINATION</th>
+                    <th>VOLUME / CARRIER</th>
+                    <th>MARGIN / PROFIT</th>
+                    <th>STATUS & ETA</th>
+                    <th>ACTION</th>
+                  </tr>
+                </thead>
+                <tbody id="pipeline-tbody">
+                  <!-- Dynamically Rendered -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Quick Arbitrage Opportunity Card -->
+          <div class="card side-feature-card">
+            <div class="card-head">
+              <h3>Freight Arbitrage Radar</h3>
+              <span class="badge-emerald">Live AI Match</span>
+            </div>
+            <div class="arb-card-body">
+              <div class="arb-item">
+                <div class="arb-top">
+                  <span class="tag-grain corn">Maïs Grain #2</span>
+                  <strong class="arb-spread">+$29.40 / t</strong>
+                </div>
+                <div class="arb-lane">
+                  <span>Ferme Landry (St-Valérien)</span>
+                  <span class="arrow">➔</span>
+                  <span>Meunerie Côté (St-Alphonse)</span>
+                </div>
+                <div class="arb-meta">
+                  <span>Freight: $24.60/t (Guilbault)</span>
+                  <span>Net Profit: <strong>+$11,760 CAD</strong></span>
+                </div>
+                <button class="btn btn-primary btn-block btn-sm" onclick="lockArbitrageTrade(400, 'Maïs Grain #2', 29.40, 11760)">
+                  Lock & Allocate 400 MT
+                </button>
+              </div>
+
+              <div class="arb-item" style="margin-top: 14px;">
+                <div class="arb-top">
+                  <span class="tag-grain soy">Soya IP Alimentaire</span>
+                  <strong class="arb-spread">+$34.10 / t</strong>
+                </div>
+                <div class="arb-lane">
+                  <span>Silo Richelieu (St-Denis)</span>
+                  <span class="arrow">➔</span>
+                  <span>Terminal Port MTL (Export)</span>
+                </div>
+                <div class="arb-meta">
+                  <span>Freight: $22.90/t (Mondor)</span>
+                  <span>Net Profit: <strong>+$10,230 CAD</strong></span>
+                </div>
+                <button class="btn btn-primary btn-block btn-sm" onclick="lockArbitrageTrade(300, 'Soya IP', 34.10, 10230)">
+                  Lock & Allocate 300 MT
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View 2: Opportunities & Quoting -->
+      <div class="view-panel hidden" id="view-opportunities">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>Open Grain Supply Opportunities</h3>
+              <p>Ranked by delivered contribution margin, evidenced specifications, and lane viability</p>
+            </div>
+            <div class="filter-pills">
+              <button class="pill-btn active" onclick="filterLots('all', this)">All Commodities</button>
+              <button class="pill-btn" onclick="filterLots('Corn', this)">Corn</button>
+              <button class="pill-btn" onclick="filterLots('Soybeans', this)">Soybeans</button>
+              <button class="pill-btn" onclick="filterLots('Wheat', this)">Feed Wheat</button>
+            </div>
+          </div>
+          <div class="lots-cards-grid" id="lots-grid">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- View 3: Delivered Margin Lab -->
+      <div class="view-panel hidden" id="view-margin-lab">
+        <div class="lab-grid">
+          <div class="card lab-form">
+            <div class="card-head">
+              <div>
+                <h3>Delivered Economics Simulator</h3>
+                <p>Simulate true net trading margin by adjusting origin FOB, buyer CIF, haulage freight, and dockage</p>
+              </div>
+              <span class="badge-cyan">Real-time Math</span>
+            </div>
+            <div class="card-body">
+              <div class="form-row">
+                <div class="form-col">
+                  <label>Commodity Lot</label>
+                  <select id="sim-lot-select" class="input-field" onchange="updateSimFromLot()">
+                    <option value="OP-1042">OP-1042 · Corn #2 (Ferme des Cèdres · 240t)</option>
+                    <option value="OP-1041">OP-1041 · Soybeans IP (Grains Belle-Rive · 180t)</option>
+                    <option value="OP-1040">OP-1040 · Feed Wheat (Champs du Nord · 320t)</option>
+                  </select>
+                </div>
+                <div class="form-col">
+                  <label>Buyer Destination</label>
+                  <select id="sim-buyer-select" class="input-field" onchange="calculateMargin()">
+                    <option value="268">Meunerie Val-Richelieu (Bid: $268/t)</option>
+                    <option value="274">Moulins du Saint-Laurent (Bid: $274/t)</option>
+                    <option value="562">AgriNutrition Québec (Bid: $562/t)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-col">
+                  <label>Quantity to Allocate (MT)</label>
+                  <input type="number" id="sim-tonnes" class="input-field" value="240" step="10">
+                </div>
+                <div class="form-col">
+                  <label>Supplier FOB Origin ($/t)</label>
+                  <input type="number" id="sim-buy-price" class="input-field" value="224" step="1">
+                </div>
+              </div>
+
+              <!-- Sliders -->
+              <div class="sliders-box">
+                <div class="slider-group">
+                  <div class="slider-head">
+                    <span>Carrier Haulage Freight Rate ($/t)</span>
+                    <strong id="disp-freight-val">$21.50 / t</strong>
+                  </div>
+                  <input type="range" id="slider-freight" min="12" max="65" value="21.5" step="0.5" class="slider-control" oninput="calculateMargin()">
+                  <div class="slider-hints"><span>$12 (Local 30km)</span><span>$21.5 (Regional)</span><span>$65 (Cross-province)</span></div>
+                </div>
+
+                <div class="slider-group">
+                  <div class="slider-head">
+                    <span>Moisture & Dockage Discount (%)</span>
+                    <strong id="disp-moisture-val">0.0% ($0.00/t)</strong>
+                  </div>
+                  <input type="range" id="slider-moisture" min="0" max="3.0" value="0" step="0.1" class="slider-control" oninput="calculateMargin()">
+                  <div class="slider-hints"><span>0% (Within 14.5% Spec)</span><span>1.5% (-$4.20/t)</span><span>3.0% (-$8.40/t)</span></div>
+                </div>
+              </div>
+
+              <div class="lab-actions">
+                <button class="btn btn-primary" onclick="issueTradeConfirmation()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  Generate Binding Sales Confirmation (CT-2026)
+                </button>
+                <button class="btn btn-outline" onclick="resetSim()">Reset Defaults</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Margin Result Card -->
+          <div class="card lab-result">
+            <div class="card-head">
+              <h3>Net Margin Breakdown</h3>
+              <span class="badge-emerald" id="disp-margin-badge">High Profitability</span>
+            </div>
+            <div class="card-body">
+              <div class="margin-banner">
+                <span class="banner-lbl">NET DESK SPREAD</span>
+                <div class="banner-num" id="disp-net-spread">$22.50 <small>/ tonne</small></div>
+                <div class="banner-sub" id="disp-total-profit">Desk Contribution: <strong>$5,400.00 CAD</strong></div>
+              </div>
+
+              <div class="waterfall-list">
+                <div class="wf-row"><span>Buyer CIF Delivered Price</span><strong id="wf-cif">$268.00 / t</strong></div>
+                <div class="wf-row minus"><span>Less: Supplier FOB Origin</span><strong id="wf-fob">-$224.00 / t</strong></div>
+                <div class="wf-row minus"><span>Less: Freight Haulage</span><strong id="wf-freight">-$21.50 / t</strong></div>
+                <div class="wf-row minus"><span>Less: Quality / Dockage</span><strong id="wf-dockage">-$0.00 / t</strong></div>
+                <div class="wf-divider"></div>
+                <div class="wf-row total"><span>Net Contribution</span><strong class="emerald" id="wf-net">+$22.50 / t</strong></div>
+                <div class="wf-row sub-info"><span>Operating Return on Working Capital</span><strong id="wf-roi">9.1% per turn</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View 4: Radar Map -->
+      <div class="view-panel hidden" id="view-radar-map">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>Québec Grain Corridor GPS Radar</h3>
+              <p>Highway 20, 10 & 40 active grain movements with destination elevator bay monitoring</p>
+            </div>
+            <span class="badge-emerald"><span class="pulse-dot"></span> Live Satellite Telemetry</span>
+          </div>
+          <div class="radar-container">
+            <svg viewBox="0 0 900 420" class="radar-svg">
+              <!-- River St Lawrence outline -->
+              <path d="M 40 140 C 240 160, 480 230, 860 310" fill="none" stroke="#163038" stroke-width="40" stroke-linecap="round"/>
+              <path d="M 40 140 C 240 160, 480 230, 860 310" fill="none" stroke="#0ea5e9" stroke-width="3" stroke-opacity="0.5"/>
+              
+              <!-- Hwy 20 main corridor -->
+              <path d="M 100 210 Q 380 260 520 250 T 820 270" fill="none" stroke="#253549" stroke-width="6" stroke-dasharray="6 6"/>
+
+              <!-- Active Freight Route 1 -->
+              <path d="M 260 260 Q 400 220 620 240" fill="none" stroke="#10b981" stroke-width="4"/>
+              <!-- Active Route 2 -->
+              <path d="M 290 280 Q 200 230 140 160" fill="none" stroke="#f59e0b" stroke-width="3" stroke-dasharray="4 4"/>
+
+              <!-- Waypoints -->
+              <g class="map-node" transform="translate(140, 160)" onclick="inspectNode('Port de Montréal', 'Deepwater Terminal', '300 MT Soya IP unloading')">
+                <circle r="12" fill="#091312" stroke="#06b6d4" stroke-width="3"/>
+                <circle r="4" fill="#06b6d4"/>
+                <text x="18" y="5" fill="#f8fafc" font-size="12" font-weight="700">Port de Montréal</text>
+                <text x="18" y="19" fill="#94a3b8" font-size="10">Deepwater Grain Terminal</text>
+              </g>
+
+              <g class="map-node" transform="translate(260, 260)" onclick="inspectNode('Silo Ste-Rosalie', 'Primary Elevator', '450 MT Corn #2 Ready')">
+                <circle r="14" fill="#091312" stroke="#10b981" stroke-width="3"/>
+                <circle r="5" fill="#10b981"/>
+                <text x="20" y="5" fill="#f8fafc" font-size="12" font-weight="700">Silo Ste-Rosalie</text>
+                <text x="20" y="19" fill="#34d399" font-size="10">Origin: Ferme Bélanger</text>
+              </g>
+
+              <g class="map-node" transform="translate(620, 240)" onclick="inspectNode('Aliments Breton (St-Bernard)', 'Feed Mill', 'Bay 2 Receiving · 340 MT Corn')">
+                <circle r="14" fill="#091312" stroke="#10b981" stroke-width="3"/>
+                <circle r="5" fill="#10b981"/>
+                <text x="20" y="5" fill="#f8fafc" font-size="12" font-weight="700">Aliments Breton (St-Bernard)</text>
+                <text x="20" y="19" fill="#94a3b8" font-size="10">Receiving Bay 2 Active</text>
+              </g>
+
+              <!-- Animated Moving Truck -->
+              <g class="truck-marker" transform="translate(440, 235)">
+                <rect x="-14" y="-10" width="28" height="20" rx="4" fill="#10b981"/>
+                <text x="-9" y="4" fill="#091312" font-size="10" font-weight="bold">TRK</text>
+                <circle cx="0" cy="0" r="16" fill="none" stroke="#10b981" stroke-width="1.5" opacity="0.6">
+                  <animate attributeName="r" values="10;22" dur="2s" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" values="0.8;0" dur="2s" repeatCount="indefinite"/>
+                </circle>
+              </g>
+            </svg>
+
+            <!-- Overlay Card -->
+            <div class="radar-telemetry-box" id="radar-info-box">
+              <div class="tele-head">
+                <span class="badge-emerald">ACTIVE TRUCK #LD-2381</span>
+                <small>Transport Bourassa</small>
+              </div>
+              <strong id="tele-title">42.8 MT Maïs Grain #2</strong>
+              <div class="tele-stat">Route: Hwy 20 East · Speed: <strong>92 km/h</strong></div>
+              <div class="tele-stat">Destination: St-Bernard · ETA: <strong>15:10</strong></div>
+              <div class="tele-bar"><div class="tele-fill" style="width: 72%;"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View 5: Physical Allocation Ledger -->
+      <div class="view-panel hidden" id="view-allocations">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>Physical Lot Allocation Ledger</h3>
+              <p>Strict volume conservation: atomic reservations against validated purchase contracts</p>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="showToast('Exported allocation ledger CSV.')">Export Ledger</button>
+          </div>
+          <div class="alloc-grid" id="alloc-container">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- View 6: Scale Ticket Reconciliation -->
+      <div class="view-panel hidden" id="view-settlements">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>Scale Ticket & Weight Reconciliation</h3>
+              <p>Automated variance matching between Origin Scale Ticket, Buyer Delivery Ticket, and Bill of Lading</p>
+            </div>
+            <span class="badge-amber">1 Ticket Under Review</span>
+          </div>
+          <div class="card-body">
+            <div class="recon-match-grid">
+              <div class="recon-card">
+                <h4>ORIGIN SCALE TICKET #TK-9821</h4>
+                <div class="recon-data">
+                  <div><span>Elevator:</span> <strong>Silo Ste-Rosalie</strong></div>
+                  <div><span>Gross Weight:</span> <strong>58,420 kg</strong></div>
+                  <div><span>Tare Weight:</span> <strong>15,920 kg</strong></div>
+                  <div class="highlight"><span>Net Shipped:</span> <strong>42,500 kg (42.50 MT)</strong></div>
+                  <div><span>Moisture:</span> <strong>14.2%</strong></div>
+                </div>
+              </div>
+
+              <div class="recon-mid">
+                <div class="vs-badge">VS</div>
+                <div class="variance-pill positive">
+                  -120 kg (-0.28%)<br>
+                  <small>Within 0.5% tolerance</small>
+                </div>
+              </div>
+
+              <div class="recon-card">
+                <h4>BUYER RECEIVING TICKET #REC-4412</h4>
+                <div class="recon-data">
+                  <div><span>Destination:</span> <strong>Aliments Breton (St-Bernard)</strong></div>
+                  <div><span>Gross Weight:</span> <strong>58,260 kg</strong></div>
+                  <div><span>Tare Weight:</span> <strong>15,880 kg</strong></div>
+                  <div class="highlight"><span>Net Received:</span> <strong>42,380 kg (42.38 MT)</strong></div>
+                  <div><span>Moisture:</span> <strong>14.4%</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="recon-footer-bar">
+              <div class="recon-totals">
+                <span>Payable Shipper: <strong>$10,679.76 CAD</strong></span>
+                <span>Receivable Buyer: <strong>$12,925.90 CAD</strong></span>
+                <span class="emerald">Gross Contribution: <strong>+$2,246.14 CAD</strong></span>
+              </div>
+              <button class="btn btn-primary" id="btn-approve-settlement" onclick="approveSettlement()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Approve & Post to Ledger
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View 7: Counterparties Network -->
+      <div class="view-panel hidden" id="view-counterparties">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>Counterparties Directory & Passports</h3>
+              <p>Commercial limits, on-time performance, and verified delivery locations</p>
+            </div>
+            <div class="filter-pills">
+              <button class="pill-btn active" onclick="filterParties('all', this)">All (6)</button>
+              <button class="pill-btn" onclick="filterParties('Supplier', this)">Suppliers</button>
+              <button class="pill-btn" onclick="filterParties('Buyer', this)">Buyers</button>
+              <button class="pill-btn" onclick="filterParties('Carrier', this)">Carriers</button>
+            </div>
+          </div>
+          <div class="parties-grid" id="parties-container">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- View 8: AI Email Offer Parser -->
+      <div class="view-panel hidden" id="view-ai-intake">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h3>Autonomous Email & Message Intake</h3>
+              <p>Parses unstructured farm emails and RFQs into verified trade lots in 2 seconds</p>
+            </div>
+            <span class="badge-purple">Multimodal NLP</span>
+          </div>
+          <div class="card-body">
+            <div class="ai-split-view">
+              <div class="email-mock-box">
+                <div class="email-meta-head">
+                  <strong>Luc Beauregard (Ferme Beauregard)</strong>
+                  <small>Oct 23, 10:14 AM</small>
+                </div>
+                <div class="email-subj">Dispo 500 tonnes maïs sec pour fin novembre</div>
+                <div class="email-text">
+                  "Salut Marc, j'ai fini de récolter mon champ sud. J'ai environ 500 tonnes métriques de maïs sec grade 2 au silo de St-Damase. Test weight 56 lb, humidité 14.3%. Je cherche 254$/t FOB ma cour, pickup entre le 15 et le 25 novembre. Fais-moi signe si tu as un acheteur."
+                </div>
+              </div>
+
+              <div class="ai-card">
+                <div class="ai-card-head">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                  <h4>Extracted Trade Candidate</h4>
+                  <span class="badge-emerald">99.4% Confidence</span>
+                </div>
+                <div class="candidate-grid">
+                  <div><label>Commodity</label><strong>Maïs Grain #2 (Yellow Corn)</strong></div>
+                  <div><label>Quantity</label><strong>500.0 MT</strong></div>
+                  <div><label>Origin FOB</label><strong>$254.00 CAD / MT</strong></div>
+                  <div><label>Pickup Location</label><strong>St-Damase (Montérégie)</strong></div>
+                  <div><label>Moisture</label><strong>14.3% (Dry Spec)</strong></div>
+                  <div><label>Window</label><strong>Nov 15 - Nov 25, 2026</strong></div>
+                </div>
+                <div class="ai-match-suggestion">
+                  <span>Best Match: <strong>Meunerie Côté · CIF $304/t · Net Spread +$23.50/t</strong></span>
+                </div>
+                <button class="btn btn-primary btn-block" onclick="injectParsedLot()">
+                  Inject as Live Trading Lot
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Inspection Modal Dialog -->
+  <dialog id="modal-dialog">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div>
+          <h3 id="modal-title">Trade Details</h3>
+          <p id="modal-sub">Inspection & Verification</p>
+        </div>
+        <button class="btn-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="modal-content">
+        <!-- Injected -->
+      </div>
+      <div class="modal-footer" id="modal-actions">
+        <!-- Actions -->
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

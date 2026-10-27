@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080b12">
+  <meta name="description" content="Tayoo Voice v2 — The AI Real Estate CRM You Talk To. Mobile-Adapted Experience with Real Voice Copilot.">
+  <title>Tayoo Voice · AI Real Estate CRM & Workflow Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body class="mode-phone">
+  <!-- Desktop Frame Controls (Floating) -->
+  <header class="frame-bar">
+    <div class="frame-bar-left">
+      <a href="../../index.html" class="hub-back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Demo Studio
+      </a>
+      <span class="hub-title">Tayoo Voice v2 <span class="tag-mobile">Mobile Adapted</span></span>
+    </div>
+
+    <div class="device-switcher">
+      <button class="dev-btn active" id="btn-phone-view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+        iPhone 16 Pro Frame
+      </button>
+      <button class="dev-btn" id="btn-fluid-view">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+        Responsive Full Screen
+      </button>
+    </div>
+  </header>
+
+  <!-- Device Stage -->
+  <div class="device-stage">
+    <div class="phone-mockup">
+      <!-- Hardware Island -->
+      <div class="phone-island">
+        <div class="island-camera"></div>
+      </div>
+
+      <!-- Phone Screen Viewport -->
+      <div class="phone-screen" id="app-screen">
+        <!-- Status Bar -->
+        <div class="status-bar">
+          <span class="status-time">9:41</span>
+          <div class="status-icons">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.28 19.59 10.59 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/></svg>
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98A16.88 16.88 0 0 0 12 4z"/></svg>
+            <div class="battery-icon"><div class="battery-fill"></div></div>
+          </div>
+        </div>
+
+        <!-- App Top Header -->
+        <div class="tayoo-header">
+          <div class="brand-chip">
+            <div class="tayoo-logo-orb"></div>
+            <strong>Tayoo<span class="voice-badge">VOICE</span></strong>
+          </div>
+
+          <!-- AI Model Switcher -->
+          <div class="model-select-wrapper">
+            <select id="ai-model-select" class="model-select" onchange="switchModel(this.value)">
+              <option value="neural">⚡ Tayoo Neural Core</option>
+              <option value="claude">Claude 3.7 Real Estate</option>
+              <option value="gpt4o">GPT-4o Realtime Audio</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Scrollable Screen Content -->
+        <div class="scroll-content">
+          <!-- VIEW 1: VOICE ASSISTANT (HOME) -->
+          <div class="tab-pane active" id="pane-assistant">
+            <!-- Greeting & Context -->
+            <div class="assistant-intro">
+              <span class="eyebrow">BROKER WORKSPACE · MONTRÉAL & QUÉBEC</span>
+              <h2>Good morning, Alex.</h2>
+              <p>Ready to capture showings, dispatch follow-ups, and coordinate closings.</p>
+            </div>
+
+            <!-- Voice Interaction Center (Glow Orb & Waveform) -->
+            <div class="voice-center-stage">
+              <!-- Animated Canvas Waveform -->
+              <canvas id="voice-canvas" width="280" height="70"></canvas>
+
+              <!-- Central Tap-to-Talk Button -->
+              <div class="mic-glow-ring" id="mic-ring">
+                <button class="btn-voice-main" id="btn-main-mic" title="Tap to Speak">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                </button>
+              </div>
+              <span class="voice-status-text" id="voice-status-caption">Tap to Speak or Select Suggestion</span>
+            </div>
+
+            <!-- Suggestions Strip -->
+            <div class="suggestions-section">
+              <span class="sugg-header">ACTIVE BROKER VOICE WORKFLOWS</span>
+              <div class="sugg-chips-list">
+                <button class="sugg-chip" onclick="simulateVoiceCommand('recap-showing')">
+                  🎙️ "Recap 420 Saint-Denis showing"
+                </button>
+                <button class="sugg-chip" onclick="simulateVoiceCommand('lead-elise')">
+                  🏡 "Seller inquiry: Élise Bergeron Cap-Rouge"
+                </button>
+                <button class="sugg-chip" onclick="simulateVoiceCommand('schedule-inspection')">
+                  📅 "Schedule inspection for Marc Tremblay"
+                </button>
+                <button class="sugg-chip" onclick="simulateVoiceCommand('move-sarah')">
+                  ⚡ "Reschedule Sarah Mitchell showing"
+                </button>
+              </div>
+            </div>
+
+            <!-- Action Card Container (PROPOSE -> CONFIRM -> EXECUTE) -->
+            <div class="action-card-anchor" id="live-action-card-slot">
+              <!-- Default Initial Action Card -->
+              <div class="action-card" id="current-action-card">
+                <div class="ac-header">
+                  <span class="ac-badge propose">PROPOSED ACTION</span>
+                  <small class="ac-timestamp">Just now · Speech Rec</small>
+                </div>
+                <h3 class="ac-title">Showing Recap & Buyer Follow-Up</h3>
+                <div class="ac-meta">
+                  <span>Listing: <strong>420 Rue Saint-Denis, Apt 4</strong></span>
+                  <span>Client: <strong>Sophie Lemieux (Pre-approved)</strong></span>
+                </div>
+                <div class="ac-notes">
+                  "Buyer loved natural light and exposed brick. Hesitant on condo fees ($480/m). Requesting 2025 syndic financials and contingency fund study."
+                </div>
+                <div class="ac-plan">
+                  <div class="plan-step"><span class="step-check">✓</span> Attach 2025 Syndic Financial Statements & Reserve Fund Audit</div>
+                  <div class="plan-step"><span class="step-check">✓</span> Draft personalized email with comparable Plateau condo fee benchmarks</div>
+                  <div class="plan-step"><span class="step-check">✓</span> Set CRM task: Follow up Thursday 10:00 AM</div>
+                </div>
+                <div class="ac-footer">
+                  <button class="btn-ac-approve" id="btn-approve-action" onclick="executeCurrentCard(this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Approve & Execute (3 Steps)
+                  </button>
+                  <button class="btn-ac-edit" onclick="speakActionCardSummary()">🔊 Listen</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- VIEW 2: SCHEDULE & CONFLICTS -->
+          <div class="tab-pane hidden" id="pane-calendar">
+            <div class="calendar-header">
+              <h3>Today's Showing Schedule</h3>
+              <span class="sub-date">Friday, October 24</span>
+            </div>
+
+            <!-- Conflict Banner -->
+            <div class="conflict-alert-box" id="conflict-box">
+              <div class="conflict-top">
+                <span class="badge-conflict">⚠️ CONFLICT DETECTED</span>
+                <small>30 min overlap</small>
+              </div>
+              <p>14:00 Pre-purchase Inspection conflicts with 14:15 Showing at 1205 Ave Laurier.</p>
+              <button class="btn-conflict-solve" id="btn-solve-conflict">
+                ⚡ Auto-Reschedule Laurier to 15:30 (Buyer Accepted)
+              </button>
+            </div>
+
+            <div class="timeline-list" id="timeline-container">
+              <div class="time-item completed">
+                <div class="time-label">10:30 AM</div>
+                <div class="time-content">
+                  <strong>Showing: 420 Rue Saint-Denis</strong>
+                  <span>Client: Sophie Lemieux · Completed</span>
+                </div>
+              </div>
+              <div class="time-item active">
+                <div class="time-label">14:00 PM</div>
+                <div class="time-content">
+                  <strong>Pre-Purchase Building Inspection</strong>
+                  <span>Inspector Jean Cloutier · 850 Rue Rachel E</span>
+                </div>
+              </div>
+              <div class="time-item" id="sched-laurier-item">
+                <div class="time-label">14:15 PM</div>
+                <div class="time-content">
+                  <strong>Private Showing: 1205 Ave Laurier</strong>
+                  <span>Buyer: Marc Tremblay (High Intent)</span>
+                </div>
+              </div>
+              <div class="time-item">
+                <div class="time-label">17:00 PM</div>
+                <div class="time-content">
+                  <strong>Listing Presentation & CMA</strong>
+                  <span>Sellers: Famille Gagnon · Outremont</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- VIEW 3: CRM CLIENTS -->
+          <div class="tab-pane hidden" id="pane-crm">
+            <div class="crm-topbar">
+              <div>
+                <h3>Priority Clients & Mandates</h3>
+                <small style="color:var(--text-dim); font-size:11px;">Law 25 Consent Verified · OACIQ Compliant</small>
+              </div>
+              <span class="crm-count">6 Active</span>
+            </div>
+
+            <!-- Client Filter Chips -->
+            <div class="crm-filter-chips">
+              <button class="crm-chip active" onclick="filterClients('all', this)">All</button>
+              <button class="crm-chip" onclick="filterClients('Buyer', this)">Buyers</button>
+              <button class="crm-chip" onclick="filterClients('Seller', this)">Sellers</button>
+            </div>
+
+            <div class="clients-list" id="clients-container">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- VIEW 4: PROPERTIES & CMA -->
+          <div class="tab-pane hidden" id="pane-properties">
+            <div class="crm-topbar">
+              <div>
+                <h3>Curated Properties & CMA</h3>
+                <small style="color:var(--text-dim); font-size:11px;">MLS/Centris Active Listings · Matched to Clients</small>
+              </div>
+              <span class="crm-count">3 Listings</span>
+            </div>
+
+            <div class="properties-list" id="properties-container">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Navigation Bar (4 tabs) -->
+        <nav class="bottom-nav">
+          <button class="nav-tab active" data-pane="assistant">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+            <span>Voice</span>
+          </button>
+          <button class="nav-tab" data-pane="calendar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <span>Schedule</span>
+          </button>
+          <button class="nav-tab" data-pane="crm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            <span>Clients</span>
+          </button>
+          <button class="nav-tab" data-pane="properties">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            <span>Listings</span>
+          </button>
+        </nav>
+
+        <!-- Home Indicator -->
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Dialog for Client / Property Inspection -->
+  <dialog id="mobile-dialog" class="mobile-dialog">
+    <div class="dialog-inner">
+      <div class="dialog-header">
+        <h3 id="dialog-title">Client Details</h3>
+        <button class="dialog-close" onclick="closeDialog()">✕</button>
+      </div>
+      <div class="dialog-body" id="dialog-content"></div>
+    </div>
+  </dialog>
+
+  <!-- Notification Toast -->
+  <div id="toast-notify" class="mobile-toast"></div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
