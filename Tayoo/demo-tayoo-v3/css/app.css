@@ -1313,3 +1313,14 @@ mark.m-unknown, .pl-k.m-unknown { background: var(--amber-soft); box-shadow: ins
 .ag-more .ag-ctl .icon-btn { width: 44px; height: 44px; }
 /* closed disclosures render nothing (screen readers and the layout agree) */
 details:not([open]) > :not(summary) { display: none !important; }
+.cma-q { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cma-note { position: relative; display: block; padding: 0; }
+.cma-note > summary { list-style: none; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; font-weight: 650; font-size: 13.5px; cursor: pointer; }
+.cma-note > summary::before { content: none; display: none; }
+.cma-note > summary::-webkit-details-marker { display: none; }
+.cma-note > summary .ic { width: 15px; height: 15px; flex: none; }
+.cma-note .v-sub { margin: 4px 0 2px; font-size: 13px; color: var(--ink-2); }
+.comp-adj > summary .ic { width: 13px; height: 13px; vertical-align: -2px; }
+.fchip-ic { display: inline-grid; place-items: center; min-width: 40px; }
+.fchip-ic .ic { width: 15px; height: 15px; }
+.need-n { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--amber-soft); color: var(--amber); font-weight: 700; font-size: 12.5px; }

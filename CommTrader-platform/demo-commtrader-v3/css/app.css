@@ -1145,6 +1145,16 @@ details.ii > summary:hover, details.ii[open] > summary { color: var(--ink); back
 details.ii > summary:focus-visible { outline: 2px solid var(--leaf-ink); outline-offset: 1px; }
 .ii-pop { position: absolute; z-index: 60; left: 50%; top: calc(100% + 6px); transform: translateX(-50%); width: max-content; max-width: min(300px, 80vw); padding: 10px 12px; border-radius: 10px; background: var(--ink, #0E1C2B); color: #fff; font: 400 13px/1.45 var(--sans); text-align: left; box-shadow: 0 12px 30px rgba(14,28,43,.25); white-space: normal; }
 .on-dark details.ii > summary, .band details.ii > summary, .deskbar details.ii > summary { color: var(--on-navy-2); }
+/* ⓘ inline toggle (span + button + popover) */
+.ii { position: relative; display: inline-flex; vertical-align: middle; }
+.ii-btn { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--ink-3); cursor: pointer; }
+.ii-btn:hover, .ii-btn[aria-expanded="true"] { color: var(--ink); background: var(--paper-2); }
+.ii-btn:focus-visible { outline: 2px solid var(--leaf-ink); outline-offset: 1px; }
+.ii > .ii-pop { left: 0; transform: none; top: calc(100% + 6px); }
+.ii > .ii-pop.is-left { left: auto; right: 0; }
+.ii > .ii-pop[hidden] { display: none; }
+.band .ii-btn, .on-dark .ii-btn, .deskbar .ii-btn { color: var(--on-navy-2); }
+.band .ii-btn:hover, .band .ii-btn[aria-expanded="true"] { background: var(--navy-2); color: #fff; }
 /* Status icons */
 .sti { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; flex: none; }
 .sti.tone-leaf { background: var(--leaf-wash); color: var(--leaf-ink); }
@@ -1186,7 +1196,7 @@ details.ii > summary:focus-visible { outline: 2px solid var(--leaf-ink); outline
   .demo-t { display: none; }
   .demo-btn { width: 40px; padding: 0; justify-content: center; }
   .tool-btn.icon-only, .demo-btn, .who-btn { min-height: 40px; }
-  details.ii > summary { width: 32px; height: 32px; }
+  details.ii > summary, .ii-btn { width: 32px; height: 32px; }
 }
 /* Today, simplified */
 .band-slim .band-in { padding-top: 28px; padding-bottom: 28px; }
@@ -1244,8 +1254,8 @@ details:not([open]) > :not(summary) { display: none !important; }
 .ftable tbody th { white-space: nowrap; }
 .ftable th .fl { display: inline-flex; flex-direction: column; vertical-align: middle; white-space: normal; }
 .ftable th .fl small { font-weight: 400; color: var(--ink-3); font-size: 11.5px; }
-.ftable th details.ii { margin-left: 2px; }
-.ftable th details.ii .ii-pop { left: 0; transform: none; font-weight: 400; }
+.ftable th .ii { margin-left: 2px; }
+.ftable th .ii .ii-pop { font-weight: 400; }
 .st-row { display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; }
 .acc-btn { color: var(--leaf-ink); }
 .acc-btn.is-opt { border-style: dashed; color: var(--ink-3); }

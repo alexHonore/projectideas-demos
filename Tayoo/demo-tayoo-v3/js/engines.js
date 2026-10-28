@@ -457,7 +457,7 @@
     });
     var used = rows.filter(function (x) { return x.include; }).map(function (x) { return x.adjusted; }).sort(function (a, b) { return a - b; });
     var n = used.length, res = { subject: subject, run: run, rows: rows, excluded: pool.filter(function (p) { return p.why; }), n: n };
-    if (!n) { res.quality = 'No evidence'; res.note = 'No comparable is included. Include at least three to get a range.'; return res; }
+    if (!n) { res.quality = 'No evidence'; res.note = 'No comparable is included. Include at least three to get a range.'; res.noteShort = 'No comparables'; return res; }
     function q(p) { var i = (n - 1) * p, lo = Math.floor(i), hi = Math.ceil(i); return used[lo] + (used[hi] - used[lo]) * (i - lo); }
     var round5 = function (v) { return Math.round(v / 5000) * 5000; };
     res.point = round5(q(0.5));
@@ -466,7 +466,7 @@
     if (res.high - res.low < res.point * 0.04) { res.low = round5(res.point * 0.98); res.high = round5(res.point * 1.02); }
     res.dispersion = Math.round((used[n - 1] - used[0]) / res.point * 1000) / 10;
     res.quality = n >= 5 && res.dispersion < 8 ? 'Strong evidence' : n >= 3 && res.dispersion < 15 ? 'Moderate evidence' : 'Limited evidence';
-    if (sc == null) res.note = 'Subject condition not assessed: no condition adjustment was applied, so the range is provisional. Select a condition you observed.';
+    if (sc == null) { res.note = 'Subject condition not assessed: no condition adjustment was applied, so the range is provisional. Select a condition you observed.'; res.noteShort = 'Condition not assessed'; }
     res.fp = T.hash(JSON.stringify({ s: subject.id, inc: run.include, r: run.rates, c: run.condition, today: T.today() }));
     return res;
   };

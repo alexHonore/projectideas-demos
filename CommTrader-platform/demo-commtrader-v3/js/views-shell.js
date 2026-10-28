@@ -35,7 +35,8 @@
   /* ⓘ: the explanation is one tap away (a native disclosure, keyboard and touch friendly), never on the surface. */
   function info(text, label) {
     if (!text) return '';
-    return '<details class="ii"><summary aria-label="' + esc(label ? 'About ' + label : 'Details') + '" title="' + esc(String(text).slice(0, 160)) + '">' + icon('info', 15) + '</summary><div class="ii-pop" role="note">' + esc(text) + '</div></details>';
+    /* Inline (valid inside a paragraph or a label): a toggle button and a popover that is hidden until asked for. */
+    return '<span class="ii"><button type="button" class="ii-btn" data-act="ii" aria-expanded="false" aria-label="' + esc(label ? 'About ' + label : 'Details') + '" title="' + esc(String(text).slice(0, 160)) + '">' + icon('info', 15) + '</button><span class="ii-pop" role="note" hidden>' + esc(text) + '</span></span>';
   }
   /* A status as an icon with its word for screen readers and as a tooltip. */
   const ICO = { explicit: ['check', 'leaf', 'Stated in the message'], inferred: ['dot', 'steel', 'Inferred: check it'], approx: ['minus', 'amber', 'Approximate'], derived: ['alert', 'amber', 'Derived: check it'], missing: ['x', 'brick', 'Missing'], edited: ['edit', 'navy', 'Your entry'], converted: ['refresh', 'navy', 'Converted'], unverified: ['alert', 'amber', 'Quote not found in the message'], sender: ['mail', 'steel', 'From the sender address'], newsite: ['alert', 'amber', 'Not on file'] };

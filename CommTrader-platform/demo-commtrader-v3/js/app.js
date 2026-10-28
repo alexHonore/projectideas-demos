@@ -87,7 +87,11 @@
     const dm = $('#demo-menu'); const db = $('#demo-btn');
     if (dm && !dm.hidden) { dm.hidden = true; if (db) db.setAttribute('aria-expanded', 'false'); }
     document.querySelectorAll('details.nav-more[open], details.ii[open]').forEach((d) => { d.open = false; });
+    closeInfo();
     if (notifOpen) setNotif(false);
+  }
+  function closeInfo(except) {
+    document.querySelectorAll('.ii-pop:not([hidden])').forEach((p) => { if (p === except) return; p.hidden = true; const b = p.previousElementSibling; if (b) b.setAttribute('aria-expanded', 'false'); });
   }
   function setNotif(open) {
     notifOpen = open;
@@ -180,6 +184,7 @@
   const tid = () => route.id;
   const act = {
     'tour-start': (el) => { const d = el.closest('dialog'); if (d) closeDialog(d); closeMenus(); TD.tour && TD.tour.start(); },
+    ii: (el) => { const p = el.nextElementSibling; if (!p) return; const open = p.hidden; closeInfo(p); p.hidden = !open; el.setAttribute('aria-expanded', String(open)); if (open) { const r = el.getBoundingClientRect(); p.classList.toggle('is-left', r.left > window.innerWidth / 2); } },
     'demo-menu': (el) => { const m = $('#demo-menu'); const open = m.hidden; closeMenus(); m.hidden = !open; el.setAttribute('aria-expanded', String(open)); if (open) { const f = m.querySelector('button, a'); f && f.focus(); } },
     tab: (el) => { const st = S.get(); st.ui.tabs = st.ui.tabs || {}; st.ui.tabs[el.dataset.g] = el.dataset.t; render(); const b = document.getElementById('tab-' + el.dataset.g + '-' + el.dataset.t); if (b) b.focus(); },
     'role-menu': (el) => { const dmn = $('#demo-menu'); if (dmn) dmn.hidden = true; const m = $('#role-menu'); const open = m.hidden; m.hidden = !open; el.setAttribute('aria-expanded', String(open)); if (open) { setNotif(false); const f = m.querySelector('[aria-checked="true"]') || m.querySelector('button'); f && f.focus(); } },
@@ -400,6 +405,7 @@
       const m = $('#role-menu'); if (m && !m.hidden) { closeMenus(); const b = $('#who-btn'); b && b.focus(); }
       const dm = $('#demo-menu'); if (dm && !dm.hidden) { closeMenus(); const b = $('#demo-btn'); b && b.focus(); }
       document.querySelectorAll('details.ii[open], details.nav-more[open]').forEach((d) => { d.open = false; });
+      const ip = document.querySelector('.ii-pop:not([hidden])'); if (ip) { const b = ip.previousElementSibling; closeInfo(); b && b.focus(); }
       if (notifOpen) { setNotif(false); const b = $('#notif-btn'); b && b.focus(); }
     }
   });
