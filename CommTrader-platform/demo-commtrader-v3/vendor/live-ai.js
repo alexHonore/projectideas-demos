@@ -15,6 +15,10 @@
  *   LiveAI.describe(error)                plain-language message for any failure
  *   LiveAI.onChange(fn)                   called with isOn() after configure/clear
  *   LiveAI.renderSettings(el, {lang})     drop-in settings panel (en/fr)
+ *
+ * When ApiMeter (scripts/api-meter/api-meter.js) is loaded first, the key comes from the hub's
+ * API monitor (index.html#api), and every call is checked against its killswitches and budgets
+ * and recorded there under LiveAI.app (inferred from the demo's folder name).
  */
 (function (global) {
   'use strict';
@@ -25,11 +29,22 @@
 
   try { key = global.localStorage.getItem(STORE) || null; } catch (e) {}
 
+  function meter() { return global.ApiMeter || null; }
+  function currentKey() { var m = meter(); return m ? m.keys.get('anthropic') : key; }
+  var APP_BY_FOLDER = { commtrader: 'tradedesk', langquest: 'langquest', tayoo: 'tayoo', 'nexus-cte': 'nexus', tenderstrike: 'tenderstrike' };
+  function inferApp() {
+    var m = /demo-([a-z-]+?)(?:-v\d)?\//.exec((global.location && global.location.pathname) || '');
+    return (m && APP_BY_FOLDER[m[1]]) || 'hub';
+  }
+
   function sdk() { return global.Anthropic || null; }
   function emit() { var on = api.isOn(); listeners.forEach(function (fn) { try { fn(on); } catch (e) {} }); }
+  var clientKey = null;
   function getClient() {
-    if (!client && key && sdk()) {
-      client = new (sdk())({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 1, timeout: 90000 });
+    var k = currentKey();
+    if (k !== clientKey) { client = null; clientKey = k; }
+    if (!client && k && sdk()) {
+      client = new (sdk())({ apiKey: k, dangerouslyAllowBrowser: true, maxRetries: 1, timeout: 90000 });
     }
     return client;
   }
@@ -61,6 +76,19 @@
   // One request with the server-side refusal fallback; if this account or
   // endpoint rejects that beta parameter, retry once without it and remember.
   function send(body, signal) {
+    var m = meter();
+    if (!m) return sendNow(body, signal);
+    return m.run({ app: api.app || inferApp(), provider: 'anthropic', op: 'messages', model: MODEL }, function () {
+      return sendNow(body, signal).then(function (res) {
+        var u = res.usage || {};
+        return { result: res, model: res.model || MODEL, usage: { inputTokens: (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0), outputTokens: u.output_tokens || 0 } };
+      });
+    }).then(function (r) { return r.result; }, function (err) {
+      if (err && err.name === 'ApiMeterBlocked') throw LiveAIError('blocked', 'Live AI is paused: ' + err.message + '.');
+      throw err;
+    });
+  }
+  function sendNow(body, signal) {
     var c = getClient();
     if (!c) return Promise.reject(LiveAIError('off', 'Live AI is off. Add an API key in the demo settings to turn it on.'));
     var A = sdk();
@@ -93,17 +121,21 @@
   var api = {
     model: MODEL,
     available: function () { return !!sdk(); },
-    isOn: function () { return !!key && !!sdk(); },
-    hasStoredKey: function () { try { return !!global.localStorage.getItem(STORE); } catch (e) { return false; } },
+    app: null,
+    isOn: function () { return !!currentKey() && !!sdk(); },
+    hasStoredKey: function () { var m = meter(); if (m) return m.keys.remembered('anthropic'); try { return !!global.localStorage.getItem(STORE); } catch (e) { return false; } },
     configure: function (o) {
       var k = String((o && o.apiKey) || '').trim();
       if (!k) throw LiveAIError('invalid', 'Paste an API key first.');
-      key = k; client = null; fallbacksOk = true;
+      client = null; fallbacksOk = true;
+      if (meter()) { meter().keys.set('anthropic', k, !!o.remember); emit(); return; }
+      key = k;
       try { if (o.remember) global.localStorage.setItem(STORE, k); else global.localStorage.removeItem(STORE); } catch (e) {}
       emit();
     },
     clear: function () {
       key = null; client = null;
+      if (meter()) meter().keys.clear('anthropic');
       try { global.localStorage.removeItem(STORE); } catch (e) {}
       emit();
     },
@@ -199,5 +231,6 @@
     }
   };
 
+  if (meter()) meter().onChange(function () { client = null; emit(); });
   global.LiveAI = api;
 })(window);

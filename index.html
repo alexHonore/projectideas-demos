@@ -48,10 +48,10 @@
       </button>
     </div>
 
-    <div class="header-status">
-      <span class="pulse-dot"></span>
-      <span>Static demos · no server</span>
-    </div>
+    <a class="api-btn" id="btn-api" href="#api" aria-expanded="false" title="API monitor: usage, costs, killswitch">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 14l4-4"/><path d="M3.3 19a9 9 0 1 1 17.4 0"/></svg>
+      <span>API</span><span class="api-spend">$0.00</span>
+    </a>
   </header>
 
   <!-- Hero Intro -->
@@ -61,15 +61,7 @@
         <div class="eyebrow" id="eyebrow-text">THE DEMO COLLECTION / 01—05</div>
         <h1 id="hero-title">Five platforms.<br><span id="hero-sub">Rebuilt from the source docs.</span></h1>
       </div>
-      <div>
-        <p class="intro-desc" id="hero-desc">
-          Version 3 starts from each project’s specifications, research and reference assets. Every record runs the full workflow, including ones you create. Each demo has a Test lab (scenarios, injected events, a demo clock, save and reload of a test state), search, a guided tour, optional live AI with your own key, and Playwright-tested desktop and mobile layouts.
-        </p>
-        <div class="version-banner-strip">
-          <span class="banner-title" id="banner-mode">Active: Version 3 (Claude · rebuilt from the source docs)</span>
-          <span class="banner-hint">Toggle above anytime to compare</span>
-        </div>
-      </div>
+      <p class="intro-desc" id="hero-desc">Full workflows · Test lab · optional live AI</p>
     </div>
 
     <!-- Cards Grid Container -->
@@ -84,7 +76,6 @@
           <div class="eyebrow">COMPARE / V1 · V2 · V3</div>
           <h2 id="compare-title">Open any project in all three versions.</h2>
         </div>
-        <p>Each version is self-contained and keeps its own local data, so you can open them in separate tabs and walk the same workflow side by side.</p>
       </div>
       <div class="compare-table" role="table" aria-label="Demo versions by project">
         <div class="compare-row compare-labels" role="row">
@@ -97,24 +88,25 @@
       </div>
     </section>
 
-    <!-- Information Bar -->
-    <div class="info-bar">
-      <div class="info-bar-left">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-        <div>
-          <h3>Three versions, side by side</h3>
-          <p>Versions 1, 2 and 3 are fully preserved and run independently from their own directories, with separate local data.</p>
-        </div>
-      </div>
-      </div>
   </main>
 
   <!-- Footer -->
   <footer>
-    <span>Original project resources & blueprints strictly preserved in respective directories.</span>
-    <span>Simulated frontend demonstrations with zero external API dependencies.</span>
+    <span>Fictional data · runs in your browser</span>
+    <a href="#api">API monitor</a>
   </footer>
 
+  <section class="api-monitor" id="api-monitor" role="dialog" aria-modal="true" aria-labelledby="am-title" hidden>
+    <div class="am-sheet">
+      <div class="am-body"></div>
+      <div class="am-bench" id="am-bench"></div>
+      <div class="am-foot"></div>
+    </div>
+  </section>
+
+  <script src="./scripts/api-meter/api-meter.js"></script>
+  <script src="./api-monitor.js" defer></script>
+  <script src="./api-bench.js" defer></script>
   <script>
     const catalog = {
       v3: [
@@ -122,7 +114,7 @@
           title: "TradeDesk",
           tag: "WEB APP · PHYSICAL GRAIN DESK",
           link: "./CommTrader-platform/demo-commtrader-v3/index.html",
-          desc: "A Saint-Hyacinthe grain desk, from a French supplier email to a settled load. Every extracted field links to its words, the delivered-economics ladder shows why the highest bid isn’t the best, and LD-4072’s four documents reconcile to the cent.",
+          desc: "From a farmer’s email to a settled load.",
           features: ["Evidence-linked capture", "Delivered economics", "4-document reconciliation"],
           artClass: "art-comm-v3",
           artHtml: `
@@ -140,7 +132,7 @@
           title: "LangQuest",
           tag: "MOBILE APP + CONTENT STUDIO",
           link: "./LangQuest/demo-langquest-v3/index.html",
-          desc: "Speak from the first minute: listen, anticipate before the reveal, then role-play with Lucía in a Madrid café, with paraphrases accepted and negations caught. Honest speech capture with no invented scores, 30 courses, and a studio whose uploads reach the learner.",
+          desc: "Speak from minute one, in 30 languages.",
           features: ["Anticipate → compare", "Branching role-play", "Studio → learner ripple"],
           artClass: "art-lang-v3",
           artHtml: `
@@ -156,7 +148,7 @@
           title: "Tayoo",
           tag: "VOICE-FIRST BROKER ASSISTANT",
           link: "./Tayoo/demo-tayoo-v3/index.html",
-          desc: "Talk once after a showing. Tayoo matches the right Sarah, shows exactly how it read your words, proposes a Memory Diff, task and email in one Action Card, and acts only on what you approve. The receipt states what was really done and what was simulated.",
+          desc: "Talk after a showing. Approve. Done.",
           features: ["One conversation", "Memory Diff", "Consent-aware recovery"],
           artClass: "art-tayoo-v3",
           artHtml: `
@@ -174,7 +166,7 @@
           title: "Nexus CTE",
           tag: "WEB APP · CESSION DE PME",
           link: "./Nexus-CTE-Firm/demo-nexus-cte-v3/index.html",
-          desc: "Le dossier Outarde, du signal de relève à la clôture notariée : chaîne de valeur BAIIA → multiple → honoraires, retraitements proposés par l’IA et décidés par une personne, sommaire aveugle, salle de données sous NDA et comparaison des LI.",
+          desc: "Une cession de PME, du signal à la clôture.",
           features: ["Chaîne de valeur vivante", "Étapes verrouillées", "Vues par rôle"],
           artClass: "art-nexus-v3",
           artHtml: `
@@ -192,7 +184,7 @@
           title: "TenderStrike",
           tag: "WEB APP · SOUMISSIONS SEAO",
           link: "./TenderStrike/demo-tenderstrike-v3/index.html",
-          desc: "Le brief de 7 h 30, puis la radiographie : 21 exigences citées au mot près, chacune liée à sa page surlignée du devis. Ensuite l’oracle de prix expliqué en cinq étapes, le bouclier de conformité alimenté par le coffre-fort, et un manifeste exportable après revue.",
+          desc: "Trouver, lire, chiffrer et déposer un appel d’offres.",
           features: ["Citations au devis", "Oracle de prix expliqué", "Bouclier de conformité"],
           artClass: "art-tender-v3",
           artHtml: `
@@ -388,17 +380,17 @@
     const versions = {
       v3: {
         sub: "Rebuilt from the source docs.",
-        desc: "Version 3 starts from each project’s specifications, research and reference assets. Every record runs the full workflow, including ones you create. Each demo has a Test lab (scenarios, injected events, a demo clock, save and reload of a test state), search, a guided tour, optional live AI with your own key, and Playwright-tested desktop and mobile layouts.",
+        desc: "Full workflows · Test lab · optional live AI",
         banner: "Active: Version 3 (Claude · rebuilt from the source docs)"
       },
       v2: {
         sub: "Reimagined with Pro UI/UX.",
-        desc: "Modern visual hierarchy, zero data clutter, and domain-authentic workflows. Mobile-adapted experiences for LangQuest and Tayoo with real device frames, plus high-stakes SaaS web apps for TradeDesk, Nexus CTE, and TenderStrike.",
+        desc: "Dark redesign · device frames",
         banner: "Active: Version 2 (Antigravity Redesign · Pro UI/UX)"
       },
       v1: {
         sub: "Classic Preserved Versions.",
-        desc: "Original demo implementations built previously. Retained completely untouched and accessible for full comparison.",
+        desc: "Original versions, unchanged",
         banner: "Active: Version 1 (Classic Preserved)"
       }
     };
@@ -443,7 +435,7 @@
       }
       document.getElementById("hero-sub").textContent = versions[currentVer].sub;
       document.getElementById("hero-desc").textContent = versions[currentVer].desc;
-      document.getElementById("banner-mode").textContent = versions[currentVer].banner;
+      
 
       document.getElementById("compare-rows").innerHTML = catalog.v3.map((item, i) => `
         <div class="compare-row" role="row">
