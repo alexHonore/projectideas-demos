@@ -1,6 +1,7 @@
 /* LangQuest V3 — natural voices in three tiers, chosen in this order:
      1. pre-generated neural clips: window.LQ_AUDIO[clipKey] → assets/audio/<course>/<key>.mp3
-     2. live Gemini TTS, only through ApiMeter.gemini.tts (metered, killswitch- and budget-aware),
+     2. live AI voice (OpenRouter or Gemini, chosen on the hub's API page), only through ApiMeter.tts
+        (metered, killswitch- and budget-aware),
         cached in IndexedDB by model + voice + text so a phrase is paid for once
      3. the best device voice for the exact locale (ranked in speech.js; metered as browser-tts)
    Varieties that a general TTS model may not render faithfully (Arabic dialects, Cantonese,
@@ -85,13 +86,14 @@
   VX.cacheKey = (model, voice, text) => model + '|' + voice + '|' + text;
 
   /* ── tier status (for the tiny icon and the voice picker) ── */
-  VX.geminiGate = () => { const m = meter(); if (!m) return { ok: false, reason: 'API monitor not loaded' }; if (LQ.store && LQ.store.cap && LQ.store.cap('offline')) return { ok: false, reason: 'Offline (Test lab)' }; return m.check(APP, 'gemini'); };
+  VX.geminiGate = () => { const m = meter(); if (!m) return { ok: false, reason: 'API monitor not loaded' }; if (LQ.store && LQ.store.cap && LQ.store.cap('offline')) return { ok: false, reason: 'Offline (Test lab)' }; return m.checkTts(APP); };
+  VX.engineName = () => { const m = meter(); return m && m.voice().tts.provider === 'openrouter' ? 'OpenRouter' : 'Gemini'; };
   VX.hasClips = (course) => Object.values(root.LQ_AUDIO || {}).some(c => c && c.c === course);
   VX.tierFor = (track, enr) => {
     enr = enr || {};
     const pol = VX.policy(track, enr.region), g = VX.geminiGate();
     if (pol.gemini && VX.hasClips(VX.clipCourse(track, enr.region))) return { tier: 'clip', icon: 'film', label: 'Studio clips', why: 'Pre-generated neural recordings for this course.' };
-    if (pol.gemini && enr.neural !== false && g.ok) return { tier: 'gemini', icon: 'sparkle', label: 'Neural voice', why: 'Gemini TTS through the API monitor, cached after the first play.' };
+    if (pol.gemini && enr.neural !== false && g.ok) return { tier: 'gemini', icon: 'sparkle', label: 'Neural voice', why: 'AI voice (' + VX.engineName() + ') through the API page, cached after the first play.' };
     const f = LQ.speech.findVoice(LQ.ui.voiceFor(track, enr).locales, Object.assign({}, LQ.ui.voiceFor(track, enr), { voiceURI: enr.voiceURI }));
     const tts = LQ.speech.ttsGate();
     const neuralWhy = !pol.gemini ? 'Neural voice off for this variety: ' + pol.why + '.' : enr.neural === false ? 'Neural voice switched off for this course.' : 'Neural voice paused: ' + g.reason + '.';
@@ -142,12 +144,13 @@
     function tier2() {
       const gate = VX.geminiGate();
       if (!pol.gemini || enr.neural === false || !gate.ok || S.cap('offline')) return device();
-      const m = meter(), model = m.model('tts'), prompt = pol.instruction + ' ' + text, ck = VX.cacheKey(model, voice, prompt);
+      // The API page picks the engine: Gemini direct takes the style in the prompt, OpenRouter as instructions.
+      const m = meter(), tv = m.voice().tts, viaOR = tv.provider === 'openrouter', model = viaOR ? tv.provider + ':' + tv.model + ':' + tv.voice : m.model('tts'), prompt = pol.instruction + ' ' + text, ck = VX.cacheKey(model, voice, prompt);
       VX.last = { tier: 'gemini', voice };
       VX.cacheGet(ck).then(hit => {
         if (g !== gen) return null;
         if (hit) { VX.last = { tier: 'gemini', voice, cached: true }; return hit; }
-        return m.gemini.tts({ app: APP, text: prompt, voice }).then(r => { VX.cachePut(ck, r.blob); S.event('voice.generated', 'Neural voice (' + voice + ') for “' + text.slice(0, 40) + '”, metered'); S.save(); return r.blob; });
+        return m.tts(viaOR ? { app: APP, text, voice, instructions: pol.instruction } : { app: APP, text: prompt, voice }).then(r => { VX.cachePut(ck, r.blob); S.event('voice.generated', 'Neural voice (' + voice + ') for “' + text.slice(0, 40) + '”, metered'); S.save(); return r.blob; });
       }).then(blob => {
         if (!blob || g !== gen) return;
         const url = URL.createObjectURL(blob);

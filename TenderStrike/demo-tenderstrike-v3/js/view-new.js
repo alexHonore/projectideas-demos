@@ -74,7 +74,7 @@
             ${nt.note ? `<p class="srcnote">${ic('info', 15)}<span>${esc(nt.note)}</span></p>` : ''}
             <div class="nt-acts">
               ${UI.btn('Analyser', 'nt-rules', { cls: 'btn-primary', icon: 'list', disabled: nt.busy, title: 'Analyser avec les règles (sans réseau)' })}
-              ${UI.btn('IA', 'nt-ai', { cls: 'btn-hl', icon: 'bolt', disabled: nt.busy || !on, title: on ? 'Analyser avec l’IA en direct : texte' + (nt.pdf ? ' et PDF' : '') + ' envoyés à l’API Anthropic, appels comptés dans le moniteur d’API' : st.label + ' · ' + st.reason })}
+              ${UI.btn('IA', 'nt-ai', { cls: 'btn-hl', icon: 'bolt', disabled: nt.busy || !on, title: on ? 'Analyser avec l’IA en direct : texte' + (nt.pdf ? ' et PDF' : '') + ' envoyés au modèle choisi (' + (window.LiveAI ? window.LiveAI.model : 'OpenRouter') + '), appels comptés dans le moniteur d’API' : st.label + ' · ' + st.reason })}
               ${TS.AI.link('', true)}
               ${UI.btn('Exemple', 'nt-sample', { cls: 'btn-ghost', icon: 'doc', disabled: nt.busy, title: 'Coller un avis d’exemple (fictif)' })}
               ${nt.text || nt.ex ? UI.iconBtn('trash', 'Effacer', 'nt-clear', {}) : ''}

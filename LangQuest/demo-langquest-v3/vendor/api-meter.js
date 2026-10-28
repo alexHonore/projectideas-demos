@@ -1,23 +1,32 @@
 /* API meter for the demos: every external or browser speech API call goes through here.
- * Canonical copy: scripts/api-meter/api-meter.js. The hub (index.html#api) is the monitoring page;
+ * Canonical copy: scripts/api-meter/api-meter.js. The hub (index.html#api) is the API page;
  * each V3 demo loads a verbatim copy (vendor/api-meter.js), checked by npm run check.
  *
- * Nothing is sent anywhere by this file. It holds keys the owner pastes on the monitor page
- * (this tab only, or this device if "remember" is ticked), checks killswitches and budgets before
- * a call, and records usage and estimated cost after it. State lives in localStorage, so it
- * covers this browser only; set hard limits at each provider as well.
+ * Nothing is sent anywhere by this file except the calls it is asked to make. It holds keys the
+ * owner pastes on the API page (this tab only, or this device if "remember" is ticked), checks
+ * killswitches and budgets before a call, and records usage and cost after it. State lives in
+ * localStorage, so it covers this browser only; set a hard limit on each provider key as well.
+ *
+ * OpenRouter is the default engine: one key reaches every model it routes to, it reports the exact
+ * cost of each call, and routing preferences (sort, privacy, fallbacks) apply to every demo.
  *
  *   ApiMeter.check(app, provider)          -> {ok, reason}
+ *   ApiMeter.checkLlm(app) / checkTts(app) / checkStt(app)   same, for whatever engine is chosen
  *   ApiMeter.run({app, provider, op, model}, fn)
- *       fn() resolves {result, usage, model?}; usage = {inputTokens, outputTokens,
- *       audioInTokens, audioOutTokens, chars, seconds}. Throws ApiMeterBlocked when off.
+ *       fn() resolves {result, usage, model?}; usage = {inputTokens, outputTokens, audioInTokens,
+ *       audioOutTokens, chars, seconds, costUSD?}. Throws ApiMeterBlocked when off.
  *   ApiMeter.record({...})                 log a call made elsewhere (e.g. browser speech)
- *   ApiMeter.keys.get/set/clear/has(provider)
- *   ApiMeter.gemini.tts({app, text, voice, model, signal})        -> {blob, usage}
- *   ApiMeter.gemini.transcribe({app, blob, lang, model, signal})  -> {text, usage}
- *   ApiMeter.openrouter.models()                                  -> [{id, name, context, input, output}] (USD per 1M)
- *   ApiMeter.openrouter.chat({app, model, system, messages, jsonSchema, maxTokens, signal}) -> {text, usage, model, finish}
- *   ApiMeter.llm() / setLlm(provider, model)   the engine every demo's live AI uses: anthropic or openrouter
+ *   ApiMeter.keys.get/set/clear/has/remembered(provider)
+ *   ApiMeter.llm(app) / setLlm(provider, model, app?) / clearLlm(app)   live-AI engine, per app or default
+ *   ApiMeter.route() / setRoute(patch)     OpenRouter routing: sort, privacy, zdr, fallbacks
+ *   ApiMeter.voice() / setVoice(kind, {provider, model, voice})        speech engines ('tts' | 'stt')
+ *   ApiMeter.tts({app, text, voice, signal}) -> {blob, usage}           via the chosen voice engine
+ *   ApiMeter.transcribe({app, blob, lang, seconds, signal}) -> {text, usage}
+ *   ApiMeter.openrouter.models({kind, refresh})   kind 'text' | 'speech' | 'transcription'
+ *   ApiMeter.openrouter.account({refresh})        key label, limit, remaining, usage (GET /key)
+ *   ApiMeter.openrouter.chat({app, model, system, messages, jsonSchema, maxTokens, fallbacks, signal})
+ *   ApiMeter.openrouter.speech({app, model, text, voice, signal}) / transcribe({app, model, blob, lang, seconds, signal})
+ *   ApiMeter.gemini.tts({...}) / transcribe({...})   Gemini direct, with a Gemini key
  *   ApiMeter.state(), setKill(scope, id, on), setBudget(scope, id, usd), setPrice(model, prices),
  *   resetUsage(), exportCsv(), onChange(fn)
  */
@@ -26,17 +35,19 @@
   var STORE = 'project-demos:api-meter:v1';
   var KEYS = 'project-demos:api-keys:v1';
   var LEGACY_ANTHROPIC = 'project-demos:live-ai:key';
+  var OR_MODELS = 'project-demos:openrouter-models:v2';
   var LOG_CAP = 500;
 
   var APPS = { tradedesk: 'TradeDesk', langquest: 'LangQuest', tayoo: 'Tayoo', nexus: 'Nexus CTE', tenderstrike: 'TenderStrike', hub: 'Hub' };
   var PROVIDERS = {
-    anthropic: { name: 'Anthropic', paid: true, key: true },
     openrouter: { name: 'OpenRouter', paid: true, key: true },
+    anthropic: { name: 'Anthropic', paid: true, key: true },
     gemini: { name: 'Google Gemini', paid: true, key: true },
     'browser-speech': { name: 'Browser speech recognition', paid: false, key: false },
     'browser-tts': { name: 'Browser voices', paid: false, key: false }
   };
-  // USD per 1M tokens. Estimates from public price lists (Oct 2026); edit them on the monitor page.
+  // USD per 1M tokens, for providers that do not report a cost. OpenRouter reports the exact cost
+  // of each chat call; its model list fills in estimates for the rest.
   var DEFAULT_PRICES = {
     'claude-opus-5-5': { input: 4, output: 20 },
     'gemini-3.8-flash-tts': { input: 0.5, audioOut: 9 },
@@ -44,15 +55,22 @@
     'gemini-3.8-flash': { input: 0.3, audioIn: 1, output: 2.5 }
   };
   var DEFAULT_MODELS = { tts: 'gemini-3.8-flash-tts', transcribe: 'gemini-3.8-flash' };
-  var DEFAULT_LLM = { provider: 'anthropic', model: 'claude-opus-5-5' };
-  var OR_MODELS = 'project-demos:openrouter-models:v1';
-  var orPrices = (function () { try { var c = JSON.parse(global.localStorage.getItem(OR_MODELS) || 'null'); return (c && c.prices) || {}; } catch (e) { return {}; } })();
+  var CLAUDE = 'claude-opus-5-5';
+  var DEFAULT_LLM = { provider: 'openrouter', model: 'openrouter/auto' };
+  var DEFAULT_ROUTE = { sort: '', privacy: false, zdr: false, fallbacks: [] };
   var RATE_PER_MIN = 30;
 
   function now() { return Date.now(); }
   function month(t) { var d = new Date(t || now()); return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0'); }
   function read(k, store) { try { return JSON.parse((store || global.localStorage).getItem(k) || 'null'); } catch (e) { return null; } }
   function write(k, v, store) { try { (store || global.localStorage).setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+
+  var orCache = {}; // kind -> {at, list}
+  var orPrices = {};
+  ['text', 'speech', 'transcription'].forEach(function (kind) {
+    var c = read(OR_MODELS + ':' + kind);
+    if (c && c.list) { orCache[kind] = c; c.list.forEach(function (m) { orPrices[m.id] = { input: m.input || 0, output: m.output || 0, audioIn: m.audioIn || 0 }; }); }
+  });
 
   function blank() {
     return {
@@ -68,6 +86,7 @@
     s.kill = s.kill || b.kill; s.kill.apps = s.kill.apps || {}; s.kill.providers = s.kill.providers || {};
     s.budgets = s.budgets || b.budgets; s.budgets.apps = Object.assign({}, b.budgets.apps, s.budgets.apps || {});
     s.prices = s.prices || {}; s.models = s.models || {}; s.totals = s.totals || {}; s.log = s.log || [];
+    s.models.llmApps = s.models.llmApps || {};
     return s;
   }
   var listeners = [];
@@ -94,6 +113,7 @@
 
   function Blocked(reason) { var e = new Error(reason); e.name = 'ApiMeterBlocked'; e.code = 'blocked'; return e; }
 
+  var account = null; // cached GET /key result
   // ---- keys: this tab (sessionStorage) unless remembered (localStorage); never written anywhere else.
   var keys = {
     get: function (p) {
@@ -108,24 +128,73 @@
       var ses = read(KEYS, global.sessionStorage) || {}, loc = read(KEYS) || {};
       ses[p] = v; write(KEYS, ses, global.sessionStorage);
       if (remember) loc[p] = v; else delete loc[p];
-      write(KEYS, loc); emit();
+      write(KEYS, loc);
+      if (p === 'openrouter') account = null;
+      emit();
     },
     clear: function (p) {
       var ses = read(KEYS, global.sessionStorage) || {}, loc = read(KEYS) || {};
       delete ses[p]; delete loc[p]; write(KEYS, ses, global.sessionStorage); write(KEYS, loc);
       if (p === 'anthropic') { try { global.sessionStorage.removeItem(LEGACY_ANTHROPIC); global.localStorage.removeItem(LEGACY_ANTHROPIC); } catch (e) {} }
+      if (p === 'openrouter') account = null;
       emit();
     }
   };
 
+  // Live-AI engine: OpenRouter with any model (default openrouter/auto), or Claude direct.
+  // With no choice made, an owner who added only an Anthropic key gets Claude direct.
+  // An OpenRouter engine with an empty model keeps live AI off rather than guessing one.
+  function normLlm(l) {
+    if (!l) return keys.has('anthropic') && !keys.has('openrouter') ? { provider: 'anthropic', model: CLAUDE } : { provider: DEFAULT_LLM.provider, model: DEFAULT_LLM.model };
+    if (l.provider === 'anthropic') return { provider: 'anthropic', model: CLAUDE };
+    return { provider: 'openrouter', model: l.model == null ? DEFAULT_LLM.model : String(l.model) };
+  }
+  function normRoute(r) {
+    r = Object.assign({}, DEFAULT_ROUTE, r || {});
+    return { sort: /^(price|throughput|latency)$/.test(r.sort) ? r.sort : '', privacy: !!r.privacy, zdr: !!r.zdr, fallbacks: (r.fallbacks || []).filter(Boolean).slice(0, 2) };
+  }
+  // Speech engines: Gemini direct unless OpenRouter is chosen, or is the only key added (then a
+  // voice model must still be picked on the API page).
+  function normVoice(m) {
+    var t = m.ttsVia || {}, s = m.sttVia || {}, orOnly = keys.has('openrouter') && !keys.has('gemini');
+    if (!t.provider && orOnly) t = Object.assign({ provider: 'openrouter' }, t);
+    if (!s.provider && orOnly) s = Object.assign({ provider: 'openrouter' }, s);
+    return {
+      tts: t.provider === 'openrouter' ? { provider: 'openrouter', model: t.model || '', voice: t.voice || '' } : { provider: 'gemini', model: m.tts || DEFAULT_MODELS.tts, voice: t.voice || 'Kore' },
+      stt: s.provider === 'openrouter' ? { provider: 'openrouter', model: s.model || '' } : { provider: 'gemini', model: m.transcribe || DEFAULT_MODELS.transcribe }
+    };
+  }
+  function gateWith(app, provider, model, what) {
+    var g = api.check(app, provider);
+    if (g.ok && provider === 'openrouter' && !model) return { ok: false, reason: 'No OpenRouter ' + what + ' chosen' };
+    return g;
+  }
+
   var api = {
-    APPS: APPS, PROVIDERS: PROVIDERS, DEFAULT_PRICES: DEFAULT_PRICES, keys: keys, Blocked: Blocked,
+    APPS: APPS, PROVIDERS: PROVIDERS, DEFAULT_PRICES: DEFAULT_PRICES, DEFAULT_LLM: DEFAULT_LLM, CLAUDE: CLAUDE, keys: keys, Blocked: Blocked,
     month: month, price: price, costOf: costOf,
     model: function (kind) { return load().models[kind] || DEFAULT_MODELS[kind]; },
-    // OpenRouter with no model chosen yet keeps live AI off (model '') rather than guessing one.
-    llm: function () { var l = load().models.llm; if (l && l.provider === 'openrouter') return { provider: 'openrouter', model: l.model || '' }; return { provider: DEFAULT_LLM.provider, model: DEFAULT_LLM.model }; },
-    setLlm: function (provider, model) { var s = load(), or = provider === 'openrouter'; s.models.llm = { provider: or ? 'openrouter' : 'anthropic', model: or ? String(model || '').trim() : DEFAULT_LLM.model }; save(s); },
     setModel: function (kind, m) { var s = load(); if (m) s.models[kind] = m; else delete s.models[kind]; save(s); },
+
+    llm: function (app) { var m = load().models; return normLlm((app && m.llmApps[app]) || m.llm); },
+    llmOverride: function (app) { return !!load().models.llmApps[app]; },
+    setLlm: function (provider, model, app) {
+      var s = load(), l = provider === 'anthropic' ? { provider: 'anthropic', model: CLAUDE } : { provider: 'openrouter', model: String(model == null ? '' : model).trim() };
+      if (app) s.models.llmApps[app] = l; else s.models.llm = l;
+      save(s);
+    },
+    clearLlm: function (app) { var s = load(); delete s.models.llmApps[app]; save(s); },
+    route: function () { return normRoute(load().models.route); },
+    setRoute: function (patch) { var s = load(); s.models.route = normRoute(Object.assign({}, normRoute(s.models.route), patch || {})); save(s); },
+    voice: function () { return normVoice(load().models); },
+    setVoice: function (kind, v) {
+      var s = load(), k = kind === 'stt' ? 'sttVia' : 'ttsVia', cur = s.models[k] || {}, next = Object.assign({}, cur, v || {});
+      // Voice names differ between engines, so switching engine drops a voice that was not given.
+      if (v && v.provider && v.provider !== (cur.provider || 'gemini') && v.voice == null) delete next.voice;
+      s.models[k] = next;
+      if (v && v.provider === 'gemini' && v.model) s.models[kind === 'stt' ? 'transcribe' : 'tts'] = v.model;
+      save(s);
+    },
 
     check: function (app, provider) {
       var s = load(), P = PROVIDERS[provider];
@@ -142,12 +211,18 @@
       }
       return { ok: true };
     },
+    checkLlm: function (app) { var l = api.llm(app); return gateWith(app, l.provider, l.model, 'model'); },
+    checkTts: function (app) { var v = api.voice().tts; return gateWith(app, v.provider, v.model, 'voice model'); },
+    checkStt: function (app) { var v = api.voice().stt; return gateWith(app, v.provider, v.model, 'transcription model'); },
 
     record: function (e) {
       var s = load(), t = now(), m = month(t);
       var entry = { t: t, app: e.app, provider: e.provider, op: e.op || 'call', model: e.model || '', usage: e.usage || {}, ok: e.ok !== false, ms: e.ms || 0, error: e.error ? String(e.error).slice(0, 160) : '' };
+      if (e.via) entry.via = String(e.via).slice(0, 60);
       // A provider-reported cost (OpenRouter returns one) wins over the price-list estimate.
-      entry.cost = PROVIDERS[e.provider] && PROVIDERS[e.provider].paid ? (entry.usage.costUSD != null ? Math.round(Number(entry.usage.costUSD) * 1e6) / 1e6 : costOf(entry.model, entry.usage)) : 0;
+      var paid = PROVIDERS[e.provider] && PROVIDERS[e.provider].paid, reported = entry.usage.costUSD != null;
+      entry.cost = paid ? (reported ? Math.round(Number(entry.usage.costUSD) * 1e6) / 1e6 : costOf(entry.model, entry.usage)) : 0;
+      if (paid && !reported && entry.ok) entry.est = true;
       s.log.unshift(entry); if (s.log.length > LOG_CAP) s.log.length = LOG_CAP;
       var a = (s.totals[m] = s.totals[m] || {}); var b = (a[e.app] = a[e.app] || {});
       var c = (b[e.provider] = b[e.provider] || { calls: 0, errors: 0, cost: 0, inputTokens: 0, outputTokens: 0, audioInTokens: 0, audioOutTokens: 0, chars: 0, seconds: 0 });
@@ -162,7 +237,7 @@
       if (!gate.ok) return Promise.reject(Blocked(gate.reason));
       var t0 = now();
       return Promise.resolve().then(fn).then(function (r) {
-        api.record({ app: o.app, provider: o.provider, op: o.op, model: (r && r.model) || o.model, usage: (r && r.usage) || {}, ms: now() - t0 });
+        api.record({ app: o.app, provider: o.provider, op: o.op, model: (r && r.model) || o.model, via: r && r.via, usage: (r && r.usage) || {}, ms: now() - t0 });
         return r;
       }, function (err) {
         if (!(err && err.name === 'AbortError')) api.record({ app: o.app, provider: o.provider, op: o.op, model: o.model, ok: false, ms: now() - t0, error: err && err.message });
@@ -172,21 +247,59 @@
 
     state: function () {
       var s = load(), m = s.totals[month()] || {};
-      return { month: month(), kill: s.kill, budgets: s.budgets, totals: m, allMonths: s.totals, log: s.log, spent: spent(s), spentByApp: Object.keys(APPS).reduce(function (o, a) { o[a] = spent(s, a); return o; }, {}), prices: Object.keys(DEFAULT_PRICES).reduce(function (o, k) { o[k] = price(k); return o; }, {}), models: { tts: api.model('tts'), transcribe: api.model('transcribe') }, llm: api.llm() };
+      return {
+        month: month(), kill: s.kill, budgets: s.budgets, totals: m, allMonths: s.totals, log: s.log, spent: spent(s),
+        spentByApp: Object.keys(APPS).reduce(function (o, a) { o[a] = spent(s, a); return o; }, {}),
+        prices: Object.keys(DEFAULT_PRICES).reduce(function (o, k) { o[k] = price(k); return o; }, {}),
+        models: { tts: api.model('tts'), transcribe: api.model('transcribe') },
+        llm: api.llm(), llmApps: Object.keys(s.models.llmApps).reduce(function (o, a) { o[a] = normLlm(s.models.llmApps[a]); return o; }, {}),
+        route: api.route(), voice: api.voice()
+      };
     },
     setKill: function (scope, id, on) { var s = load(); if (scope === 'global') s.kill.global = !!on; else s.kill[scope][id] = !!on; save(s); },
     setBudget: function (scope, id, usd) { var s = load(), v = Math.max(0, Number(usd) || 0); if (scope === 'global') s.budgets.global = v; else s.budgets.apps[id] = v; save(s); },
     setPrice: function (model, p) { var s = load(); s.prices[model] = p; save(s); },
     resetUsage: function () { var s = load(); s.totals = {}; s.log = []; save(s); },
     exportCsv: function () {
-      var rows = [['time', 'app', 'provider', 'operation', 'model', 'ok', 'ms', 'input_tokens', 'output_tokens', 'audio_in_tokens', 'audio_out_tokens', 'chars', 'seconds', 'cost_usd', 'error']];
-      load().log.slice().reverse().forEach(function (e) { var u = e.usage || {}; rows.push([new Date(e.t).toISOString(), e.app, e.provider, e.op, e.model, e.ok, e.ms, u.inputTokens || 0, u.outputTokens || 0, u.audioInTokens || 0, u.audioOutTokens || 0, u.chars || 0, u.seconds || 0, e.cost, e.error]); });
+      var rows = [['time', 'app', 'provider', 'operation', 'model', 'served_by', 'ok', 'ms', 'input_tokens', 'output_tokens', 'audio_in_tokens', 'audio_out_tokens', 'chars', 'seconds', 'cost_usd', 'cost_estimated', 'error']];
+      load().log.slice().reverse().forEach(function (e) { var u = e.usage || {}; rows.push([new Date(e.t).toISOString(), e.app, e.provider, e.op, e.model, e.via || '', e.ok, e.ms, u.inputTokens || 0, u.outputTokens || 0, u.audioInTokens || 0, u.audioOutTokens || 0, u.chars || 0, u.seconds || 0, e.cost, !!e.est, e.error]); });
       return rows.map(function (r) { return r.map(function (v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(','); }).join('\n');
     },
     onChange: function (fn) { listeners.push(fn); return function () { listeners = listeners.filter(function (f) { return f !== fn; }); }; }
   };
 
-  // ---- Google Gemini: TTS and transcription, called from the browser with the owner's key.
+  // ---- audio helpers
+  function b64ToBytes(b64) { var bin = atob(b64), out = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
+  function pcmToWav(pcm, rate) {
+    var h = new DataView(new ArrayBuffer(44)), w = function (o, s) { for (var i = 0; i < s.length; i++) h.setUint8(o + i, s.charCodeAt(i)); };
+    w(0, 'RIFF'); h.setUint32(4, 36 + pcm.length, true); w(8, 'WAVE'); w(12, 'fmt '); h.setUint32(16, 16, true); h.setUint16(20, 1, true); h.setUint16(22, 1, true);
+    h.setUint32(24, rate, true); h.setUint32(28, rate * 2, true); h.setUint16(32, 2, true); h.setUint16(34, 16, true); w(36, 'data'); h.setUint32(40, pcm.length, true);
+    return new Blob([h.buffer, pcm], { type: 'audio/wav' });
+  }
+  function blobToB64(blob) {
+    return new Promise(function (ok, no) { var r = new FileReader(); r.onload = function () { ok(String(r.result).split(',')[1] || ''); }; r.onerror = no; r.readAsDataURL(blob); });
+  }
+  // A recording (webm/ogg/mp4) re-encoded as 16 kHz mono WAV, which every transcription provider takes.
+  function toWav(blob) {
+    var AC = global.AudioContext || global.webkitAudioContext, OAC = global.OfflineAudioContext || global.webkitOfflineAudioContext;
+    if (!AC || !OAC || !blob.arrayBuffer) return Promise.reject(new Error('No audio decoder'));
+    return blob.arrayBuffer().then(function (buf) {
+      var ctx = new AC();
+      return new Promise(function (ok, no) { var pr = ctx.decodeAudioData(buf, ok, no); if (pr && pr.catch) pr.catch(function () {}); }).then(function (audio) {
+        try { ctx.close(); } catch (e) {}
+        var rate = 16000, off = new OAC(1, Math.max(1, Math.ceil(audio.duration * rate)), rate), src = off.createBufferSource();
+        src.buffer = audio; src.connect(off.destination); src.start();
+        return off.startRendering();
+      }, function (err) { try { ctx.close(); } catch (e) {} throw err; });
+    }).then(function (r) {
+      var ch = r.getChannelData(0), pcm = new Uint8Array(ch.length * 2), dv = new DataView(pcm.buffer);
+      for (var i = 0; i < ch.length; i++) { var v = Math.max(-1, Math.min(1, ch[i])); dv.setInt16(i * 2, v < 0 ? v * 0x8000 : v * 0x7fff, true); }
+      return pcmToWav(pcm, 16000);
+    });
+  }
+  function audioFormat(type) { var t = String(type || '').split(';')[0].split('/')[1] || 'webm'; return t === 'mpeg' ? 'mp3' : t === 'x-wav' ? 'wav' : t === 'mp4' ? 'm4a' : t; }
+
+  // ---- Google Gemini direct: TTS and transcription with the owner's Gemini key.
   var GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models/';
   function geminiPost(model, body, signal) {
     return fetch(GEMINI + model + ':generateContent', {
@@ -201,16 +314,6 @@
     });
   }
   function modalityTokens(details, mod) { return (details || []).filter(function (d) { return d.modality === mod; }).reduce(function (n, d) { return n + (d.tokenCount || 0); }, 0); }
-  function b64ToBytes(b64) { var bin = atob(b64), out = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
-  function pcmToWav(pcm, rate) {
-    var h = new DataView(new ArrayBuffer(44)), w = function (o, s) { for (var i = 0; i < s.length; i++) h.setUint8(o + i, s.charCodeAt(i)); };
-    w(0, 'RIFF'); h.setUint32(4, 36 + pcm.length, true); w(8, 'WAVE'); w(12, 'fmt '); h.setUint32(16, 16, true); h.setUint16(20, 1, true); h.setUint16(22, 1, true);
-    h.setUint32(24, rate, true); h.setUint32(28, rate * 2, true); h.setUint16(32, 2, true); h.setUint16(34, 16, true); w(36, 'data'); h.setUint32(40, pcm.length, true);
-    return new Blob([h.buffer, pcm], { type: 'audio/wav' });
-  }
-  function blobToB64(blob) {
-    return new Promise(function (ok, no) { var r = new FileReader(); r.onload = function () { ok(String(r.result).split(',')[1] || ''); }; r.onerror = no; r.readAsDataURL(blob); });
-  }
   api.gemini = {
     tts: function (o) {
       var model = o.model || api.model('tts');
@@ -249,46 +352,140 @@
     }
   };
 
-  // ---- OpenRouter: any model it routes to, called from the browser with the owner's key.
+  // ---- OpenRouter: every model it routes to, called from the browser with the owner's key.
   var OR = 'https://openrouter.ai/api/v1/';
-  function perMillion(v) { var n = Number(v); return isFinite(n) ? Math.round(n * 1e6 * 1e4) / 1e4 : 0; }
+  function perMillion(v) { var n = Number(v); return v != null && v !== '' && isFinite(n) && n >= 0 ? Math.round(n * 1e6 * 1e4) / 1e4 : null; }
+  function has(list, x) { return (list || []).indexOf(x) >= 0; }
+  function mapModel(m) {
+    var p = m.pricing || {}, a = m.architecture || {}, sp = m.supported_parameters || [], ins = a.input_modalities || [], aa = (m.benchmarks || {}).artificial_analysis || {};
+    var input = perMillion(p.prompt), output = perMillion(p.completion);
+    return {
+      id: m.id, name: m.name || m.id, context: m.context_length || (m.top_provider || {}).context_length || 0,
+      input: input, output: output, audioIn: perMillion(p.audio) || 0,
+      json: has(sp, 'response_format') || has(sp, 'structured_outputs'), tools: has(sp, 'tools'), reasoning: has(sp, 'reasoning'),
+      vision: has(ins, 'image'), file: has(ins, 'file'), audio: has(ins, 'audio'),
+      free: /:free$/.test(m.id) || (input === 0 && output === 0 && !(Number(p.request) > 0)),
+      created: m.created || 0, intel: aa.intelligence_index == null ? null : Number(aa.intelligence_index),
+      voices: m.supported_voices || null
+    };
+  }
+  function orHeaders(json) {
+    var h = { authorization: 'Bearer ' + keys.get('openrouter'), 'x-title': 'Project demos' };
+    if (json) h['content-type'] = 'application/json';
+    if (global.location && /^https:/.test(global.location.protocol)) h['http-referer'] = global.location.origin + global.location.pathname;
+    return h;
+  }
+  function orError(res, j) {
+    var e = new Error((j && j.error && j.error.message) || ('OpenRouter error ' + res.status));
+    e.status = (j && j.error && Number(j.error.code)) || res.status; return e;
+  }
+  function orJson(res) { return res.json().catch(function () { return {}; }).then(function (j) { if (!res.ok || j.error) throw orError(res, j); return j; }); }
+  // Routing preferences from the API page; speech endpoints take only the privacy ones.
+  function orProvider(extra, speech) {
+    var r = api.route(), p = {};
+    if (r.sort && !speech) p.sort = r.sort;
+    if (r.privacy) p.data_collection = 'deny';
+    if (r.zdr) p.zdr = true;
+    Object.keys(extra || {}).forEach(function (k) { p[k] = extra[k]; });
+    return Object.keys(p).length ? p : null;
+  }
   api.openrouter = {
-    // The public model list (no key needed), cached for a day; also feeds the cost estimates.
+    // Public model lists (no key needed), cached for a day; they also feed the cost estimates.
     models: function (o) {
-      var cached = null; try { cached = JSON.parse(global.localStorage.getItem(OR_MODELS) || 'null'); } catch (e) {}
-      if (cached && cached.list && Date.now() - cached.at < 864e5 && !(o && o.refresh)) return Promise.resolve(cached.list);
-      return fetch(OR + 'models').then(function (r) { if (!r.ok) throw new Error('OpenRouter model list: HTTP ' + r.status); return r.json(); }).then(function (j) {
-        var list = (j.data || []).map(function (m) {
-          var p = m.pricing || {};
-          return { id: m.id, name: m.name || m.id, context: m.context_length || 0, input: perMillion(p.prompt), output: perMillion(p.completion), json: (m.supported_parameters || []).indexOf('response_format') >= 0 || (m.supported_parameters || []).indexOf('structured_outputs') >= 0 };
-        }).sort(function (a, b) { return a.id < b.id ? -1 : 1; });
-        orPrices = {}; list.forEach(function (m) { orPrices[m.id] = { input: m.input, output: m.output }; });
-        try { global.localStorage.setItem(OR_MODELS, JSON.stringify({ at: Date.now(), list: list, prices: orPrices })); } catch (e) {}
+      o = o || {}; var kind = o.kind || 'text', c = orCache[kind];
+      if (c && c.list && now() - c.at < 864e5 && !o.refresh) return Promise.resolve(c.list);
+      return fetch(OR + 'models' + (kind === 'text' ? '' : '?output_modalities=' + kind)).then(function (r) { if (!r.ok) throw new Error('OpenRouter model list: HTTP ' + r.status); return r.json(); }).then(function (j) {
+        var list = (j.data || []).map(mapModel).sort(function (a, b) { return a.id < b.id ? -1 : 1; });
+        list.forEach(function (m) { orPrices[m.id] = { input: m.input || 0, output: m.output || 0, audioIn: m.audioIn || 0 }; });
+        orCache[kind] = { at: now(), list: list }; write(OR_MODELS + ':' + kind, orCache[kind]);
         return list;
       });
     },
+    cached: function (kind) { return ((orCache[kind || 'text'] || {}).list) || []; },
+    find: function (id) { var hit = null; Object.keys(orCache).some(function (k) { return (orCache[k].list || []).some(function (m) { if (m.id === id) { hit = m; return true; } return false; }); }); return hit; },
+    // The key's own label, limit and usage. Free; needs the key, and nothing is recorded.
+    account: function (o) {
+      if (!keys.has('openrouter')) return Promise.reject(new Error('No OpenRouter key'));
+      var s = load();
+      if (s.kill.global || s.kill.providers.openrouter) return Promise.reject(new Error('OpenRouter is switched off'));
+      if (account && now() - account.at < 60000 && !(o && o.refresh)) return Promise.resolve(account.data);
+      return fetch(OR + 'key', { headers: orHeaders(false) }).then(orJson).then(function (j) {
+        var d = j.data || {};
+        account = { at: now(), data: {
+          label: d.label || '', limit: d.limit == null ? null : Number(d.limit), remaining: d.limit_remaining == null ? null : Number(d.limit_remaining), reset: d.limit_reset || null,
+          usage: Number(d.usage || 0), daily: Number(d.usage_daily || 0), weekly: Number(d.usage_weekly || 0), monthly: Number(d.usage_monthly || 0),
+          free: !!d.is_free_tier, rate: d.rate_limit || null
+        } };
+        return account.data;
+      });
+    },
     chat: function (o) {
-      var model = o.model || api.llm().model;
+      var model = o.model || api.llm(o.app).model;
       return api.run({ app: o.app, provider: 'openrouter', op: 'chat', model: model }, function () {
         var msgs = (o.system ? [{ role: 'system', content: o.system }] : []).concat(o.messages || []);
         var body = { model: model, messages: msgs, max_tokens: o.maxTokens || 4000, usage: { include: true } };
         if (o.jsonSchema) body.response_format = { type: 'json_schema', json_schema: { name: 'result', strict: true, schema: o.jsonSchema } };
-        return fetch(OR + 'chat/completions', {
-          method: 'POST', signal: o.signal,
-          headers: { 'content-type': 'application/json', authorization: 'Bearer ' + keys.get('openrouter'), 'x-title': 'Project demos' },
-          body: JSON.stringify(body)
-        }).then(function (res) {
-          return res.json().catch(function () { return {}; }).then(function (j) {
-            if (!res.ok || j.error) { var e = new Error((j.error && j.error.message) || ('OpenRouter error ' + res.status)); e.status = (j.error && j.error.code) || res.status; throw e; }
-            var c = (j.choices || [])[0] || {}, m = c.message || {}, u = j.usage || {};
-            var text = typeof m.content === 'string' ? m.content : (m.content || []).map(function (x) { return x.text || ''; }).join('');
-            var usage = { inputTokens: u.prompt_tokens || 0, outputTokens: u.completion_tokens || 0 };
-            if (u.cost != null) usage.costUSD = Number(u.cost);
-            return { result: { text: text, finish: c.finish_reason || c.native_finish_reason || '', servedBy: j.model || model }, model: j.model || model, usage: usage };
+        // Structured output only goes to hosts that support it.
+        var prov = orProvider(o.jsonSchema ? { require_parameters: true } : null); if (prov) body.provider = prov;
+        var fb = (o.fallbacks || api.route().fallbacks).filter(function (id) { return id && id !== model; }).slice(0, 2);
+        if (fb.length) body.models = [model].concat(fb);
+        return fetch(OR + 'chat/completions', { method: 'POST', signal: o.signal, headers: orHeaders(true), body: JSON.stringify(body) }).then(orJson).then(function (j) {
+          var c = (j.choices || [])[0] || {}, m = c.message || {}, u = j.usage || {};
+          var text = typeof m.content === 'string' ? m.content : (m.content || []).map(function (x) { return x.text || ''; }).join('');
+          var usage = { inputTokens: u.prompt_tokens || 0, outputTokens: u.completion_tokens || 0 };
+          if (u.cost != null) usage.costUSD = Number(u.cost);
+          return { result: { text: text, finish: c.finish_reason || c.native_finish_reason || '', servedBy: j.model || model, host: j.provider || '' }, model: j.model || model, via: j.provider || '', usage: usage };
+        });
+      }).then(function (r) { return { text: r.result.text, finish: r.result.finish, model: r.result.servedBy, provider: r.result.host, usage: r.usage }; });
+    },
+    speech: function (o) {
+      var v = api.voice().tts, model = o.model || v.model, info = api.openrouter.find(model), voice = o.voice;
+      // A demo may ask for a voice this model does not have (e.g. a Gemini voice name); then the chosen one is used.
+      if (info && info.voices && voice && !has(info.voices, voice)) voice = '';
+      voice = voice || v.voice || (info && info.voices && info.voices[0]) || '';
+      return api.run({ app: o.app, provider: 'openrouter', op: 'tts', model: model }, function () {
+        var body = { model: model, input: o.text, response_format: 'mp3' };
+        if (voice) body.voice = voice;
+        if (o.instructions) body.instructions = o.instructions;
+        var prov = orProvider(null, true); if (prov) body.provider = prov;
+        return fetch(OR + 'audio/speech', { method: 'POST', signal: o.signal, headers: orHeaders(true), body: JSON.stringify(body) }).then(function (res) {
+          if (!res.ok) return res.json().catch(function () { return {}; }).then(function (j) { throw orError(res, j); });
+          return res.blob().then(function (b) {
+            var chars = (o.text || '').length;
+            return { result: { blob: /^audio\//.test(b.type || '') ? b : new Blob([b], { type: 'audio/mpeg' }), voice: voice }, model: model, usage: { inputTokens: Math.ceil(chars / 4), chars: chars } };
           });
         });
-      }).then(function (r) { return { text: r.result.text, finish: r.result.finish, model: r.result.servedBy, usage: r.usage }; });
+      }).then(function (r) { return { blob: r.result.blob, voice: r.result.voice, usage: r.usage }; });
+    },
+    transcribe: function (o) {
+      var model = o.model || api.voice().stt.model;
+      return api.run({ app: o.app, provider: 'openrouter', op: 'transcribe', model: model }, function () {
+        return toWav(o.blob).catch(function () { return o.blob; }).then(function (b) {
+          return blobToB64(b).then(function (data) {
+            var body = { model: model, input_audio: { data: data, format: audioFormat(b.type) } };
+            if (o.lang) body.language = String(o.lang).split('-')[0];
+            var prov = orProvider(null, true); if (prov) body.provider = prov;
+            return fetch(OR + 'audio/transcriptions', { method: 'POST', signal: o.signal, headers: orHeaders(true), body: JSON.stringify(body) }).then(orJson);
+          });
+        }).then(function (j) {
+          var u = j.usage || {}, usage = { inputTokens: u.input_tokens || 0, outputTokens: u.output_tokens || 0, seconds: u.seconds || o.seconds || 0 };
+          if (u.cost != null) usage.costUSD = Number(u.cost);
+          return { result: { text: String(j.text || '').trim() }, model: model, usage: usage };
+        });
+      }).then(function (r) { return { text: r.result.text, usage: r.usage }; });
     }
+  };
+
+  // ---- the chosen speech engines, for the demos
+  api.tts = function (o) {
+    var v = api.voice().tts;
+    if (v.provider === 'openrouter') return api.openrouter.speech(Object.assign({}, o, { model: v.model }));
+    return api.gemini.tts(Object.assign({}, o, { voice: o.voice || v.voice }));
+  };
+  api.transcribe = function (o) {
+    var v = api.voice().stt;
+    if (v.provider === 'openrouter') return api.openrouter.transcribe(Object.assign({}, o, { model: v.model }));
+    return api.gemini.transcribe(o);
   };
 
   global.ApiMeter = api;

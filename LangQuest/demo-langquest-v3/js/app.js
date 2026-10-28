@@ -300,7 +300,7 @@
   });
   if (window.LiveAI) LiveAI.onChange(() => APP.render());
   /* Re-render when the hub monitor changes a key or a killswitch (usage records alone don't). */
-  if (window.ApiMeter) { const sig = () => JSON.stringify(ApiMeter.state().kill) + ['anthropic', 'gemini'].map(p => ApiMeter.keys.has(p)).join(); let last = sig();
+  if (window.ApiMeter) { const sig = () => { const st = ApiMeter.state(); return JSON.stringify([st.kill, st.llm, st.llmApps.langquest || null, st.voice.tts]) + ['openrouter', 'anthropic', 'gemini'].map(p => ApiMeter.keys.has(p)).join(); }; let last = sig();
     ApiMeter.onChange(() => { const now = sig(); if (now === last && !LQ.lab.open) return; last = now; if (!APP._meterT) APP._meterT = setTimeout(() => { APP._meterT = null; APP.render(); }, 120); }); }
   LQ.speech.onVoices(() => { if (document.readyState !== 'loading') APP.render(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) C.stopAll(); });

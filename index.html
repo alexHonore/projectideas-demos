@@ -48,7 +48,7 @@
       </button>
     </div>
 
-    <a class="api-btn" id="btn-api" href="#api" aria-expanded="false" title="API monitor: usage, costs, killswitch">
+    <a class="api-btn" id="btn-api" href="#api" title="API: models, usage, costs, killswitch">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 14l4-4"/><path d="M3.3 19a9 9 0 1 1 17.4 0"/></svg>
       <span>API</span><span class="api-spend">$0.00</span>
     </a>
@@ -93,20 +93,13 @@
   <!-- Footer -->
   <footer>
     <span>Fictional data · runs in your browser</span>
-    <a href="#api">API monitor</a>
+    <a href="#api">API</a>
   </footer>
 
-  <section class="api-monitor" id="api-monitor" role="dialog" aria-modal="true" aria-labelledby="am-title" hidden>
-    <div class="am-sheet">
-      <div class="am-body"></div>
-      <div class="am-bench" id="am-bench"></div>
-      <div class="am-foot"></div>
-    </div>
-  </section>
+  <section class="ap" id="api-page" aria-labelledby="ap-title" hidden></section>
 
   <script src="./scripts/api-meter/api-meter.js"></script>
-  <script src="./api-monitor.js" defer></script>
-  <script src="./api-bench.js" defer></script>
+  <script src="./api-page.js" defer></script>
   <script>
     const catalog = {
       v3: [

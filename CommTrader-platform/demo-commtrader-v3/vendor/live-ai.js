@@ -16,12 +16,11 @@
  *   LiveAI.onChange(fn)                   called with isOn() after configure/clear
  *   LiveAI.renderSettings(el, {lang})     drop-in settings panel (en/fr)
  *
- * When ApiMeter selects OpenRouter as the engine (hub monitor, index.html#api), json() and text()
- * go to the chosen OpenRouter model instead, with the same result shapes and checks.
- *
- * When ApiMeter (scripts/api-meter/api-meter.js) is loaded first, the key comes from the hub's
- * API monitor (index.html#api), and every call is checked against its killswitches and budgets
- * and recorded there under LiveAI.app (inferred from the demo's folder name).
+ * When ApiMeter (scripts/api-meter/api-meter.js) is loaded first, the engine and keys come from the
+ * hub's API page (index.html#api): OpenRouter with any model (the default, openrouter/auto) or Claude
+ * direct, chosen per app. json() and text() return the same shapes and checks either way, and every
+ * call is checked against the page's killswitches and budgets and recorded under LiveAI.app
+ * (inferred from the demo's folder name).
  */
 (function (global) {
   'use strict';
@@ -116,7 +115,8 @@
     if (res.stop_reason === 'max_tokens') throw LiveAIError('truncated', 'The answer was cut off before it finished. Try a shorter input.');
   }
 
-  function engine() { var m = meter(); return m && m.llm ? m.llm() : { provider: 'anthropic', model: MODEL }; }
+  // The engine is chosen on the hub's API page, per app or as the default for all apps.
+  function engine() { var m = meter(); return m && m.llm ? m.llm(api.app || inferApp()) : { provider: 'anthropic', model: MODEL }; }
   function viaOpenRouter() { return engine().provider === 'openrouter'; }
   function orCall(o, jsonSchema) {
     var m = meter(), started = Date.now(), content = o.prompt;
@@ -217,7 +217,7 @@
       if (err.name === 'LiveAIError') return err.message;
       if (err.name === 'ApiMeterBlocked') return 'Live AI is paused: ' + err.message + '.';
       if (viaOpenRouter() && err.status) {
-        if (err.status === 401) return 'The OpenRouter key was rejected. Check it on the API monitor.';
+        if (err.status === 401) return 'The OpenRouter key was rejected. Check it on the API page.';
         if (err.status === 402) return 'OpenRouter credits are exhausted for this key.';
         if (err.status === 429) return 'OpenRouter rate limit. Wait a moment and try again.';
         if (err.status === 400 || err.status === 404) return 'OpenRouter rejected the request: ' + err.message + '.';

@@ -101,20 +101,26 @@
 
   /* ── render ── */
   /* API status, read from the shared monitor. Paid providers need a key added on the monitor page. */
-  const API_ROWS = [['anthropic', 'Live AI', 'cpu'], ['gemini', 'Neural voice', 'sparkle'], ['browser-tts', 'Browser voices', 'volume'], ['browser-speech', 'Speech recognition', 'ear']];
+  /* Live AI and the neural voice use whichever engine the API page picks (OpenRouter, Claude or Gemini). */
+  const API_ROWS = [['llm', 'Live AI', 'cpu'], ['tts', 'Neural voice', 'sparkle'], ['browser-tts', 'Browser voices', 'volume'], ['browser-speech', 'Speech recognition', 'ear']];
   LB.apiRows = () => {
     const AM = window.ApiMeter; if (!AM) return [];
     const tot = (AM.state().totals || {}).langquest || {};
-    return API_ROWS.map(([p, label, icon]) => { const g = AM.check('langquest', p), u = tot[p] || {}; return { p, label, icon, k: g.ok ? 'on' : /^No .* key$/.test(g.reason || '') ? 'off' : 'paused', why: g.ok ? 'Ready' : g.reason, calls: u.calls || 0, cost: u.cost || 0, paid: !!(AM.PROVIDERS[p] || {}).paid }; });
+    return API_ROWS.map(([id, label, icon]) => {
+      const p = id === 'llm' ? AM.llm('langquest').provider : id === 'tts' ? AM.voice().tts.provider : id;
+      const g = id === 'llm' ? AM.checkLlm('langquest') : id === 'tts' ? AM.checkTts('langquest') : AM.check('langquest', p), u = tot[p] || {};
+      const via = id === 'llm' || id === 'tts' ? AM.PROVIDERS[p].name + ' · ' : '';
+      return { p, label, icon, k: g.ok ? 'on' : /^No .* (key|chosen)$/.test(g.reason || '') ? 'off' : 'paused', why: via + (g.ok ? 'Ready' : g.reason), calls: u.calls || 0, cost: u.cost || 0, paid: !!(AM.PROVIDERS[p] || {}).paid };
+    });
   };
   function apiSec() {
     const AM = window.ApiMeter;
     if (!AM) return '<section class="lab__sec"><h3 class="lab__h">API</h3><p class="small muted">The API monitor didn’t load, so nothing can call an API.</p></section>';
     const rows = LB.apiRows(), st = AM.state();
-    return '<section class="lab__sec" id="lab-api"><h3 class="lab__h">API ' + U.info('Every call LangQuest makes is checked and recorded by the shared API monitor (app id “langquest”): keys, killswitches, budgets and usage live there. Paid calls need a key the owner adds on the monitor; tests never call a paid API.', 'About API monitoring') + '</h3>' +
+    return '<section class="lab__sec" id="lab-api"><h3 class="lab__h">API ' + U.info('Every call LangQuest makes is checked and recorded by the hub’s API page (app id “langquest”): models, keys, killswitches, budgets and usage live there. Paid calls need a key the owner adds there; tests never call a paid API.', 'About API monitoring') + '</h3>' +
       '<ul class="apirows" role="list">' + rows.map(r => '<li class="apirow apirow--' + r.k + '" title="' + esc(r.label + ': ' + r.why) + '">' + ic(r.icon, 'ic--sm') + '<span class="apirow__l">' + esc(r.label) + '</span><span class="dot dot--' + r.k + '" aria-hidden="true"></span><span class="small apirow__st">' + esc(r.k === 'on' ? 'On' : r.k === 'off' ? 'No key' : 'Paused') + '</span><span class="small muted apirow__n">' + r.calls + (r.paid ? ' · $' + r.cost.toFixed(4) : '') + '</span></li>').join('') + '</ul>' +
       '<p class="small"><strong>US$' + (st.spentByApp.langquest || 0).toFixed(4) + '</strong> <span class="muted">this month · budget US$' + Number((st.budgets.apps || {}).langquest || 0).toFixed(2) + '</span></p>' +
-      '<a class="btn btn--sm" href="' + LQ.ai.MONITOR + '">' + ic('sliders', 'ic--xs') + 'API monitor</a></section>';
+      '<a class="btn btn--sm" href="' + LQ.ai.MONITOR + '">' + ic('sliders', 'ic--xs') + 'API page</a></section>';
   }
   const CAPS = [['noSR', 'No speech recognition', 'Microphones fall back to recording or typing.'], ['noVoice', 'No voice for this course’s locale', 'Phrases are text only; no other variety is substituted.'], ['offline', 'Offline', 'No recognizer, no live AI, network voices hidden. Lesson packs still play.'], ['liveAIOff', 'Live AI off', 'Rules only, even with a key.']];
   LB.render = () => {

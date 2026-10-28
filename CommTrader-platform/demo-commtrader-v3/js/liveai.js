@@ -117,10 +117,10 @@
     if (u.caps.offline) return { state: 'off', reason: 'Offline (Test lab)' };
     if (!u.caps.liveAi) return { state: 'off', reason: 'Switched off in the Test lab' };
     if (window.ApiMeter) {
-      const g = window.ApiMeter.check('tradedesk', 'anthropic');
-      if (!g.ok) return { state: /^No .* key$/.test(g.reason) ? 'off' : 'paused', reason: g.reason + (/key$/.test(g.reason) ? ': add it on the API monitor' : '') };
+      const g = window.ApiMeter.checkLlm('tradedesk');
+      if (!g.ok) return { state: /^No .* (key|chosen)$/.test(g.reason) ? 'off' : 'paused', reason: g.reason + (/(key|chosen)$/.test(g.reason) ? ': set it up on the API page' : '') };
     } else if (!window.LiveAI.isOn()) return { state: 'off', reason: 'No API key' };
-    return { state: 'on', reason: 'claude-opus-5-5, metered on the API monitor' };
+    return { state: 'on', reason: window.LiveAI.model + ', metered on the API page' };
   }
   function whyOff() { const st = status(); return st.state === 'on' ? '' : st.reason + '.'; }
   const usable = () => status().state === 'on';

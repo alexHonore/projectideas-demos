@@ -28,7 +28,7 @@
   try { if (g.LiveAI) g.LiveAI.app = 'nexus'; } catch (e) { /* ignoré */ }
   // Raisons du moniteur d'API (hub), en français.
   var METER_FR = [
-    [/all APIs are off/i, 'interrupteur général coupé au moniteur d’API'], [/Nexus CTE is off/i, 'Nexus CTE coupé au moniteur d’API'], [/Anthropic is off/i, 'Anthropic coupé au moniteur d’API'],
+    [/all APIs are off/i, 'interrupteur général coupé au moniteur d’API'], [/Nexus CTE is off/i, 'Nexus CTE coupé au moniteur d’API'], [/Anthropic is off/i, 'Anthropic coupé au moniteur d’API'], [/OpenRouter is off/i, 'OpenRouter coupé au moniteur d’API'], [/No OpenRouter key/i, 'aucune clé OpenRouter au moniteur d’API'], [/No OpenRouter model/i, 'aucun modèle OpenRouter choisi au moniteur d’API'],
     [/No Anthropic key/i, 'aucune clé Anthropic au moniteur d’API'], [/Monthly budget reached/i, 'budget mensuel atteint'], [/budget reached/i, 'budget de Nexus CTE atteint'], [/Rate limit/i, 'limite de 30 appels par minute'],
     [/Killswitch/i, 'interrupteur coupé au moniteur d’API']
   ];
@@ -38,7 +38,7 @@
     var L = lai(), M = meter();
     if (!L || !L.available()) return { state: 'off', reason: 'SDK non chargé' };
     if (caps().liveAI === false) return { state: 'paused', reason: 'désactivée dans le Labo de test' };
-    if (M) { var c = M.check('nexus', 'anthropic'); if (!c.ok) return { state: /key/i.test(c.reason) ? 'off' : 'paused', reason: meterFr(c.reason) }; }
+    if (M) { var c = M.checkLlm('nexus'); if (!c.ok) return { state: /key|chosen/i.test(c.reason) ? 'off' : 'paused', reason: meterFr(c.reason) }; }
     else if (!L.isOn()) return { state: 'off', reason: 'aucune clé' };
     if (caps().online === false) return { state: 'paused', reason: 'hors ligne (Labo de test) : aucune requête' };
     return { state: 'on', reason: '' };

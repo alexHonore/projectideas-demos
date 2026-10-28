@@ -15,10 +15,10 @@
     if (!s.caps.ai) return { on: false, state: 'off', why: 'Live AI is off in the Test lab' };
     if (s.caps.offline) return { on: false, state: 'off', why: 'Offline: live AI needs the network' };
     if (!s.settings.useAI) return { on: false, state: 'off', why: 'Live AI is off in Settings' };
-    // the engine (Anthropic, or an OpenRouter model) is chosen on the hub's API monitor; check that provider
+    // the engine (an OpenRouter model, or Claude direct) is chosen on the hub's API page, per app
     var prov = L.provider || 'anthropic';
     if (M) {
-      var g = M.check('tayoo', prov);
+      var g = M.checkLlm('tayoo');
       if (!g.ok) return { on: false, state: /^No /.test(g.reason) ? 'off' : 'paused', why: g.reason + ' (API monitor)' };
       if (!L.isOn()) return { on: false, state: 'off', why: (prov === 'openrouter' ? 'No OpenRouter model chosen' : 'No API key') + ' (API monitor)' };
     } else if (!L.isOn()) return { on: false, state: 'off', why: 'No API key' };

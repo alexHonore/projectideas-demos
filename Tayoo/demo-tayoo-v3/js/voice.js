@@ -93,6 +93,11 @@
   var APP = 'tayoo';
   function meter() { return window.ApiMeter || null; }
   function gate(provider) { var m = meter(); return m ? m.check(APP, provider) : { ok: true }; }
+  // AI voice and transcription use the engines chosen on the hub's API page (OpenRouter or Gemini).
+  function gateTts() { var m = meter(); return m ? m.checkTts(APP) : { ok: false, reason: 'API page not loaded' }; }
+  function gateStt() { var m = meter(); return m ? m.checkStt(APP) : { ok: false, reason: 'API page not loaded' }; }
+  function engineName(kind) { var m = meter(); return m && m.voice()[kind].provider === 'openrouter' ? 'OpenRouter' : 'Gemini'; }
+  T.meterGateTts = gateTts; T.meterGateStt = gateStt; T.voiceEngineName = engineName;
   function rec(provider, op, usage, ok, err) { var m = meter(); if (m) try { m.record({ app: APP, provider: provider, op: op, usage: usage, ok: ok !== false, error: err || '' }); } catch (e) { /* metering is best effort */ } }
   T.meterGate = gate;
 
@@ -149,11 +154,11 @@
     try {
       if (!T.store.state.settings.speak || !text) return;
       var set = T.store.state.settings;
-      if (set.voiceEngine === 'gemini' && meter() && gate('gemini').ok) {
-        var voice = lang === 'FR' ? 'Leda' : 'Kore', key = voice + '|' + text;
+      if (set.voiceEngine === 'gemini' && meter() && gateTts().ok) {
+        var tv = meter().voice().tts, voice = lang === 'FR' ? 'Leda' : 'Kore', key = tv.provider + '|' + tv.model + '|' + (tv.provider === 'openrouter' ? tv.voice : voice) + '|' + text;
         cacheGet(key).then(function (hit) {
           if (hit) return playBlob(hit, text);
-          return meter().gemini.tts({ app: APP, text: text, voice: voice }).then(function (r) { cachePut(key, r.blob); return playBlob(r.blob, text); });
+          return meter().tts({ app: APP, text: text, voice: voice }).then(function (r) { cachePut(key, r.blob); return playBlob(r.blob, text); });
         }).catch(function () { if (V.canSpeak) deviceSay(text, lang); });
         return;
       }
@@ -173,7 +178,7 @@
     starting: { icon: 'mic', text: 'Starting the mic' },
     // the disclosure stays visible whenever the browser's recognizer is listening
     listening: { icon: 'mic', text: 'Listening', hint: 'Some browsers, Chrome among them, send the audio to their own speech service to transcribe it.' },
-    recording: { icon: 'mic', text: 'Recording', hint: 'Gemini transcribes this recording (metered).' },
+    recording: { icon: 'mic', text: 'Recording', hint: 'AI transcribes this recording (metered).' },
     transcribing: { icon: 'refresh', text: 'Transcribing' },
     sending: { icon: 'check', text: 'Got it' },
     sample: { icon: 'play', text: 'Scripted sample' },
@@ -205,7 +210,7 @@
     $('cap-ic').innerHTML = T.icon(d.icon);
     $('cap-status-text').textContent = text || d.text;
     var hel = $('cap-hint');
-    hel.textContent = hint != null ? hint : d.hint || '';
+    hel.textContent = hint != null ? hint : st === 'recording' ? engineName('stt') + ' transcribes this recording (metered).' : d.hint || '';
     hel.title = reason || '';
     $('cap-stop').hidden = !(st === 'listening' || st === 'recording' || st === 'starting' || st === 'sample');
     $('capture').querySelector('[data-act="cap-retry"]').hidden = !(st === 'error' || st === 'paused' || st === 'unsupported');
@@ -316,7 +321,7 @@
         if (C.rec !== r) return;
         C.error = ev.error;
         if (ev.error === 'aborted') return;
-        if (FALLBACK_ERRORS[ev.error] && gate('gemini').ok && V.canRecord) { C.stopLive(true); C.startFallback(lang, ''); return; }
+        if (FALLBACK_ERRORS[ev.error] && gateStt().ok && V.canRecord) { C.stopLive(true); C.startFallback(lang, ''); return; }
         if (ev.error === 'no-speech' && (C.text || C.interim)) return;
         C.fail(ev.error);
       };
@@ -360,9 +365,9 @@
     $('cap-ic').innerHTML = T.icon(e[0]);
   };
 
-  /* ---------- fallback: record, then transcribe with Gemini through the hub meter ---------- */
+  /* ---------- fallback: record, then transcribe (OpenRouter or Gemini) through the hub meter ---------- */
   C.startFallback = function (lang, why) {
-    var g = meter() ? gate('gemini') : { ok: false, reason: 'API monitor not loaded' };
+    var g = gateStt();
     if (!g.ok || !V.canRecord) return setState('unsupported', null, 'Type instead. ' + (why || ''), (g.reason || 'Recording isn’t available') + (why ? '. ' + why : ''));
     setState('starting', 'Starting the mic', '', why);
     openMic().then(function (stream) {
@@ -378,7 +383,7 @@
         var blob = new Blob(chunks, { type: (mr.mimeType || 'audio/webm') });
         var secs = Math.round((Date.now() - C.recStart) / 100) / 10;
         setState('transcribing');
-        meter().gemini.transcribe({ app: APP, blob: blob, lang: lang, seconds: secs }).then(function (r) {
+        meter().transcribe({ app: APP, blob: blob, lang: lang, seconds: secs }).then(function (r) {
           if (!C.open) return;
           C.text = (r.text || '').trim(); renderText();
           if (C.text) C.finish('gemini'); else C.fail('silent');
@@ -390,7 +395,7 @@
       };
       mr.start(250);
       L.start(stream);
-      setState('recording', 'Recording', null, 'Your browser has no speech recognition here, so the audio is transcribed by Gemini (metered).');
+      setState('recording', 'Recording', null, 'Your browser has no speech recognition here, so the audio is transcribed by ' + engineName('stt') + ' (metered).');
       // stop after 1.5 s of quiet once you have spoken, or at 60 s
       var spoke = false;
       C.silenceT = setInterval(function () {

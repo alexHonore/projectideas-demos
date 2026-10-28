@@ -75,7 +75,7 @@
   }
   function ai() {
     /* Keys, budgets and killswitches live on the hub's API monitor; this demo only shows the state. */
-    return sec('ai', 'Live AI (optional)', 'Reads pasted or received emails with claude-opus-5-5 and drafts replies, metered under “tradedesk” on the hub’s API monitor. Off without a key; the demo stays fully usable on rules.', '<div id="lab-ai-host" class="lab-ai">' + V.aiStatus({ id: 'ai-status-lab', label: true }) + '<a class="btn small" href="../../index.html#api">' + icon('chart', 15) + '<span>API monitor</span></a></div><p class="lab-sub">Cost and privacy: the message text and the counterparty list go to the Anthropic API. Every call is checked against the monitor’s budgets and killswitches first, and recorded there.</p>');
+    return sec('ai', 'Live AI (optional)', 'Reads pasted or received emails with the model chosen on the hub’s API page (' + (window.LiveAI ? window.LiveAI.model : 'OpenRouter') + ') and drafts replies, metered under “tradedesk”. Off without a key; the demo stays fully usable on rules.', '<div id="lab-ai-host" class="lab-ai">' + V.aiStatus({ id: 'ai-status-lab', label: true }) + '<a class="btn small" href="../../index.html#api">' + icon('chart', 15) + '<span>API monitor</span></a></div><p class="lab-sub">Cost and privacy: the message text and the counterparty list go to ' + (window.LiveAI && window.LiveAI.provider === 'anthropic' ? 'the Anthropic API' : 'OpenRouter and the model it routes to') + '. Every call is checked against the monitor’s budgets and killswitches first, and recorded there.</p>');
   }
   function workspace(state) {
     const inv = E.invariants(state);

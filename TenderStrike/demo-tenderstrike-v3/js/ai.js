@@ -9,15 +9,15 @@
 
   if (window.LiveAI) window.LiveAI.app = 'tenderstrike';
   /* État de l’IA en direct, lu dans le moniteur d’API du hub (clés, budgets, coupe-circuits) */
-  const METER_FR = [[/^Killswitch: all APIs are off/, 'Coupe-circuit : toutes les API sont coupées'], [/^Killswitch: TenderStrike is off/, 'Coupe-circuit : TenderStrike est coupé'], [/^Killswitch: (.*) is off/, (m) => 'Coupe-circuit : ' + m[1] + ' est coupé'], [/^Monthly budget reached/, 'Budget mensuel atteint'], [/^TenderStrike budget reached/, 'Budget de TenderStrike atteint'], [/^Rate limit: (\d+)/, (m) => 'Limite : ' + m[1] + ' appels par minute'], [/^No (.*) key/, 'Aucune clé Anthropic']];
+  const METER_FR = [[/^Killswitch: all APIs are off/, 'Coupe-circuit : toutes les API sont coupées'], [/^Killswitch: TenderStrike is off/, 'Coupe-circuit : TenderStrike est coupé'], [/^Killswitch: (.*) is off/, (m) => 'Coupe-circuit : ' + m[1] + ' est coupé'], [/^Monthly budget reached/, 'Budget mensuel atteint'], [/^TenderStrike budget reached/, 'Budget de TenderStrike atteint'], [/^Rate limit: (\d+)/, (m) => 'Limite : ' + m[1] + ' appels par minute'], [/^No OpenRouter model/, 'Aucun modèle OpenRouter choisi'], [/^No (.*) key/, (m) => 'Aucune clé ' + m[1]]];
   const meterFr = (r) => { for (const [re, out] of METER_FR) { const m = String(r || '').match(re); if (m) return typeof out === 'function' ? out(m) : out; } return String(r || ''); };
   AI.status = () => {
     if (!window.LiveAI || !window.LiveAI.available()) return { state: 'off', label: 'IA en direct indisponible', reason: 'SDK non chargé : la démo utilise les règles.' };
     const M = window.ApiMeter;
     if (M) {
-      const c = M.check('tenderstrike', 'anthropic');
+      const c = M.checkLlm('tenderstrike');
       if (c.ok) return { state: 'on', label: 'IA en direct active', reason: window.LiveAI.model + ' · appels comptés dans le moniteur d’API' };
-      if (/^No /.test(c.reason)) return { state: 'off', label: 'IA en direct désactivée', reason: 'Aucune clé : ajoutez-la dans le moniteur d’API. La démo utilise les règles.' };
+      if (/^No /.test(c.reason)) return { state: 'off', label: 'IA en direct désactivée', reason: meterFr(c.reason) + ' : à régler dans le moniteur d’API. La démo utilise les règles.' };
       return { state: 'paused', label: 'IA en direct en pause', reason: meterFr(c.reason) + ' : la démo utilise les règles.' };
     }
     return window.LiveAI.isOn() ? { state: 'on', label: 'IA en direct active', reason: window.LiveAI.model } : { state: 'off', label: 'IA en direct désactivée', reason: 'La démo utilise les règles.' };
@@ -27,7 +27,7 @@
   const gate = () => {
     const st = AI.status();
     if (st.state === 'on') return;
-    if (st.state === 'paused') throw fail('blocked', 'Live AI is paused: ' + window.ApiMeter.check('tenderstrike', 'anthropic').reason + '.');
+    if (st.state === 'paused') throw fail('blocked', 'Live AI is paused: ' + window.ApiMeter.checkLlm('tenderstrike').reason + '.');
     throw fail('off', 'Live AI is off.');
   };
   /* Icône d’état : lien vers le moniteur d’API du hub, où vivent clés, budgets et coupe-circuits */
