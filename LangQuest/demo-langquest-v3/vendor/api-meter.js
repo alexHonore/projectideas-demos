@@ -15,6 +15,9 @@
  *   ApiMeter.keys.get/set/clear/has(provider)
  *   ApiMeter.gemini.tts({app, text, voice, model, signal})        -> {blob, usage}
  *   ApiMeter.gemini.transcribe({app, blob, lang, model, signal})  -> {text, usage}
+ *   ApiMeter.openrouter.models()                                  -> [{id, name, context, input, output}] (USD per 1M)
+ *   ApiMeter.openrouter.chat({app, model, system, messages, jsonSchema, maxTokens, signal}) -> {text, usage, model, finish}
+ *   ApiMeter.llm() / setLlm(provider, model)   the engine every demo's live AI uses: anthropic or openrouter
  *   ApiMeter.state(), setKill(scope, id, on), setBudget(scope, id, usd), setPrice(model, prices),
  *   resetUsage(), exportCsv(), onChange(fn)
  */
@@ -28,6 +31,7 @@
   var APPS = { tradedesk: 'TradeDesk', langquest: 'LangQuest', tayoo: 'Tayoo', nexus: 'Nexus CTE', tenderstrike: 'TenderStrike', hub: 'Hub' };
   var PROVIDERS = {
     anthropic: { name: 'Anthropic', paid: true, key: true },
+    openrouter: { name: 'OpenRouter', paid: true, key: true },
     gemini: { name: 'Google Gemini', paid: true, key: true },
     'browser-speech': { name: 'Browser speech recognition', paid: false, key: false },
     'browser-tts': { name: 'Browser voices', paid: false, key: false }
@@ -40,6 +44,9 @@
     'gemini-3.8-flash': { input: 0.3, audioIn: 1, output: 2.5 }
   };
   var DEFAULT_MODELS = { tts: 'gemini-3.8-flash-tts', transcribe: 'gemini-3.8-flash' };
+  var DEFAULT_LLM = { provider: 'anthropic', model: 'claude-opus-5-5' };
+  var OR_MODELS = 'project-demos:openrouter-models:v1';
+  var orPrices = (function () { try { var c = JSON.parse(global.localStorage.getItem(OR_MODELS) || 'null'); return (c && c.prices) || {}; } catch (e) { return {}; } })();
   var RATE_PER_MIN = 30;
 
   function now() { return Date.now(); }
@@ -68,7 +75,7 @@
   function emit() { var st = api.state(); listeners.forEach(function (fn) { try { fn(st); } catch (e) {} }); }
   global.addEventListener && global.addEventListener('storage', function (e) { if (e.key === STORE || e.key === KEYS || e.key === LEGACY_ANTHROPIC) emit(); });
 
-  function price(model) { var s = load(); return Object.assign({}, DEFAULT_PRICES[model] || {}, s.prices[model] || {}); }
+  function price(model) { var s = load(); return Object.assign({}, orPrices[model] || {}, DEFAULT_PRICES[model] || {}, s.prices[model] || {}); }
   function costOf(model, u) {
     var p = price(model); u = u || {};
     var usd = ((u.inputTokens || 0) * (p.input || 0) + (u.outputTokens || 0) * (p.output || 0) +
@@ -115,6 +122,9 @@
     APPS: APPS, PROVIDERS: PROVIDERS, DEFAULT_PRICES: DEFAULT_PRICES, keys: keys, Blocked: Blocked,
     month: month, price: price, costOf: costOf,
     model: function (kind) { return load().models[kind] || DEFAULT_MODELS[kind]; },
+    // OpenRouter with no model chosen yet keeps live AI off (model '') rather than guessing one.
+    llm: function () { var l = load().models.llm; if (l && l.provider === 'openrouter') return { provider: 'openrouter', model: l.model || '' }; return { provider: DEFAULT_LLM.provider, model: DEFAULT_LLM.model }; },
+    setLlm: function (provider, model) { var s = load(), or = provider === 'openrouter'; s.models.llm = { provider: or ? 'openrouter' : 'anthropic', model: or ? String(model || '').trim() : DEFAULT_LLM.model }; save(s); },
     setModel: function (kind, m) { var s = load(); if (m) s.models[kind] = m; else delete s.models[kind]; save(s); },
 
     check: function (app, provider) {
@@ -136,7 +146,8 @@
     record: function (e) {
       var s = load(), t = now(), m = month(t);
       var entry = { t: t, app: e.app, provider: e.provider, op: e.op || 'call', model: e.model || '', usage: e.usage || {}, ok: e.ok !== false, ms: e.ms || 0, error: e.error ? String(e.error).slice(0, 160) : '' };
-      entry.cost = PROVIDERS[e.provider] && PROVIDERS[e.provider].paid ? costOf(entry.model, entry.usage) : 0;
+      // A provider-reported cost (OpenRouter returns one) wins over the price-list estimate.
+      entry.cost = PROVIDERS[e.provider] && PROVIDERS[e.provider].paid ? (entry.usage.costUSD != null ? Math.round(Number(entry.usage.costUSD) * 1e6) / 1e6 : costOf(entry.model, entry.usage)) : 0;
       s.log.unshift(entry); if (s.log.length > LOG_CAP) s.log.length = LOG_CAP;
       var a = (s.totals[m] = s.totals[m] || {}); var b = (a[e.app] = a[e.app] || {});
       var c = (b[e.provider] = b[e.provider] || { calls: 0, errors: 0, cost: 0, inputTokens: 0, outputTokens: 0, audioInTokens: 0, audioOutTokens: 0, chars: 0, seconds: 0 });
@@ -161,7 +172,7 @@
 
     state: function () {
       var s = load(), m = s.totals[month()] || {};
-      return { month: month(), kill: s.kill, budgets: s.budgets, totals: m, allMonths: s.totals, log: s.log, spent: spent(s), spentByApp: Object.keys(APPS).reduce(function (o, a) { o[a] = spent(s, a); return o; }, {}), prices: Object.keys(DEFAULT_PRICES).reduce(function (o, k) { o[k] = price(k); return o; }, {}), models: { tts: api.model('tts'), transcribe: api.model('transcribe') } };
+      return { month: month(), kill: s.kill, budgets: s.budgets, totals: m, allMonths: s.totals, log: s.log, spent: spent(s), spentByApp: Object.keys(APPS).reduce(function (o, a) { o[a] = spent(s, a); return o; }, {}), prices: Object.keys(DEFAULT_PRICES).reduce(function (o, k) { o[k] = price(k); return o; }, {}), models: { tts: api.model('tts'), transcribe: api.model('transcribe') }, llm: api.llm() };
     },
     setKill: function (scope, id, on) { var s = load(); if (scope === 'global') s.kill.global = !!on; else s.kill[scope][id] = !!on; save(s); },
     setBudget: function (scope, id, usd) { var s = load(), v = Math.max(0, Number(usd) || 0); if (scope === 'global') s.budgets.global = v; else s.budgets.apps[id] = v; save(s); },
@@ -235,6 +246,48 @@
           return { result: { text: text }, model: model, usage: { inputTokens: Math.max(0, (u.promptTokenCount || 0) - audioIn), audioInTokens: audioIn, outputTokens: (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0), seconds: o.seconds || 0 } };
         });
       }).then(function (r) { return { text: r.result.text, usage: r.usage }; });
+    }
+  };
+
+  // ---- OpenRouter: any model it routes to, called from the browser with the owner's key.
+  var OR = 'https://openrouter.ai/api/v1/';
+  function perMillion(v) { var n = Number(v); return isFinite(n) ? Math.round(n * 1e6 * 1e4) / 1e4 : 0; }
+  api.openrouter = {
+    // The public model list (no key needed), cached for a day; also feeds the cost estimates.
+    models: function (o) {
+      var cached = null; try { cached = JSON.parse(global.localStorage.getItem(OR_MODELS) || 'null'); } catch (e) {}
+      if (cached && cached.list && Date.now() - cached.at < 864e5 && !(o && o.refresh)) return Promise.resolve(cached.list);
+      return fetch(OR + 'models').then(function (r) { if (!r.ok) throw new Error('OpenRouter model list: HTTP ' + r.status); return r.json(); }).then(function (j) {
+        var list = (j.data || []).map(function (m) {
+          var p = m.pricing || {};
+          return { id: m.id, name: m.name || m.id, context: m.context_length || 0, input: perMillion(p.prompt), output: perMillion(p.completion), json: (m.supported_parameters || []).indexOf('response_format') >= 0 || (m.supported_parameters || []).indexOf('structured_outputs') >= 0 };
+        }).sort(function (a, b) { return a.id < b.id ? -1 : 1; });
+        orPrices = {}; list.forEach(function (m) { orPrices[m.id] = { input: m.input, output: m.output }; });
+        try { global.localStorage.setItem(OR_MODELS, JSON.stringify({ at: Date.now(), list: list, prices: orPrices })); } catch (e) {}
+        return list;
+      });
+    },
+    chat: function (o) {
+      var model = o.model || api.llm().model;
+      return api.run({ app: o.app, provider: 'openrouter', op: 'chat', model: model }, function () {
+        var msgs = (o.system ? [{ role: 'system', content: o.system }] : []).concat(o.messages || []);
+        var body = { model: model, messages: msgs, max_tokens: o.maxTokens || 4000, usage: { include: true } };
+        if (o.jsonSchema) body.response_format = { type: 'json_schema', json_schema: { name: 'result', strict: true, schema: o.jsonSchema } };
+        return fetch(OR + 'chat/completions', {
+          method: 'POST', signal: o.signal,
+          headers: { 'content-type': 'application/json', authorization: 'Bearer ' + keys.get('openrouter'), 'x-title': 'Project demos' },
+          body: JSON.stringify(body)
+        }).then(function (res) {
+          return res.json().catch(function () { return {}; }).then(function (j) {
+            if (!res.ok || j.error) { var e = new Error((j.error && j.error.message) || ('OpenRouter error ' + res.status)); e.status = (j.error && j.error.code) || res.status; throw e; }
+            var c = (j.choices || [])[0] || {}, m = c.message || {}, u = j.usage || {};
+            var text = typeof m.content === 'string' ? m.content : (m.content || []).map(function (x) { return x.text || ''; }).join('');
+            var usage = { inputTokens: u.prompt_tokens || 0, outputTokens: u.completion_tokens || 0 };
+            if (u.cost != null) usage.costUSD = Number(u.cost);
+            return { result: { text: text, finish: c.finish_reason || c.native_finish_reason || '', servedBy: j.model || model }, model: j.model || model, usage: usage };
+          });
+        });
+      }).then(function (r) { return { text: r.result.text, finish: r.result.finish, model: r.result.servedBy, usage: r.usage }; });
     }
   };
 

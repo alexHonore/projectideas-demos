@@ -45,19 +45,17 @@
 /* Narrow desktops: open the flyout over the phone, anchored to the rail. */
 @media (min-width: 760px) and (max-width: 1100px) { .rail__fly { left: auto; right: 64px; } }
 
-/* ── ⓘ chips: a tiny disclosure that holds the honest detail ── */
-details.tip { display: inline-block; position: relative; vertical-align: middle; background: none; padding: 0; border-radius: 0; font-size: inherit; margin: 0 2px; }
-details.tip > summary { list-style: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line-2); background: var(--paper); color: var(--ink-3); font: italic 800 .72rem/1 Georgia, 'Times New Roman', serif; cursor: pointer; position: relative; }
-details.tip > summary::-webkit-details-marker { display: none; }
-details.tip > summary::after { content: ''; position: absolute; inset: -11px; } /* 44px touch target */
-details.tip > summary:hover, details.tip[open] > summary { color: var(--accent-text); border-color: var(--accent); background: var(--accent-50); }
-details.tip > summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-details.tip--icon > summary { font: inherit; color: var(--sun-ink); background: var(--sun-50); border-color: transparent; }
-details.tip--icon > summary .ic { width: 13px; height: 13px; }
-.tip__b { position: absolute; z-index: 40; top: calc(100% + 6px); left: -8px; width: min(280px, 78vw); background: var(--ink); color: var(--paper); padding: 10px 12px; border-radius: 12px; box-shadow: var(--shadow-2); font: 500 .82rem/1.45 var(--f-ui); font-style: normal; letter-spacing: 0; text-transform: none; text-align: left; white-space: normal; }
-h1 details.tip, h2 details.tip, h3 details.tip { font-size: 1rem; }
-.pagehead details.tip .tip__b, .shead details.tip .tip__b { left: auto; right: -40px; }
-.lab details.tip .tip__b { left: auto; right: -8px; }
+/* ── ⓘ chips: a tiny button that reveals the honest detail ── */
+.tip { display: inline-block; position: relative; vertical-align: middle; background: none; padding: 0; border-radius: 0; font-size: inherit; margin: 0 2px; line-height: 1; }
+.tip__btn { display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 1.5px solid var(--line-2); background: var(--paper); color: var(--ink-3); font: italic 800 .72rem/1 Georgia, 'Times New Roman', serif; cursor: pointer; position: relative; vertical-align: middle; }
+.tip__btn::after { content: ''; position: absolute; inset: -11px; } /* 44px touch target */
+.tip__btn:hover, .tip__btn[aria-expanded="true"] { color: var(--accent-text); border-color: var(--accent); background: var(--accent-50); }
+.tip__btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.tip--icon .tip__btn { font: inherit; color: var(--sun-ink); background: var(--sun-50); border-color: transparent; }
+.tip--icon .tip__btn .ic { width: 13px; height: 13px; }
+.tip__b { position: absolute; z-index: 40; top: calc(100% + 8px); left: -8px; width: min(280px, 78vw); background: var(--ink); color: var(--paper); padding: 10px 12px; border-radius: 12px; box-shadow: var(--shadow-2); font: 500 .82rem/1.45 var(--f-ui); font-style: normal; letter-spacing: 0; text-transform: none; text-align: left; white-space: normal; }
+.tip__b[hidden] { display: none; }
+.tip .ic { color: inherit; }
 
 /* ── icon tools, alt capture buttons, paused state ── */
 .tool--icon { width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; border-radius: 50%; }
@@ -159,3 +157,40 @@ details.scene-d .setup { margin-top: 8px; }
 .apirow--on .apirow__st { color: var(--ok-ink); }
 .apirow__n { min-width: 70px; text-align: right; font-variant-numeric: tabular-nums; }
 .lab__presets li { cursor: default; }
+
+/* Closed disclosures render nothing (explicit, so every engine agrees). */
+details:not([open]) > :not(summary) { display: none; }
+
+/* ── compact cards: title + one key value + status icon ── */
+.coursepill__src { flex: none; font: 800 .68rem var(--f-ui); letter-spacing: .04em; color: var(--ink-3); border: 1px solid var(--line-2); border-radius: 6px; padding: 1px 5px; }
+.appbar__fill { flex: 1; }
+.chapter__n { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: var(--paper); font: 800 .74rem var(--f-ui); vertical-align: 2px; margin-right: 4px; }
+.tag--ic { padding: 0; width: 26px; height: 26px; justify-content: center; border-radius: 50%; }
+.tag--ic .ic { width: 13px; height: 13px; }
+.tag--next .ic { width: 11px; height: 11px; }
+.stamp__img { display: grid; justify-items: center; }
+.stg--dot { width: 12px; height: 12px; padding: 0; border-radius: 50%; border-width: 2px; }
+.stg--dot.stg--new { background: var(--paper); border-color: var(--line-2); }
+.stg--dot.stg--learning { background: var(--sun); border-color: var(--sun); }
+.stg--dot.stg--young { background: var(--accent); border-color: var(--accent); }
+.stg--dot.stg--graduated { background: var(--ok); border-color: var(--ok); }
+.due { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.due--overdue { color: var(--warn); font-weight: 750; }
+.due--today { color: var(--accent-text); font-weight: 750; }
+.inrow { align-items: center; }
+.inrow__ic { position: relative; }
+.inrow__dot { position: absolute; top: -1px; right: -1px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--paper); }
+.inrow__b strong { vertical-align: middle; }
+.inrow__b details.tip { vertical-align: middle; }
+.live:empty { display: none; }
+
+/* ── recall as a focused, full-screen session ── */
+.recall--live > .lhead { margin: -8px calc(-1 * var(--gutter)) 6px; }
+.recall--live .lhead__h { font-size: 1rem; margin: 0; }
+.lhead > .iconbtn:last-child { margin-left: auto; }
+.txd { margin-top: 14px; }
+.txd .tx { margin-top: 0; }
+
+/* Icons sit inline with their words (flex and grid containers lay them out as before). */
+svg.ic { display: inline-block; vertical-align: -0.2em; }
+.chip-demo--btn { min-height: 44px; padding: 0 14px; cursor: pointer; font-family: var(--f-ui); }

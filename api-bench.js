@@ -34,14 +34,16 @@
   ];
   var TABS = [
     ['claude', '✳︎', 'Claude', 'anthropic'],
+    ['openrouter', '◎', 'OpenRouter', 'openrouter'],
     ['voice', '✦', 'AI voice', 'gemini'],
     ['transcribe', '✦', 'Transcribe', 'gemini'],
     ['listen', '🎤', 'Listen', 'browser-speech'],
     ['device', '🔊', 'Device voice', 'browser-tts']
   ];
-  var st = { tab: 'claude', lang: 'en-CA', gvoice: 'Kore', dvoice: '', rate: 1, busy: false, out: {} };
+  var st = { tab: 'claude', lang: 'en-CA', gvoice: 'Kore', dvoice: '', rate: 1, orModel: '', orFilter: '', busy: false, out: {} };
+  var orList = [], orLoading = false, orError = '';
   try { Object.assign(st, JSON.parse(sessionStorage.getItem('project-demos:api-bench') || '{}'), { busy: false, out: {} }); } catch (e) {}
-  function keep() { try { sessionStorage.setItem('project-demos:api-bench', JSON.stringify({ tab: st.tab, lang: st.lang, gvoice: st.gvoice, dvoice: st.dvoice, rate: st.rate })); } catch (e) {} }
+  function keep() { try { sessionStorage.setItem('project-demos:api-bench', JSON.stringify({ tab: st.tab, lang: st.lang, gvoice: st.gvoice, dvoice: st.dvoice, rate: st.rate, orModel: st.orModel, orFilter: st.orFilter })); } catch (e) {} }
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function usd(v) { return v > 0 && v < 0.0001 ? '<$0.0001' : '$' + v.toFixed(4); }
@@ -88,6 +90,17 @@
     return 0;
   }
 
+  function loadModels(refresh) {
+    if (orLoading) return; orLoading = true; orError = '';
+    M.openrouter.models({ refresh: !!refresh }).then(function (list) {
+      orList = list; orLoading = false;
+      if (!st.orModel && list.length) { var pick = list.filter(function (m) { return /claude|gemini|gpt/i.test(m.id) && m.input > 0; })[0] || list[0]; st.orModel = pick.id; keep(); }
+      draw();
+    }, function (err) { orLoading = false; orError = err.message; draw(); });
+  }
+  function orInfo(id) { return orList.filter(function (m) { return m.id === id; })[0]; }
+  function k(n) { return n >= 1000 ? Math.round(n / 1000) + 'k' : String(n); }
+
   function panelHtml() {
     var o = st.out[st.tab], busy = st.busy;
     var run = function (label, extra) { return '<button type="button" class="ab-run" data-run="' + st.tab + '"' + (busy ? ' disabled' : '') + '>' + (busy ? '…' : label) + (extra ? '<small>' + extra + '</small>' : '') + '</button>'; };
@@ -95,6 +108,23 @@
       return gate('anthropic') + '<label class="ab-field wide"><span>Prompt</span><input data-f="prompt" value="' + esc(st.prompt || 'Say hello in five words.') + '"></label>' +
         '<div class="ab-row"><span class="ab-chip">claude-opus-5-5</span>' + run('▶ Run', '≈ ' + usd(estimate('claude'))) + '</div>' +
         (o && o.text ? '<blockquote class="ab-out">' + esc(o.text) + '</blockquote>' : '') + meta(o);
+    }
+    if (st.tab === 'openrouter') {
+      if (!orList.length && !orLoading && !orError) setTimeout(function () { loadModels(false); }, 0);
+      var f = (st.orFilter || '').toLowerCase(), shown = orList.filter(function (m) { return !f || (m.id + ' ' + m.name).toLowerCase().indexOf(f) >= 0; }).slice(0, 300);
+      if (st.orModel && !shown.some(function (m) { return m.id === st.orModel; })) shown.unshift(orInfo(st.orModel) || { id: st.orModel, name: st.orModel, input: 0, output: 0, context: 0 });
+      var info = orInfo(st.orModel), eng = M.llm(), inUse = eng.provider === 'openrouter' && eng.model === st.orModel;
+      var est = info ? M.costOf(st.orModel, { inputTokens: 40, outputTokens: 60 }) : null;
+      return gate('openrouter') + '<div class="ab-grid">' +
+        '<label class="ab-field"><span>Search ' + (orLoading ? '…' : orList.length ? orList.length + ' models' : '') + '</span><input data-f="orFilter" value="' + esc(st.orFilter) + '" placeholder="claude, gemini, llama…"></label>' +
+        '<label class="ab-field span2"><span>Model</span><select data-f="orModel">' + (shown.length ? shown.map(function (m) { return opt(m.id, m.id + (m.input || m.output ? ' · $' + m.input + ' / $' + m.output : '') + (m.context ? ' · ' + k(m.context) : ''), st.orModel); }).join('') : '<option value="">' + (orLoading ? 'Loading models…' : 'No models') + '</option>') + '</select></label></div>' +
+        (orError ? '<p class="ab-err">' + esc(orError) + ' — type a model id instead: <input data-f="orModelId" value="' + esc(st.orModel) + '" placeholder="provider/model"></p>' : '') +
+        (info ? '<p class="ab-modelinfo">$' + info.input + ' in · $' + info.output + ' out per 1M tokens · ' + k(info.context) + ' context' + (info.json ? ' · structured output' : '') + '</p>' : '') +
+        '<label class="ab-field wide"><span>Prompt</span><input data-f="prompt" value="' + esc(st.prompt || 'Say hello in five words.') + '"></label>' +
+        '<div class="ab-row">' + run('▶ Run', est != null ? '≈ ' + usd(est) : '') +
+        '<button type="button" class="ab-use" data-use="' + esc(st.orModel) + '"' + (st.orModel && !inUse ? '' : ' disabled') + '>' + (inUse ? '✓ Live AI uses this' : 'Use for live AI') + '</button>' +
+        '<button type="button" class="ab-use" data-refresh-models title="Refresh model list" aria-label="Refresh model list">↻</button></div>' +
+        (o && o.text ? '<blockquote class="ab-out">' + esc(o.text) + '</blockquote>' : '') + (o && o.served && o.served !== st.orModel ? '<p class="ab-modelinfo">Served by ' + esc(o.served) + '</p>' : '') + meta(o);
     }
     if (st.tab === 'voice') {
       return gate('gemini') + '<div class="ab-grid">' + langSelect() +
@@ -153,6 +183,12 @@
       st.busy = true; draw(); var t0 = Date.now();
       return ensureLiveAI().then(function () { return LiveAI.text({ messages: [{ role: 'user', content: st.prompt || 'Say hello in five words.' }], maxTokens: 300 }); })
         .then(function (r) { var last = M.state().log[0]; done({ text: r.text, ms: Date.now() - t0, usage: last && last.usage, cost: last && last.cost }); }, fail);
+    }
+    if (tab === 'openrouter') {
+      if (!st.orModel) return fail(new Error('Choose a model first.'));
+      st.busy = true; draw(); var t3 = Date.now();
+      return M.openrouter.chat({ app: APP, model: st.orModel, messages: [{ role: 'user', content: st.prompt || 'Say hello in five words.' }], maxTokens: 300 })
+        .then(function (r) { var last = M.state().log[0]; done({ text: r.text, served: r.model, ms: Date.now() - t3, usage: r.usage, cost: last && last.cost }); }, fail);
     }
     if (tab === 'voice') {
       st.busy = true; draw(); var t1 = Date.now();
@@ -214,6 +250,8 @@
   root.addEventListener('click', function (e) {
     var t = e.target.closest('[data-tab]'); if (t) { st.tab = t.dataset.tab; keep(); draw(); return; }
     var r = e.target.closest('[data-run]'); if (r) runTab(r.dataset.run);
+    var u = e.target.closest('[data-use]'); if (u && u.dataset.use) { M.setLlm('openrouter', u.dataset.use); draw(); }
+    if (e.target.closest('[data-refresh-models]')) loadModels(true);
   });
   root.addEventListener('keydown', function (e) {
     var t = e.target.closest('[role=tab]'); if (!t || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
@@ -223,14 +261,16 @@
   root.addEventListener('input', function (e) {
     var f = e.target.dataset.f; if (!f) return;
     if (f === 'prompt') st.prompt = e.target.value;
+    if (f === 'orFilter') { st.orFilter = e.target.value; keep(); clearTimeout(st._ft); st._ft = setTimeout(draw, 250); return; }
     if (f === 'text') st.text = e.target.value;
     if (f === 'rate') { st.rate = Number(e.target.value); var lab = e.target.parentNode.querySelector('span'); if (lab) lab.textContent = 'Speed ' + st.rate.toFixed(2); }
     keep();
   });
   root.addEventListener('change', function (e) {
-    var f = e.target.dataset.f; if (!f || f === 'prompt' || f === 'text' || f === 'rate') return; // typed fields: no re-render, or a click on Run right after typing is lost
+    var f = e.target.dataset.f; if (!f || f === 'prompt' || f === 'text' || f === 'rate' || f === 'orFilter') return; // typed fields: no re-render, or a click on Run right after typing is lost
     if (f === 'lang') { st.lang = e.target.value; st.text = ''; st.dvoice = ''; }
     if (f === 'gvoice') st.gvoice = e.target.value;
+    if (f === 'orModel' || f === 'orModelId') st.orModel = e.target.value.trim();
     if (f === 'dvoice') st.dvoice = e.target.value;
     if (f === 'ttsModel') M.setModel('tts', e.target.value.trim());
     if (f === 'sttModel') M.setModel('transcribe', e.target.value.trim());

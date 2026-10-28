@@ -1,4 +1,4 @@
-/* TradeDesk V3 — optional live AI bridge over vendor/live-ai.js (off by default, bring your own key).
+/* TradeDesk V3 — optional live AI bridge over vendor/live-ai.js (off without a key; keys, budgets and killswitches live on the hub’s API monitor, and every call is metered there under “tradedesk”).
    Live AI returns the same extraction structure as js/parser.js: every field carries the exact words it
    came from, which are located in the text and become evidence spans. Results are validated before use,
    always reviewed by a person, and any failure falls back to the rule parser with a visible notice. */

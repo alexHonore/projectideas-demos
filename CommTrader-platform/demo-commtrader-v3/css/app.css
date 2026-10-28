@@ -1343,3 +1343,40 @@ details.tfold > summary > span + .chip { margin-right: auto; }
 .incident details.fold-mini { margin-top: 10px; }
 .incident details.fold-mini .reply-body { margin-top: 8px; }
 .band-thin .tally { margin-top: 14px; }
+/* Settle, compact */
+.disc-amt { display: flex; align-items: center; gap: 6px; margin: 4px 0 8px; }
+.disc .opt { align-items: center; }
+.disc .opt .ii { margin-left: auto; }
+#receivables { margin-top: 16px; }
+.sq-n { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--brick-wash); color: #A33A26; font: 600 12px var(--sans); }
+/* Book and Review: one primary view, the rest behind tabs */
+.tabpanel > .panel { margin-top: 0; }
+.figs > div[title] { cursor: help; }
+.figs { margin-bottom: 18px; }
+.autonomy li em { font-style: normal; }
+.panel-head .ii + .icon-btn { margin-left: auto; }
+@media (max-width: 640px) {
+  .figs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .figs > div { padding: 12px 14px; }
+  .figs > div + div { border-top: 0; border-left: 1px solid var(--line-2); }
+  .figs > div:nth-child(odd) { border-left: 0; }
+  .figs > div:nth-child(n+3) { border-top: 1px solid var(--line-2); }
+  .figs strong { font-size: 19px; }
+}
+/* Phones: every tap target at least 44 px */
+@media (max-width: 640px) {
+  .ii-btn, details.ii > summary { width: 44px; height: 44px; }
+  .icon-btn.on-dark, .tool-btn.icon-only, .demo-btn, .who-btn { min-height: 44px; min-width: 44px; }
+  .icon-btn.on-dark { width: 44px; height: 44px; }
+  details.dc-more > summary, details.fold-mini > summary, details.scen-more > summary, details.ii-legend > summary { min-height: 44px; }
+  .ai-st, .ex-meta .ex-ai .ai-st, .ex-meta .ex-ai .btn { min-height: 44px; }
+  .seg-ctl button, .chip-btn, .btn.small { min-height: 44px; }
+}
+@media (max-width: 640px) {
+  .back-all { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
+  .brand { display: inline-flex; align-items: center; min-height: 44px; }
+  .crumb, .back-link { display: inline-flex; align-items: center; min-height: 44px; }
+  details.translation > summary { display: flex; align-items: center; min-height: 44px; }
+  .site-foot a, footer a { display: inline-flex; align-items: center; min-height: 44px; }
+}
+@media (max-width: 640px) { .md-kind .plink { display: inline-flex; align-items: center; min-height: 44px; } }

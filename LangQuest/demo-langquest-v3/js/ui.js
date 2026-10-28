@@ -78,7 +78,25 @@
   /* Tiny tier icon (a button that opens the per-course voice picker). */
   U.voiceChip = (track, enr) => { const v = U.voiceStatus(track, enr); return '<button class="voicechip voicechip--' + v.tier + '" data-act="voice-picker" data-arg="' + esc(track.id) + '" aria-label="Voice: ' + esc(v.label) + '. Choose a voice" title="' + esc(v.text) + '">' + LQ.art.icon(v.icon, 'ic--xs') + '</button>'; };
   /* ⓘ chip: an explanation behind an icon (native disclosure, keyboard accessible). */
-  U.info = (text, label, icon) => '<details class="tip' + (icon ? ' tip--icon' : '') + '"><summary aria-label="' + esc(label || 'More information') + '" title="' + esc(text) + '">' + (icon ? LQ.art.icon(icon, 'ic--xs') : '<span aria-hidden="true">i</span>') + '</summary><div class="tip__b" role="note">' + esc(text) + '</div></details>';
+  /* Remember the transcript disclosure across re-renders. */
+  document.addEventListener('toggle', e => { const d = e.target; if (d && d.matches && d.matches('details.txd')) LQ.ui.txOpen = d.open; }, true);
+  /* ⓘ chip: an icon button (valid inside headings and paragraphs) that reveals one short note.
+     The note is the button's tooltip too, and it is hidden, so it never adds words to the screen. */
+  let tipN = 0;
+  U.info = (text, label, icon) => { const id = 'tip-' + (++tipN); return '<span class="tip' + (icon ? ' tip--icon' : '') + '"><button type="button" class="tip__btn" data-act="tip" aria-expanded="false" aria-controls="' + id + '" aria-label="' + esc(label || 'More information') + '" title="' + esc(text) + '">' + (icon ? LQ.art.icon(icon, 'ic--xs') : '<span aria-hidden="true">i</span>') + '</button><span class="tip__b" id="' + id + '" role="note" hidden>' + esc(text) + '</span></span>'; };
+  U.closeTips = (except) => document.querySelectorAll('.tip__btn[aria-expanded="true"]').forEach(b => { if (b === except) return; b.setAttribute('aria-expanded', 'false'); const n = document.getElementById(b.getAttribute('aria-controls')); if (n) n.hidden = true; });
+  U.toggleTip = (btn) => {
+    const open = btn.getAttribute('aria-expanded') !== 'true'; U.closeTips(btn); btn.setAttribute('aria-expanded', String(open));
+    const n = document.getElementById(btn.getAttribute('aria-controls')); if (!n) return; n.hidden = !open; if (!open) return;
+    /* Keep the note inside its scrolling container (phone screen, studio, lab or rail). */
+    const box = (btn.closest('.view, .smain, .lab__panel, .rail__fly, .sheet') || document.documentElement).getBoundingClientRect();
+    n.style.transform = ''; n.style.maxWidth = Math.max(180, box.width - 24) + 'px';
+    const r = n.getBoundingClientRect(); let dx = 0;
+    if (r.right > box.right - 12) dx = box.right - 12 - r.right; if (r.left + dx < box.left + 12) dx = box.left + 12 - r.left;
+    if (dx) n.style.transform = 'translateX(' + Math.round(dx) + 'px)';
+  };
+  document.addEventListener('click', e => { if (!e.target.closest || !e.target.closest('.tip')) U.closeTips(); }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('.tip__btn[aria-expanded="true"]')) { const b = document.querySelector('.tip__btn[aria-expanded="true"]'); U.closeTips(); b.focus(); e.stopPropagation(); } }, true);
   /* Icon-only tool button with a tooltip and an accessible name. */
   U.tool = (act, icon, label, extra) => '<button class="tool tool--icon" data-act="' + act + '"' + (extra || '') + ' aria-label="' + esc(label) + '" title="' + esc(label) + '">' + LQ.art.icon(icon, 'ic--sm') + '</button>';
 

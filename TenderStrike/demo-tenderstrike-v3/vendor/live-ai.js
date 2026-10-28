@@ -16,6 +16,9 @@
  *   LiveAI.onChange(fn)                   called with isOn() after configure/clear
  *   LiveAI.renderSettings(el, {lang})     drop-in settings panel (en/fr)
  *
+ * When ApiMeter selects OpenRouter as the engine (hub monitor, index.html#api), json() and text()
+ * go to the chosen OpenRouter model instead, with the same result shapes and checks.
+ *
  * When ApiMeter (scripts/api-meter/api-meter.js) is loaded first, the key comes from the hub's
  * API monitor (index.html#api), and every call is checked against its killswitches and budgets
  * and recorded there under LiveAI.app (inferred from the demo's folder name).
@@ -113,16 +116,37 @@
     if (res.stop_reason === 'max_tokens') throw LiveAIError('truncated', 'The answer was cut off before it finished. Try a shorter input.');
   }
 
+  function engine() { var m = meter(); return m && m.llm ? m.llm() : { provider: 'anthropic', model: MODEL }; }
+  function viaOpenRouter() { return engine().provider === 'openrouter'; }
+  function orCall(o, jsonSchema) {
+    var m = meter(), started = Date.now(), content = o.prompt;
+    if (o.documents && o.documents.length) {
+      content = o.documents.map(function (d) { return { type: 'file', file: { filename: d.title || 'document.pdf', file_data: 'data:' + (d.mediaType || 'application/pdf') + ';base64,' + d.base64 } }; }).concat([{ type: 'text', text: o.prompt }]);
+    }
+    var messages = o.messages || [{ role: 'user', content: content }];
+    return m.openrouter.chat({ app: api.app || inferApp(), model: engine().model, system: o.system, messages: messages, jsonSchema: jsonSchema, maxTokens: o.maxTokens || (jsonSchema ? 8000 : 4000), signal: o.signal })
+      .then(function (r) {
+        if (r.finish === 'content_filter') throw LiveAIError('refusal', 'The model declined this request.');
+        if (r.finish === 'length') throw LiveAIError('truncated', 'The answer was cut off before it finished. Try a shorter input.');
+        lastCall = { source: 'live-ai', model: r.model, provider: 'openrouter', fellBack: false, inputTokens: r.usage.inputTokens, outputTokens: r.usage.outputTokens, ms: Date.now() - started, at: new Date().toISOString() };
+        return r;
+      }, function (err) {
+        if (err && err.name === 'ApiMeterBlocked') throw LiveAIError('blocked', 'Live AI is paused: ' + err.message + '.');
+        throw err;
+      });
+  }
+
   function missingRequired(schema, data) {
     if (!schema || !schema.required || !data || typeof data !== 'object') return [];
     return schema.required.filter(function (k) { return !(k in data); });
   }
 
   var api = {
-    model: MODEL,
+    get model() { return engine().model; },
+    get provider() { return engine().provider; },
     available: function () { return !!sdk(); },
     app: null,
-    isOn: function () { return !!currentKey() && !!sdk(); },
+    isOn: function () { if (viaOpenRouter()) return !!meter() && meter().keys.has('openrouter') && !!engine().model; return !!currentKey() && !!sdk(); },
     hasStoredKey: function () { var m = meter(); if (m) return m.keys.remembered('anthropic'); try { return !!global.localStorage.getItem(STORE); } catch (e) { return false; } },
     configure: function (o) {
       var k = String((o && o.apiKey) || '').trim();
@@ -143,6 +167,13 @@
     lastCall: function () { return lastCall; },
 
     json: function (o) {
+      if (viaOpenRouter()) return orCall(o, o.schema).then(function (r) {
+        var data, raw = String(r.text || '').trim().replace(/^```(?:json)?\s*|\s*```$/g, '');
+        try { data = JSON.parse(raw); } catch (e) { throw LiveAIError('format', 'The answer was not valid JSON, so nothing was applied.'); }
+        var missing = missingRequired(o.schema, data);
+        if (missing.length) throw LiveAIError('format', 'The answer was missing ' + missing.join(', ') + ', so nothing was applied.');
+        return { data: data, provenance: lastCall };
+      });
       var started = Date.now();
       var content = [];
       (o.documents || []).forEach(function (d) {
@@ -166,6 +197,7 @@
     },
 
     text: function (o) {
+      if (viaOpenRouter()) return orCall(o, null).then(function (r) { return { text: r.text, provenance: lastCall }; });
       var started = Date.now();
       return send({
         max_tokens: o.maxTokens || 4000,
@@ -183,6 +215,14 @@
       var A = sdk();
       if (!err) return 'Something went wrong.';
       if (err.name === 'LiveAIError') return err.message;
+      if (err.name === 'ApiMeterBlocked') return 'Live AI is paused: ' + err.message + '.';
+      if (viaOpenRouter() && err.status) {
+        if (err.status === 401) return 'The OpenRouter key was rejected. Check it on the API monitor.';
+        if (err.status === 402) return 'OpenRouter credits are exhausted for this key.';
+        if (err.status === 429) return 'OpenRouter rate limit. Wait a moment and try again.';
+        if (err.status === 400 || err.status === 404) return 'OpenRouter rejected the request: ' + err.message + '.';
+        return 'OpenRouter error ' + err.status + ': ' + err.message;
+      }
       if (err.name === 'AbortError' || (A && err instanceof A.APIUserAbortError)) return 'Cancelled.';
       if (A) {
         if (err instanceof A.AuthenticationError) return 'The API key was rejected. Check it and try again.';

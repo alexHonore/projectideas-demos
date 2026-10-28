@@ -23,6 +23,13 @@
     return window.LiveAI.isOn() ? { state: 'on', label: 'IA en direct active', reason: window.LiveAI.model } : { state: 'off', label: 'IA en direct désactivée', reason: 'La démo utilise les règles.' };
   };
   AI.on = () => AI.status().state === 'on';
+  /* Garde avant tout appel : en pause (coupe-circuit, budget, débit), aucune requête ne part et la raison du moniteur est donnée */
+  const gate = () => {
+    const st = AI.status();
+    if (st.state === 'on') return;
+    if (st.state === 'paused') throw fail('blocked', 'Live AI is paused: ' + window.ApiMeter.check('tenderstrike', 'anthropic').reason + '.');
+    throw fail('off', 'Live AI is off.');
+  };
   /* Icône d’état : lien vers le moniteur d’API du hub, où vivent clés, budgets et coupe-circuits */
   AI.link = (cls, compact) => { const st = AI.status(); return `<a class="ai-status is-${st.state}${cls ? ' ' + cls : ''}" href="../../index.html#api" title="${U.esc(st.label + ' · ' + st.reason)}" aria-label="${U.esc(st.label + '. Ouvrir le moniteur d’API')}">${U.icon('bolt', 16)}${compact ? '' : `<span>${U.esc(st.state === 'on' ? 'IA en direct' : st.state === 'paused' ? 'IA en pause' : 'IA désactivée')}</span>`}</a>`; };
   const FR = [
@@ -56,7 +63,7 @@
 
   /* ---------- Radiographie d’un avis (texte collé ou PDF en base64) ---------- */
   AI.xray = async (text, pdf) => {
-    if (!AI.on()) throw fail('off', 'Live AI is off.');
+    gate();
     const documents = pdf && pdf.base64 ? [{ base64: pdf.base64, mediaType: 'application/pdf', title: pdf.name || 'Avis' }] : undefined;
     const prompt = (documents ? 'Le document PDF joint est l’avis d’appel d’offres à radiographier.' + (text ? ' Texte extrait dans le navigateur, pour référence :\n\n' + text.slice(0, 60000) : '') : 'Avis d’appel d’offres à radiographier :\n\n' + text.slice(0, 60000));
     const res = await window.LiveAI.json({ system: X.system() + ' ' + AI.context(), prompt, schema: X.schema, documents, effort: 'low', maxTokens: 8000 });
@@ -97,7 +104,7 @@
     return null;
   };
   AI.why = async (id) => {
-    if (!AI.on()) throw fail('off', 'Live AI is off.');
+    gate();
     const facts = AI.whyFacts(id);
     const res = await window.LiveAI.json({
       system: 'Tu expliques à la propriétaire d’une PME québécoise la recommandation de prix calculée par TenderStrike QC, en français du Québec, en 90 à 140 mots, sans jargon. Utilise uniquement les chiffres fournis en JSON; n’en invente aucun et n’en recalcule aucun. N’exprime aucune probabilité ni aucune chance de gagner : personne ne sait qui soumissionnera. Ne recommande aucun prix autre que ceux fournis. ' + AI.context(),
@@ -111,7 +118,7 @@
   /* ---------- Brouillon de question au donneur d’ouvrage ---------- */
   const Q_SCHEMA = { type: 'object', additionalProperties: false, required: ['text'], properties: { text: { type: 'string', description: 'Question complète, prête à relire' } } };
   AI.question = async (id, rid) => {
-    if (!AI.on()) throw fail('off', 'Live AI is off.');
+    gate();
     const def = S.def(id), r = rid ? S.reqById(id, rid) : null;
     const facts = { appel: def.ref, titre: def.title, acheteur: def.buyer, dateLimiteQuestions: def.questionsDeadline ? U.dayTime(def.questionsDeadline) : null, exigence: r ? { titre: r.title, section: r.sec, page: r.page, texte: S.clauseText(id, r.clause), lecture: r.plain } : null, signataire: D.company.contact + ', ' + D.company.legalName };
     const res = await window.LiveAI.json({

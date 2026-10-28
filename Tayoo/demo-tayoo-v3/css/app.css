@@ -1324,3 +1324,14 @@ details:not([open]) > :not(summary) { display: none !important; }
 .fchip-ic { display: inline-grid; place-items: center; min-width: 40px; }
 .fchip-ic .ic { width: 15px; height: 15px; }
 .need-n { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--amber-soft); color: var(--amber); font-weight: 700; font-size: 12.5px; }
+.cond { flex-wrap: nowrap; align-items: center; }
+.cond > div { flex: 1 1 auto; }
+.cond-act { gap: 2px; flex-wrap: nowrap; }
+.cond-act .icon-btn { border: 1px solid var(--line); background: #fff; }
+.cond-act .icon-btn.is-ok { color: var(--green); }
+.issue { grid-template-columns: 20px minmax(0, 1fr); align-items: start; }
+.issue > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
+.issue-act { margin-top: 0; }
+.iss-dt { color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.iss-dt s { color: var(--ink-3); }
+body.touring .toast { bottom: auto; top: 70px; }

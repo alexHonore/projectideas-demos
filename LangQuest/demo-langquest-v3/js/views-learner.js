@@ -6,13 +6,13 @@
   const st = () => S.state;
 
   /* ── App header with the global course switcher (target + source + edit) ── */
-  V.header = () => {
+  V.header = (noPill) => {
     const t = S.track();
     if (!t) return '';
     const e = S.enr();
-    return '<header class="appbar" id="app-header">' +
-      '<button class="coursepill" data-act="open-switcher" aria-label="Course: ' + esc(t.name) + ', learning from ' + esc(S.srcName(e.source)) + '. Change course or instruction language">' + U.trackBadge(t) +
-      '<span class="coursepill__txt"><strong>' + esc(t.name) + '</strong><span>from ' + esc(S.srcName(e.source)) + ' ' + ic('edit', 'ic--xs') + '</span></span>' + ic('down', 'ic--sm') + '</button>' +
+    return '<header class="appbar' + (noPill ? ' appbar--nopill' : '') + '" id="app-header">' + (noPill ? '<span class="appbar__fill"></span>' : '') +
+      (noPill ? '' : '<button class="coursepill" data-act="open-switcher" aria-label="Course: ' + esc(t.name) + ', learning from ' + esc(S.srcName(e.source)) + '. Change course or instruction language">' + U.trackBadge(t) +
+      '<span class="coursepill__txt" title="' + esc(t.name + ', from ' + S.srcName(e.source)) + '"><strong>' + esc(t.name.replace(/\s*\(.*\)$/, '')) + '</strong></span><span class="coursepill__src">' + esc(String(e.source).toUpperCase()) + '</span></button>') +
       '<button class="iconbtn hdr-search" data-act="search-open" aria-label="Search (Ctrl or Cmd + K)" title="Search">' + ic('search', 'ic--sm') + '</button>' +
       '<a class="iconbtn bell" href="#/inbox" title="Inbox" aria-label="Inbox' + (S.unread() ? ', ' + S.unread() + ' unread' : '') + '">' + ic('bell', 'ic--sm') + (S.unread() ? '<span class="bell__n" aria-hidden="true">' + Math.min(9, S.unread()) + (S.unread() > 9 ? '+' : '') + '</span>' : '') + '</a>' +
       '<button class="iconbtn demo-chip" data-act="demo-sheet" aria-label="Demo tools: tour, Test lab, API monitor, reset. Fictional data." title="Demo tools · fictional data">' + ic('flask', 'ic--sm') + '</button>' +
@@ -26,7 +26,7 @@
     '<p class="lede">30 courses. Free. Talk first.</p>' +
     '<div class="stack-sm"><a class="btn btn--primary btn--lg" href="#/onboard/source" data-fk="ob-start">Choose a language</a>' +
     '<button class="linkbtn" data-act="use-sample">Try a sample learner</button></div>' +
-    '<p class="fineprint"><span class="chip-demo">' + ic('flask', 'ic--xs') + 'Demo · fictional data</span> ' + U.info('Hear a real situation, say your answer before you see it, then talk it through with a recurring local character. Thirty courses, all free: no paywall, no credits, no daily limits. Your progress stays in this browser.', 'About LangQuest') + '</p></main>';
+    '<p class="fineprint"><button class="chip-demo chip-demo--btn" data-act="demo-sheet" aria-haspopup="dialog" title="Demo tools: tour, Test lab, API monitor, reset">' + ic('flask', 'ic--xs') + 'Demo · fictional data</button> ' + U.info('Hear a real situation, say your answer before you see it, then talk it through with a recurring local character. Thirty courses, all free: no paywall, no credits, no daily limits. Your progress stays in this browser.', 'About LangQuest') + '</p></main>';
 
   /* ── Onboarding: instruction language → course → confirm ── */
   V.obSource = () => {
@@ -48,12 +48,12 @@
       const enrolled = st().enrollments[t.id];
       const nMissions = LQ.missionsFor(t.id).filter(m => m.status === 'playable' && !m.firstWords).length, deep = LQ.MISSIONS.some(m => m.track === t.id && m.status === 'playable');
       return '<li><a class="track" href="' + (opts.ob ? '#/onboard/confirm/' + t.id : '#/course/' + t.id) + '">' + U.trackBadge(t, 'tbadge--lg') +
-        '<span class="track__main"><strong>' + esc(t.name) + '</strong><span class="track__sample"><span lang="' + esc(t.tts[0]) + '" dir="' + (t.rtl ? 'rtl' : 'ltr') + '">' + esc(t.hello.t) + '</span>' + (t.hello.r ? ' <span class="muted">' + esc(t.hello.r) + '</span>' : '') + '</span>' +
+        '<span class="track__main"><strong>' + esc(t.name) + '</strong><span class="track__sample"' + (t.hello.r ? ' title="' + esc(t.hello.r) + '"' : '') + '><span lang="' + esc(t.tts[0]) + '" dir="' + (t.rtl ? 'rtl' : 'ltr') + '">' + esc(t.hello.t) + '</span></span>' +
         '</span>' +
-        '<span class="track__tags">' + (enrolled ? '<span class="tag tag--ok" title="Enrolled">' + ic('check', 'ic--xs') + '</span>' : '') + '<span class="tag' + (deep ? ' tag--cobalt' : '') + '" title="' + esc(t.variety + ', ' + LQ.SCRIPT_NAMES[t.script] + ' script' + (t.rtl ? ', right-to-left' : '') + '. ' + nMissions + ' missions' + (deep ? ', including longer hand-written ones' : '')) + '">' + nMissions + ' missions</span>' + '</span></a></li>';
+        '<span class="track__tags">' + (enrolled ? '<span class="tag tag--ok" title="Enrolled">' + ic('check', 'ic--xs') + '</span>' : '') + '<span class="tag' + (deep ? ' tag--cobalt' : '') + '" aria-label="' + nMissions + ' missions" title="' + esc(t.variety + ', ' + LQ.SCRIPT_NAMES[t.script] + ' script' + (t.rtl ? ', right-to-left' : '') + '. ' + nMissions + ' missions' + (deep ? ', including longer hand-written ones' : '')) + '">' + ic('path', 'ic--xs') + nMissions + '</span>' + '</span></a></li>';
     };
-    return '<div class="catalog"><label class="search">' + ic('search', 'ic--sm') + '<span class="sr-only">Search 30 courses</span><input type="search" id="catalog-q" data-input="catalog-q" placeholder="Course, city or “hello”" value="' + esc(LQ.ui.catalogQuery || '') + '"></label>' +
-      '<div class="chips chips--scroll" role="group" aria-label="Filter courses">' + LQ.REGION_GROUPS.map(x => '<button class="fchip' + (x.id === g ? ' is-on' : '') + '" aria-pressed="' + (x.id === g) + '" data-act="catalog-group" data-arg="' + x.id + '">' + esc(x.label) + '</button>').join('') + '</div>' +
+    return '<div class="catalog"><label class="search">' + ic('search', 'ic--sm') + '<input type="search" id="catalog-q" data-input="catalog-q" aria-label="Search 30 courses" placeholder="Course, city or “hello”" value="' + esc(LQ.ui.catalogQuery || '') + '"></label>' +
+      '<div class="chips chips--scroll" role="group" aria-label="Filter courses">' + LQ.REGION_GROUPS.map(x => '<button class="fchip' + (x.id === g ? ' is-on' : '') + '" aria-pressed="' + (x.id === g) + '" data-act="catalog-group" data-arg="' + x.id + '" title="' + esc(x.label) + '">' + esc(x.label.replace(/ varieties$/, '')) + '</button>').join('') + '</div>' +
       '<p class="muted small" aria-live="polite">' + list.length + ' / 30</p>' +
       (list.length ? '<ul class="tracklist" role="list">' + list.map(item).join('') + '</ul>' : '<div class="empty">' + A.orbit('curious', { size: 72 }) + '<p>No course matches “' + esc(q) + '”. Try a city like “Kigali” or a word like “mbote”.</p><button class="btn btn--ghost" data-act="catalog-clear">Clear search</button></div>') + '</div>';
   };
@@ -135,13 +135,16 @@
       if (next && next.id === m.id) return { k: 'next', label: 'Up next' };
       return { k: 'open', label: 'Open' };
     };
+    /* Status as an icon (the word is the tooltip and accessible name); only "Next" keeps a word. */
+    const ST_IC = { done: 'check', next: 'play', open: 'chevron', preview: 'wand', region: 'globe', paused: 'pausecircle' };
+    const stTag = s => s.k === 'next' ? '<span class="tag tag--next" title="' + esc(s.label) + '">' + ic('play', 'ic--xs') + 'Next</span>' : '<span class="tag tag--' + s.k + ' tag--ic" role="img" aria-label="' + esc(s.label) + '" title="' + esc(s.label) + '">' + ic(ST_IC[s.k] || 'info', 'ic--xs') + '</span>';
     const reg = t.regions && e.region ? t.regions.find(r => r.id === e.region) : null, city = reg && /\(([^)]+)\)/.test(reg.label) ? reg.label.match(/\(([^)]+)\)/)[1] : t.city;
     let html = V.header() + '<main class="missions" id="main"><div class="pagehead"><h1 class="h2">' + esc(city) + ' ' + U.info('Each stop is a real situation. Every mission is open to you; the path only suggests an order. Map art is illustrative, not geography. Full release plans about 40 missions per course.', 'About the mission path') + '</h1>' +
       '<div class="seg seg--mini" role="group" aria-label="View"><button class="segbtn' + (mode === 'path' ? ' is-on' : '') + '" aria-pressed="' + (mode === 'path') + '" data-act="path-mode" data-arg="path" aria-label="Path view" title="Path view">' + ic('route', 'ic--sm') + '</button><button class="segbtn' + (mode === 'list' ? ' is-on' : '') + '" aria-pressed="' + (mode === 'list') + '" data-act="path-mode" data-arg="list" aria-label="List view" title="List view">' + ic('list', 'ic--sm') + '</button></div></div>' +
       '';
     if (t.regions && LQ.MISSIONS.some(m => m.track === t.id && m.region)) html += '<a class="chiplink" href="#/course/' + t.id + '" title="Your regional variety. Change it in course settings.">' + ic('globe', 'ic--xs') + esc(t.regions.find(r => r.id === e.region).label) + '</a>';
     chapters.forEach(c => {
-      html += '<section class="chapter"><h2 class="chapter__title">' + (c.n ? 'Chapter ' + c.n + ': ' : '') + esc(U.L(c.title, src)) + '</h2>';
+      html += '<section class="chapter"><h2 class="chapter__title">' + (c.n ? '<span class="chapter__n" title="Chapter ' + c.n + '">' + c.n + '</span> ' : '') + esc(U.L(c.title, src)) + '</h2>';
       if (mode === 'path') {
         const ROW = 124, H = c.items.length * ROW;
         const pts = c.items.map((m, i) => [i % 2 ? 80 : 20, i * ROW + 56]);
@@ -149,10 +152,10 @@
         html += '<div class="path" style="height:' + H + 'px"><svg class="path__line" viewBox="0 0 100 ' + H + '" preserveAspectRatio="none" aria-hidden="true"><path d="' + d + '" vector-effect="non-scaling-stroke"/></svg><ol role="list">' + c.items.map((m, i) => {
           const s = statusOf(m);
           return '<li class="stop stop--' + s.k + (i % 2 ? ' stop--r' : '') + '" style="top:' + (i * ROW) + 'px"><a class="stop__medal" href="#/mission/' + m.id + '" aria-label="' + esc(U.L(m.title, src) + ', ' + s.label + ', ' + m.minutes + ' minutes') + '">' + A.scene(m.scene, { palette: A.plazaPalette(t) }) + (s.k === 'done' ? '<span class="stop__badge">' + ic('check', 'ic--xs') + '</span>' : '') + '</a>' +
-            '<div class="stop__card" title="' + esc(m.minutes + ' min. ' + U.L(m.focus, src)) + '"><span class="tag tag--' + s.k + '">' + esc(s.label) + '</span><strong>' + esc(U.L(m.title, src)) + '</strong></div></li>';
+            '<div class="stop__card" title="' + esc(s.label + ' · ' + m.minutes + ' min. ' + U.L(m.focus, src)) + '">' + stTag(s) + '<strong>' + esc(U.L(m.title, src)) + '</strong></div></li>';
         }).join('') + '</ol></div>';
       } else {
-        html += '<ul class="mlist" role="list">' + c.items.map(m => { const s = statusOf(m); return '<li><a class="mrow" href="#/mission/' + m.id + '"><span class="mrow__thumb">' + A.scene(m.scene, { palette: A.plazaPalette(t) }) + '</span><span class="mrow__main"><strong>' + esc(U.L(m.title, src)) + '</strong><span class="muted small">' + m.minutes + ' min</span></span><span class="tag tag--' + s.k + '">' + esc(s.label) + '</span></a></li>'; }).join('') + '</ul>';
+        html += '<ul class="mlist" role="list">' + c.items.map(m => { const s = statusOf(m); return '<li><a class="mrow" href="#/mission/' + m.id + '"><span class="mrow__thumb">' + A.scene(m.scene, { palette: A.plazaPalette(t) }) + '</span><span class="mrow__main"><strong>' + esc(U.L(m.title, src)) + '</strong><span class="muted small">' + m.minutes + ' min</span></span>' + stTag(s) + '</a></li>'; }).join('') + '</ul>';
       }
       html += '</section>';
     });
@@ -195,9 +198,9 @@
   /* ── Courses: enrollments + full catalog ── */
   V.courses = () => {
     const ens = Object.entries(st().enrollments).filter(([k, v]) => v.status === 'active');
-    return V.header() + '<main class="courses" id="main"><h1 class="h2">Courses</h1>' +
-      '<ul class="enrolls" role="list" aria-label="Your courses">' + ens.map(([tid, en]) => { const t = LQ.trackById(tid); return '<li class="enroll' + (tid === st().active ? ' is-active' : '') + '">' + U.trackBadge(t, 'tbadge--lg') + '<span class="enroll__main"><strong>' + esc(t.name) + '</strong><span class="muted small">from ' + esc(S.srcName(en.source)) + (en.region && t.regions ? ', ' + esc(t.regions.find(r => r.id === en.region).label) : '') + '</span></span>' +
-        (tid === st().active ? '<span class="tag tag--ok">Active</span>' : '<button class="btn btn--sm" data-act="switch-course" data-arg="' + tid + '">Switch</button>') + '<a class="iconbtn" href="#/course/' + tid + '" aria-label="Edit ' + esc(t.name) + ' settings">' + ic('edit', 'ic--sm') + '</a></li>'; }).join('') + '</ul>' +
+    return V.header(true) + '<main class="courses" id="main"><h1 class="h2">Courses</h1>' +
+      '<ul class="enrolls" role="list" aria-label="Your courses">' + ens.map(([tid, en]) => { const t = LQ.trackById(tid); return '<li class="enroll' + (tid === st().active ? ' is-active' : '') + '">' + U.trackBadge(t, 'tbadge--lg') + '<span class="enroll__main"><strong>' + esc(t.name) + '</strong><span class="muted small" title="' + esc('From ' + S.srcName(en.source) + (en.region && t.regions ? ', ' + t.regions.find(r => r.id === en.region).label : '')) + '">' + esc(String(en.source).toUpperCase()) + '</span></span>' +
+        (tid === st().active ? '<span class="tag tag--ok tag--ic" role="img" aria-label="Active course" title="Active course">' + ic('check', 'ic--xs') + '</span>' : '<button class="iconbtn" data-act="switch-course" data-arg="' + tid + '" aria-label="Switch to ' + esc(t.name) + '" title="Switch to ' + esc(t.name) + '">' + ic('refresh', 'ic--sm') + '</button>') + '<a class="iconbtn" href="#/course/' + tid + '" aria-label="Edit ' + esc(t.name) + ' settings" title="Course settings">' + ic('edit', 'ic--sm') + '</a></li>'; }).join('') + '</ul>' +
       '<h2 class="h4">All 30</h2>' + V.catalogList() + '</main>';
   };
   V.course = (tid) => {

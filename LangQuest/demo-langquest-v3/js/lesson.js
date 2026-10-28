@@ -58,7 +58,7 @@
     else if (C.mode === 'rec') { txt = 'Recording your voice'; expr = 'listening'; }
     else if (R && R.phase === 'feedback') { txt = 'Conversation finished'; expr = 'success'; }
     else if (R && R.phase === 'talk' && !R.ended) { txt = 'Waiting for you'; expr = (mis().roleplay.turns[R.turn] || {}).unexpected ? 'question' : 'listening'; }
-    else txt = 'Ready';
+    else txt = '';
     el.textContent = txt; el.className = 'live' + (LS.live.speaking ? ' is-speaking' : C.mode ? ' is-mic' : '');
     if (port) port.innerHTML = portraitFor(expr, 64);
   }
@@ -89,7 +89,7 @@
       '<header class="lhead"><button class="iconbtn" data-act="lesson-exit" aria-label="Pause and leave the mission">' + ic('close') + '</button>' +
       '<div class="lhead__t" title="' + esc(t.name + ', from ' + S.srcName(src())) + '"><strong>' + esc(L(m.title)) + '</strong></div>' + U.voiceChip(t, e) + '</header>' +
       '<ol class="stepper" aria-label="Mission steps">' + phases.map((p, i) => '<li class="' + (i < idx ? 'is-done' : i === idx ? 'is-on' : '') + '"' + (i === idx ? ' aria-current="step"' : '') + '><span class="stepper__bar"></span><span class="stepper__l">' + PH[p] + '</span></li>').join('') + '</ol>' +
-      '<div class="lscene">' + A.scene(m.scene, { palette: A.plazaPalette(t) }) + '<div class="lscene__who"><span id="live-port">' + portraitFor('neutral', 64) + '</span><span class="live" id="live-state" role="status">Ready</span></div></div>' +
+      '<div class="lscene">' + A.scene(m.scene, { palette: A.plazaPalette(t) }) + '<div class="lscene__who"><span id="live-port">' + portraitFor('neutral', 64) + '</span><span class="live" id="live-state" role="status"></span></div></div>' +
       '<section class="lbody">' + PHASE[R.phase]() + '</section></main>';
     return h;
   };
@@ -116,7 +116,7 @@
   /* 1. Context: situational listening and a visual meaning check */
   PHASE.context = () => {
     const m = mis(), c = m.context;
-    let h = '<details class="scene-d"><summary aria-label="About the scene" title="' + esc(L(c.setup)) + '">' + ic('info', 'ic--xs') + '<span>Scene</span></summary><p class="setup">' + esc(L(c.setup)) + fbNote(c.setup) + '</p></details>' +
+    let h = '<details class="scene-d"><summary aria-label="About the scene" title="' + esc(L(c.setup)) + '">' + ic('info', 'ic--xs') + '</summary><p class="setup">' + esc(L(c.setup)) + fbNote(c.setup) + '</p></details>' +
       '<div class="bubble-char"><div class="bubble-char__txt">' + (R.subs || R.ctx.text ? U.phrase(c.line, { track: trk() }) : '<span class="muted">' + ic('ear', 'ic--sm') + ' Listen first. Text is hidden.</span>') +
       (R.ctx.translate ? '<span class="gloss">' + esc(L(c.line.m)) + '</span>' : '') + '</div>' +
       '<div class="tools">' + U.tool('ctx-play', 'replay', 'Replay') + U.tool('ctx-slow', 'slow', 'Slower') + U.tool('ctx-text', 'text', 'Show text', ' aria-pressed="' + !!(R.subs || R.ctx.text) + '"') + U.tool('ctx-translate', 'translate', 'Translate', ' aria-pressed="' + R.ctx.translate + '"') +
@@ -125,7 +125,7 @@
       c.options.map((o, i) => { const chosen = R.ctx.answer === i; const cls = chosen ? (o.ok ? ' is-right' : ' is-wrong') : ''; return '<button class="opt' + cls + '" data-act="ctx-answer" data-arg="' + i + '"' + (R.ctx.ok ? ' disabled' : '') + ' aria-pressed="' + chosen + '">' + A.optionIcon(o.icon) + '<span>' + esc(L(o.m)) + '</span>' + (chosen ? (o.ok ? ic('check', 'ic--sm') : '') : '') + '</button>'; }).join('') + '</div>';
     if (R.ctx.answer !== null && !R.ctx.ok) h += '<p class="soft-no">' + ic('replay', 'ic--sm') + '<span>Not quite. Replay it, or turn on the translation, and try again.</span></p>';
     if (R.ctx.ok) h += '<p class="yes">' + ic('check', 'ic--sm') + '<span>' + esc(L(c.after) || 'Right.') + '</span></p>';
-    h += '<div class="lfoot"><button class="btn btn--quiet" data-act="phase-skip">Skip</button><button class="btn btn--primary" data-act="phase-next"' + (R.ctx.ok ? '' : ' disabled') + '>Continue</button></div>';
+    h += '<div class="lfoot">' + U.tool('phase-skip', 'skip', 'Skip this step') + (R.ctx.ok ? '<button class="btn btn--primary" data-act="phase-next">Continue</button>' : '') + '</div>';
     return h;
   };
   /* 2. Model phrases: hear normal/slow, say it, optional word help */

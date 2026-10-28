@@ -80,7 +80,7 @@
   VX.cacheKey = (model, voice, text) => model + '|' + voice + '|' + text;
 
   /* ── tier status (for the tiny icon and the voice picker) ── */
-  VX.geminiGate = () => { const m = meter(); if (!m) return { ok: false, reason: 'API monitor not loaded' }; return m.check(APP, 'gemini'); };
+  VX.geminiGate = () => { const m = meter(); if (!m) return { ok: false, reason: 'API monitor not loaded' }; if (LQ.store && LQ.store.cap && LQ.store.cap('offline')) return { ok: false, reason: 'Offline (Test lab)' }; return m.check(APP, 'gemini'); };
   VX.hasClips = (course) => Object.values(root.LQ_AUDIO || {}).some(c => c && c.c === course);
   VX.tierFor = (track, enr) => {
     enr = enr || {};
@@ -91,7 +91,8 @@
     const tts = LQ.speech.ttsGate();
     const neuralWhy = !pol.gemini ? 'Neural voice off for this variety: ' + pol.why + '.' : enr.neural === false ? 'Neural voice switched off for this course.' : 'Neural voice paused: ' + g.reason + '.';
     if (f && tts.ok) return { tier: 'device', icon: 'volume', label: 'Device voice', why: f.voice.name + ' (' + f.voice.lang + '). ' + neuralWhy };
-    return { tier: 'text', icon: 'text', label: 'Text only', why: (!tts.ok ? 'Browser voices paused: ' + tts.reason + '. ' : 'No ' + LQ.ui.voiceFor(track, enr).locales[0] + ' voice on this device; no other variety is substituted. ') + neuralWhy };
+    const loc = LQ.ui.voiceFor(track, enr).locales[0], sim = LQ.store && LQ.store.cap && LQ.store.cap('noVoice');
+    return { tier: 'text', icon: 'text', label: 'Text only', why: (!tts.ok ? 'Browser voices paused: ' + tts.reason + '. ' : sim ? 'Test lab: this device has no ' + loc + ' voice; no other variety is substituted. ' : 'No ' + loc + ' voice on this device; no other variety is substituted. ') + neuralWhy };
   };
   VX.last = null;
 

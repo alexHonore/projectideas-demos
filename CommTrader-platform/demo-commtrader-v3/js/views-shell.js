@@ -27,8 +27,9 @@
   }
   /* Where a structured result came from: rules or live AI (model and time). */
   function provenance(p) {
-    if (!p || p.source !== 'live-ai') return '<span class="prov prov-rules" title="Deterministic rule engine, runs in this browser">' + icon('check', 12) + '<span>Rules</span></span>';
-    return '<span class="prov prov-ai" title="Proposed by live AI; you review before anything is applied">' + icon('spark', 12) + '<span>Live AI · ' + esc(p.model || 'claude-opus-5-5') + ' · ' + ((p.ms || 0) / 1000).toFixed(1) + ' s' + (p.fellBack ? ' · fallback model' : '') + '</span></span>';
+    if (!p || p.source !== 'live-ai') return '<span class="prov prov-rules" title="Rules: deterministic rule engine, runs in this browser">' + icon('check', 12) + '<span>Rules</span></span>';
+    const tip = 'Live AI · ' + (p.model || 'claude-opus-5-5') + ' · ' + ((p.ms || 0) / 1000).toFixed(1) + ' s' + (p.fellBack ? ' · fallback model' : '') + '. Proposed by live AI; you review before anything is applied.';
+    return '<span class="prov prov-ai" title="' + esc(tip) + '" aria-label="' + esc(tip) + '">' + icon('spark', 12) + '<span>AI</span></span>';
   }
 
   /* ---------- Compact helpers: explanations behind ⓘ, status icons, tabs, live-AI status ---------- */

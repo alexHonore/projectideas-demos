@@ -302,8 +302,8 @@
       }); });
       var ev = S().appointments.filter(function (a) { return a.tx === tx.id && a.ref === kd.id && a.status !== 'cancelled'; })[0];
       var soon = kd.date >= today && T.daysBetween(today, kd.date) <= 60;
-      if (soon && !ev) issues.push({ type: 'missing-calendar', key: kd.id, label: kd.label + ' on ' + T.fmtDate(kd.date, { long: true }) + ' is not in your calendar.' });
-      if (ev && ev.date !== kd.date) issues.push({ type: 'calendar-mismatch', key: kd.id, event: ev.id, label: 'Your calendar has the ' + kd.label.toLowerCase() + ' on ' + T.fmtDate(ev.date, { long: true }) + '; the file says ' + T.fmtDate(kd.date, { long: true }) + '.' });
+      if (soon && !ev) issues.push({ type: 'missing-calendar', key: kd.id, label: kd.label + ' on ' + T.fmtDate(kd.date, { long: true }) + ' is not in your calendar.', short: kd.label + ' · ' + T.fmtDate(kd.date, { noDay: true }) });
+      if (ev && ev.date !== kd.date) issues.push({ type: 'calendar-mismatch', key: kd.id, event: ev.id, label: 'Your calendar has the ' + kd.label.toLowerCase() + ' on ' + T.fmtDate(ev.date, { long: true }) + '; the file says ' + T.fmtDate(kd.date, { long: true }) + '.', short: kd.label, from: T.fmtDate(ev.date, { noDay: true }), to: T.fmtDate(kd.date, { noDay: true }) });
       open.push({ item: kd.label, date: kd.date, note: T.fmtDate(kd.date, { long: true }) + (ev ? ', in your calendar' : ''), source: kd.source });
     });
     tx.docs.forEach(function (d) { done.push({ item: d.type + ' received', date: d.date, source: d.type }); });

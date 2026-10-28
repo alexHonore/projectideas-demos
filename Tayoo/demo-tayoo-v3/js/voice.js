@@ -171,8 +171,9 @@
   // the fallback path is recording → transcribing → sending
   var STATES = {
     starting: { icon: 'mic', text: 'Starting the mic' },
-    listening: { icon: 'mic', text: 'Listening' },
-    recording: { icon: 'mic', text: 'Recording' },
+    // the disclosure stays visible whenever the browser's recognizer is listening
+    listening: { icon: 'mic', text: 'Listening', hint: 'Some browsers, Chrome among them, send the audio to their own speech service to transcribe it.' },
+    recording: { icon: 'mic', text: 'Recording', hint: 'Gemini transcribes this recording (metered).' },
     transcribing: { icon: 'refresh', text: 'Transcribing' },
     sending: { icon: 'check', text: 'Got it' },
     sample: { icon: 'play', text: 'Scripted sample' },
@@ -204,7 +205,7 @@
     $('cap-ic').innerHTML = T.icon(d.icon);
     $('cap-status-text').textContent = text || d.text;
     var hel = $('cap-hint');
-    hel.textContent = hint || '';
+    hel.textContent = hint != null ? hint : d.hint || '';
     hel.title = reason || '';
     $('cap-stop').hidden = !(st === 'listening' || st === 'recording' || st === 'starting' || st === 'sample');
     $('capture').querySelector('[data-act="cap-retry"]').hidden = !(st === 'error' || st === 'paused' || st === 'unsupported');
@@ -389,7 +390,7 @@
       };
       mr.start(250);
       L.start(stream);
-      setState('recording', 'Recording', '', 'Your browser has no speech recognition here, so the audio is transcribed by Gemini (metered).');
+      setState('recording', 'Recording', null, 'Your browser has no speech recognition here, so the audio is transcribed by Gemini (metered).');
       // stop after 1.5 s of quiet once you have spoken, or at 60 s
       var spoke = false;
       C.silenceT = setInterval(function () {

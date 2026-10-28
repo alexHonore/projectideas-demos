@@ -15,7 +15,7 @@
     pending: ['wait', 'clock', 'À compléter'], unverified: ['wait', 'q', 'Non vérifié'], unknown: ['wait', 'q', 'Inconnu'],
     na: ['muted', 'minus', 'Non applicable'], risk: ['risk', 'alert', 'Risque commercial'], info: ['muted', 'info', 'À savoir']
   };
-  UI.status = (k, label) => { const s = STATUS[k] || STATUS.info; return `<span class="st st-${s[0]}">${ic(s[1], 14)}<span>${esc(label || s[2])}</span></span>`; };
+  UI.status = (k, label) => { const s = STATUS[k] || STATUS.info; return `<span class="st st-${s[0]}" title="${esc(label || s[2])}">${ic(s[1], 14)}<span>${esc(label || s[2])}</span></span>`; };
   UI.stage = (k) => {
     const cls = { matched: 'stg-new', review: 'stg-review', prep: 'stg-prep', approval: 'stg-approval', ready: 'stg-ready', submitted: 'stg-done', opened: 'stg-done', awarded: 'stg-done', lost: 'stg-muted', cancelled: 'stg-muted', declined: 'stg-muted', missed: 'stg-bad' }[k] || 'stg-new';
     return `<span class="stg ${cls}">${esc(S.stageLabel(k))}</span>`;

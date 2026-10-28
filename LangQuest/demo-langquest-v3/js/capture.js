@@ -58,7 +58,7 @@
     opts = opts || {};
     const active = C.key === key ? C.mode : null;
     const sr = C.srUsable();
-    const primaryLabel = active === 'sr' ? 'Listening… tap to finish' : active === 'rec' ? 'Recording… tap to stop' : active === 'rec-wait' ? 'Waiting for the microphone…' : (opts.label || (sr ? 'Tap and speak' : 'Tap to record yourself'));
+    const primaryLabel = active === 'sr' ? 'Listening… tap to finish' : active === 'rec' ? 'Recording… tap to stop' : active === 'rec-wait' ? 'Waiting for the microphone…' : (opts.label || (sr ? 'Speak' : 'Record yourself'));
     const paused = C.srPaused();
     const mic = '<button class="mic' + (active ? ' is-live' : '') + '" data-act="cap-speak" data-arg="' + key + '" aria-pressed="' + (!!active) + '" aria-label="' + esc(primaryLabel) + '" title="' + esc(primaryLabel) + '">' + ic(active === 'sr' || active === 'rec' ? 'stop' : 'mic') + '</button><p class="cap__status" role="status">' + esc(primaryLabel) + (paused ? ' <span class="paused" title="Speech recognition paused: ' + esc(paused) + '. Recording and typing still work." aria-label="Speech recognition paused: ' + esc(paused) + '">' + ic('pausecircle', 'ic--xs') + '</span>' : '') + '</p>';
     let x = '';

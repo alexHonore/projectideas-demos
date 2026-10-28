@@ -44,10 +44,10 @@
     const hb = S.isOpen(id) ? S.hardBlockers(id) : [];
     const close = S.close(id);
     return `<article class="tcard${featured ? ' tcard-hero' : ''}" data-tender="${id}">
-      <header class="tcard-h"><span class="tcard-buyer">${esc(t.buyerShort)}</span>${isNew ? UI.chip('', 'Nouveau', 'newmark') : ''}${t.custom ? UI.chip('user', 'Ajouté', 'newmark newmark-you', 'Ajouté par vous') : ''}${UI.stage(k)}${t.custom ? UI.iconBtn('trash', 'Supprimer ce dossier', 'tender-del', { t: id }, 'icon-sm') : ''}</header>
+      <header class="tcard-h"><span class="tcard-buyer">${esc(t.buyerShort)}</span>${isNew ? `<span class="newdot" title="Nouveau : publié il y a moins de 48 h"><span class="sr">Nouveau</span></span>` : ''}${t.custom ? `<span class="newdot newdot-you" title="Ajouté par vous">${ic('user', 12)}<span class="sr">Ajouté par vous</span></span>` : ''}${k === 'matched' ? `<span class="stg stg-new stg-i" title="${esc(S.stageLabel(k))}">${ic('radar', 14)}<span class="sr">${esc(S.stageLabel(k))}</span></span>` : UI.stage(k)}${t.custom ? UI.iconBtn('trash', 'Supprimer ce dossier', 'tender-del', { t: id }, 'icon-sm') : ''}</header>
       <h3 class="tcard-t"><a href="#/dossier/${id}/radiographie">${esc(t.title)}</a></h3>
       <p class="tcard-k"><span title="Clôture : ${esc(U.dayTime(close))}">${ic('clock', 15)}${S.nowTs() < Date.parse(close) ? U.countdown(S.now(), close) : esc(U.dateShort(close))}</span>${hb.length && (d.decision || d.xrayOpened) ? `<span class="tcard-bad" title="${esc(hb.map((b) => b.label).join(' · '))}">${ic('alert', 15)}${hb.length}</span>` : ''}${d.receipt ? `<span class="tcard-ok" title="${esc(d.receipt.number)}">${ic('stamp', 15)}Reçu</span>` : ''}${featured ? `<a class="btn btn-primary btn-sm" href="${n.href}">${esc(n.label)}</a>` : ''}</p>
-      <details class="tcard-more"><summary aria-label="Détails : ${esc(t.buyerShort)}">${ic('down', 14)}<span>Détails</span></summary>
+      <details class="tcard-more"><summary aria-label="Détails : ${esc(t.buyerShort)}" title="Détails">${ic('down', 16)}</summary>
         <p class="tcard-meta"><span>${ic('folder', 14)}${UI.trade(t.trade)}</span>${t.custom ? '' : `<span>${ic('pin', 14)}${t.distance} km</span>`}<span>${ic('doc', 14)}${esc(S.bundleLabel(id))}</span></p>
         ${valueLine(id)}
         <ul class="reasons">${(t.reasons || []).map((r) => `<li>${ic('check', 14)}<span>${esc(r)}</span></li>`).join('')}</ul>
@@ -98,8 +98,8 @@
         </div>
       </div>
       <div class="toolrow">
-        <ul class="conns" aria-label="Sources">${D.connectors.map((c) => { const bad = c.id === 'seao' && off; return `<li class="conn2${!c.state && !bad ? ' is-ok' : bad ? ' is-bad' : ''}" title="${esc(bad ? 'Injoignable (Labo de test) : addenda non surveillés' : c.detail)}">${ic(!c.state && !bad ? 'check' : bad ? 'alert' : 'clock', 14)}<span>${esc(c.name)}</span></li>`; }).join('')}</ul>
-        <label class="crit-sel" title="Métier">${ic('filter', 15)}<span class="sr">Métier</span><select data-act-change="radar-filter" aria-label="Filtrer par métier">${[['all', 'Tous les métiers']].concat(trades).map(([k, l]) => `<option value="${k}"${f === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+        <ul class="conns" aria-label="Sources">${D.connectors.filter((c, i) => i === 0).map((c) => { const bad = c.id === 'seao' && off; const rest = D.connectors.slice(1); return `<li class="conn2${!c.state && !bad ? ' is-ok' : bad ? ' is-bad' : ''}" title="${esc((bad ? c.name + ' injoignable (Labo de test) : addenda non surveillés' : c.name + ' : ' + c.detail) + ' · ' + rest.map((x) => x.name + ' : ' + x.detail).join(' · '))}">${ic(!c.state && !bad ? 'check' : bad ? 'alert' : 'clock', 14)}<span>${esc(c.name)}</span>${rest.length ? `<small>+${rest.length}</small>` : ''}</li>`; }).join('')}</ul>
+        <label class="crit-sel" title="Métier">${ic('filter', 15)}<span class="sr">Métier</span><select data-act-change="radar-filter" aria-label="Filtrer par métier">${[['all', 'Tous']].concat(trades).map(([k, l]) => `<option value="${k}"${f === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
         <label class="crit-sel" title="Rayon autour du garage">${ic('pin', 15)}<span class="sr">Rayon</span><select data-act-change="radius" aria-label="Rayon de recherche">${[10, 20, 30, 60, 100].map((k) => `<option value="${k}"${k === r ? ' selected' : ''}>${k} km</option>`).join('')}</select></label>
       </div>
       ${view === 'kanban' ? pipeline(included) : `<div class="tlist">${ordered.map((t) => card(t, t.id === feat && S.isOpen(t.id))).join('') || '<p class="kempty">Aucun dossier pour ce filtre.</p>'}</div>`}

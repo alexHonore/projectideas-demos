@@ -37,7 +37,10 @@
       else if (x.gps) val = `<span class="fv-edit"><span class="fv fv-todo">Non documenté</span>${UI.btn('Confirmer avec le loueur', 'confirm', { cls: 'btn-ghost btn-sm', data: { t: id, key: 'gps' } })}</span>`;
       else val = '<span class="fv fv-todo">À compléter</span>';
     } else { tag = x.user ? '<span class="ftag ftag-user">Saisi</span>' : '<span class="ftag ftag-vault">Coffre-fort</span>'; val = `<span class="fv">${esc(x.value)}</span>`; }
-    tag = tag.replace('<span class="ftag', `<button type="button" data-act="info" data-tip="${esc(x.prov)}" title="${esc(x.prov)}" aria-label="${esc('Source : ' + x.prov)}" class="ftag`).replace('</span>', '</button>');
+    const TAGI = { 'ftag-you': ['pen', 'À vous'], 'ftag-miss': ['minus', 'Vide'], 'ftag-user': ['user', 'Saisi par vous'], 'ftag-vault': ['vault', 'Coffre-fort'] };
+    const tk = (tag.match(/ftag-(you|miss|user|vault)/) || [])[0];
+    const ti = TAGI[tk] || ['info', 'Source'];
+    tag = `<button type="button" class="ftag ${tk}" data-act="info" data-tip="${esc(ti[1] + ' · ' + x.prov)}" title="${esc(ti[1] + ' · ' + x.prov)}" aria-label="${esc(ti[1] + ' · source : ' + x.prov)}">${ic(ti[0], 14)}</button>`;
     return `<tr class="${x.manual ? 'is-manual' : !x.filled ? 'is-missing' : ''}"><th scope="row">${esc(x.label)}</th><td>${val}</td><td class="fsrc">${tag}</td></tr>`;
   };
   V.formulaires = (id) => {
@@ -48,7 +51,7 @@
     return `${UI.dossierHead(id, 'formulaires')}
     ${meter(fs)}
     <div class="forms">
-      <nav class="annex-nav" aria-label="Annexes"><ul>${fs.A.map((a) => `<li><button type="button" class="an${a.id === cur.id ? ' is-on' : ''}" data-act="annex" data-t="${esc(id)}" data-id="${a.id}" aria-current="${a.id === cur.id}" title="${esc(a.prefilled + '/' + a.eligible + ' pré-remplis' + (a.manual ? ' · ' + a.manualDone + '/' + a.manual + ' à vous' : ''))}">${a.verified ? UI.status('verified', 'Revue') : a.stale ? UI.status('pending', 'Modifiée') : UI.status('pending', 'À revoir')}<span class="an-t">${esc(a.title)}</span><span class="an-s">${a.prefilled}/${a.eligible}</span></button></li>`).join('')}</ul>
+      <nav class="annex-nav" aria-label="Annexes"><ul>${fs.A.map((a) => `<li><button type="button" class="an${a.id === cur.id ? ' is-on' : ''}" data-act="annex" data-t="${esc(id)}" data-id="${a.id}" aria-current="${a.id === cur.id}" title="${esc(a.title + ' · ' + a.prefilled + '/' + a.eligible + ' pré-remplis' + (a.manual ? ' · ' + a.manualDone + '/' + a.manual + ' à vous' : ''))}">${a.verified ? UI.status('verified', 'Revue') : a.stale ? UI.status('pending', 'Modifiée') : UI.status('pending', 'À revoir')}<span class="an-t">${esc(a.title.split(' · ')[0])}</span><span class="sr"> · ${esc(a.title.split(' · ').slice(1).join(' · '))}</span><span class="an-s">${a.prefilled}/${a.eligible}</span></button></li>`).join('')}</ul>
         ${UI.btn('Tout confirmer', 'verify-all', { cls: 'btn-ghost btn-sm', icon: 'check', disabled: fs.allVerified, data: { t: id }, title: 'Confirmer toutes les annexes revues' })}</nav>
       <article class="annex-sheet" aria-labelledby="an-h">
         <header class="as-h"><div><p class="as-k">${esc(def.ref)} · ${esc(D.company.legalName)}</p><h2 id="an-h">${esc(cur.title)}</h2></div>${cur.verified ? `<span class="stamp stamp-sm" title="${esc('Revue par ' + S.actorName(v.by) + ', ' + U.dayTime(v.at))}">Revue · ${esc(U.time(v.at))}</span>` : ''}</header>

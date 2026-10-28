@@ -72,7 +72,10 @@
   function prepare(r) {
     const st = S.get();
     if (r.section === 'inbox') { const id = V.inboxSelected(st, r); if (id && id !== 'new') A.openMessage(id); }
+    /* A link to a bid or a counterparty opens the Book on the tab that holds it. */
+    if (r.section === 'book' && r.id) { st.ui.tabs = st.ui.tabs || {}; if (/^DEM-/.test(r.id)) st.ui.tabs.book = 'bids'; else if (st.parties[r.id]) st.ui.tabs.book = 'parties'; }
   }
+  function showTab(g, t) { const st = S.get(); st.ui.tabs = st.ui.tabs || {}; st.ui.tabs[g] = t; }
   window.addEventListener('hashchange', () => { route = parse(location.hash); closeMenus(); prepare(route); render({ nav: true }); afterNav(); });
   function afterNav() {
     const st = S.get();
@@ -382,11 +385,12 @@
       const kind = formCtx.kind; const formCtxDs = formCtx.ds;
       closeDialog(form);
       formCtx = null;
+      if (kind === 'demand-new' && typeof out === 'string') { showTab('book', 'bids'); render(); }
       if (kind === 'demand-new' && typeof out === 'string') TD.ui.toast('Created ' + out + '. It appears in the Book and in every matching price ladder.', 'ok');
       if (kind === 'party-new' && typeof out === 'string') {
         const x = formCtxDs && formCtxDs.x;
         if (x && S.get().extraction[x]) { A.setValue(x, 'party', out); TD.ui.toast('Created ' + S.get().parties[out].name + ' (pending ' + (S.get().parties[out].kind === 'Carrier' ? 'logistics' : 'finance') + ' approval) and linked it to this message.', 'ok'); }
-        else { TD.ui.toast('Created ' + S.get().parties[out].name + ' (pending approval).', 'ok'); openParty(out); }
+        else { showTab('book', 'parties'); render(); TD.ui.toast('Created ' + S.get().parties[out].name + ' (pending approval).', 'ok'); openParty(out); }
       }
       if (/-edit$/.test(kind) || kind === 'benchmark' || kind === 'freight-manual' || kind === 'quote-manual') TD.ui.toast('Saved. The change is logged.', 'ok', /-edit$/.test(kind) ? { undo: true } : null);
     } else if (err && !err.textContent) err.textContent = 'Not saved: see the message above.';
@@ -411,7 +415,7 @@
   });
 
   /* ---------- Boot ---------- */
-  TD.app = { openParty: openParty, openForm: openForm, openLab: openLab, doReset: doReset, render: render };
+  TD.app = { openParty: openParty, openForm: openForm, openLab: openLab, doReset: doReset, render: render, showTab: showTab };
   S.load();
   S.subscribe((info) => {
     if (info && info.reset) { route = parse(location.hash); render({ nav: false }); return; }

@@ -32,7 +32,7 @@
     const first = open[0];
     const fmtM = new Intl.DateTimeFormat('fr-CA', { month: 'short', timeZone: 'America/Toronto' });
     const bad = rows.filter((r) => r.k === 'bad').length;
-    return `<details class="fold tl"><summary>${ic('cal', 16)}<span>Validité face aux clôtures</span>${bad ? `<b class="cnt is-bad">${bad}</b>` : ''}<small>${first ? esc(S.def(first).buyerShort) + ' · ' + esc(U.dateShort(S.close(first))) : ''}</small></summary>
+    return `<details class="fold tl"><summary>${ic('cal', 16)}<span>Validité</span>${bad ? `<b class="cnt is-bad">${bad}</b>` : ''}<small>${first ? esc(S.def(first).buyerShort) + ' · ' + esc(U.dateShort(S.close(first))) : ''}</small></summary>
       <div class="sec-row"><h2 id="tl-h" class="sr">Validité des pièces face à vos clôtures</h2>${UI.info('Rappel automatique 15 jours avant chaque échéance (texto simulé à Josée). Trait vertical : aujourd’hui (horloge de démo); repères : vos clôtures.', 'Comment lire')}</div>
       <div class="tl-grid">
         <div class="tl-months" aria-hidden="true">${months.map((d) => `<span style="left:${pos(d.getTime())}%">${esc(fmtM.format(d))}</span>`).join('')}</div>
@@ -51,12 +51,19 @@
     const st = S.vaultStatus(v), restricted = v.sensitivity === 'restricted', canR = S.can('restricted'), canV = S.can('vault');
     const used = V.usedBy(v.kind);
     const registry = v.kind === 'amp' || v.kind === 'rena';
-    const key = v.revoked ? 'Révoquée' : v.expires ? 'jusqu’au ' + U.dateShort(dayIso(v.expires)) : v.indefinite ? 'sans échéance' : '';
+    const key = v.revoked ? 'Révoquée' : v.expires ? 'jusqu’au ' + U.dateShort(dayIso(v.expires)) : '';
     const meta = restricted && !canR ? 'Accès restreint : visible par la propriétaire et l’administratrice seulement.' : [v.issuer + ' · ' + kindLabel(v.kind) + (v.tender && S.def(v.tender) ? ' · ' + S.def(v.tender).buyerShort : ''), v.file + (v.hash ? ' · empreinte ' + v.hash.slice(0, 12) : '') + (v.verified ? ' · ' + v.verified : ''), v.expires ? 'Délivrée le ' + U.date(dayIso(v.issued)) + ', valide jusqu’au ' + U.date(dayIso(v.expires)) : '', v.amount ? 'Couverture ' + U.money(v.amount) : '', v.revoked ? 'Révoquée le ' + U.dayTime(v.revoked.at) + ' : ' + v.revoked.reason : '', v.note || '', restricted ? 'Pièce restreinte.' : used.length ? 'Exigée par ' + used.length + ' dossier' + (used.length > 1 ? 's' : '') + ' ouvert' + (used.length > 1 ? 's' : '') + '.' : 'Données de l’entreprise.'].filter(Boolean).join(' · ');
+    const warn = ['expired', 'pending', 'suspended', 'unverified'].includes(st.k);
+    const dis = canV ? '' : ' disabled';
+    const more = `<details class="menu row-m"><summary aria-label="${esc('Autres actions : ' + v.title)}" title="Autres actions">${ic('menu', 16)}</summary><div class="menu-p" role="group" aria-label="Autres actions">
+        <button type="button" class="menu-i m-only" data-act="vault-replace" data-v="${esc(v.id)}"${dis}>${ic('upload', 16)}<span>Remplacer</span></button>
+        <button type="button" class="menu-i" data-act="vault-edit" data-v="${esc(v.id)}"${dis}>${ic('pen', 16)}<span>Modifier la fiche</span></button>
+        ${registry ? `<button type="button" class="menu-i" data-act="vault-recheck" data-v="${esc(v.id)}"${dis}>${ic('reset', 16)}<span>Revérifier au registre</span></button>` : ''}
+        <button type="button" class="menu-i" data-act="vault-remove" data-v="${esc(v.id)}"${dis}>${ic('trash', 16)}<span>Retirer</span></button></div></details>`;
     return `<li class="doc${restricted ? ' doc-restricted' : ''}${v.created ? ' doc-new' : ''}" id="doc-${esc(v.id)}">
-      ${UI.status(st.k, st.label)}
-      <div class="doc-t"><b>${restricted ? ic('lock', 13) : ''}${esc(v.title)}</b><small>${esc(key)}${used.length && !restricted ? ' · ' + ic('folder', 12) + used.length : ''}</small></div>
-      <span class="doc-a">${UI.info(meta, 'Détails de la pièce')}${restricted && !canR ? '' : `${UI.iconBtn('upload', 'Remplacer', 'vault-replace', { v: v.id })}${UI.iconBtn('pen', 'Modifier', 'vault-edit', { v: v.id })}${registry ? UI.iconBtn('reset', 'Revérifier au registre', 'vault-recheck', { v: v.id }) : ''}${UI.iconBtn('trash', 'Retirer', 'vault-remove', { v: v.id })}`.replace(/<button /g, canV ? '<button ' : '<button disabled ')}</span>
+      <span class="doc-s" title="${esc(st.label)}">${UI.status(st.k, st.label)}</span>
+      <div class="doc-t"><b>${restricted ? ic('lock', 13) : ''}${esc(v.title)}</b>${warn || key ? `<small class="${warn ? 'is-' + (st.k === 'pending' ? 'wait' : 'bad') : ''}">${esc(warn ? st.label : key)}</small>` : ''}</div>
+      <span class="doc-a">${UI.info(meta, 'Détails de la pièce')}${restricted && !canR ? '' : `${UI.iconBtn('upload', 'Remplacer', 'vault-replace', { v: v.id }).replace('<button ', canV ? '<button ' : '<button disabled ')}${more}`}</span>
       ${(v.versions || []).length ? `<details class="vers-d"><summary>${ic('log', 13)}${v.versions.length} version${v.versions.length > 1 ? 's' : ''} précédente${v.versions.length > 1 ? 's' : ''}</summary><ul>${v.versions.slice().reverse().map((o, i) => `<li><b>v${v.versions.length - i}</b> ${esc(o.file)} · ${o.expires ? 'valide jusqu’au ' + esc(U.dateShort(dayIso(o.expires))) : 'sans échéance'} · remplacée ${esc(U.dayTime(o.replacedAt))}</li>`).join('')}</ul></details>` : ''}
     </li>`;
   };
@@ -78,8 +85,8 @@
         <div class="pagehead-a">${UI.btn('Ajouter', 'vault-new', { cls: 'btn-primary', icon: 'plus', disabled: !S.can('vault'), title: 'Ajouter une pièce' })}</div></div>
       <div class="vault-grid">
         <section class="docs" aria-labelledby="docs-h">
-          <div class="sec-row"><h2 id="docs-h" class="sec-h">Pièces <b class="cnt">${all.length}</b></h2>
-            <div class="seg" role="group" aria-label="Filtrer">${[['all', 'Toutes'], ['review', 'À revoir · ' + review], ['restricted', ic('lock', 13) + '<span class="sr">Restreintes</span>']].map(([k, l]) => `<button type="button" class="seg-b${f === k ? ' is-on' : ''}" data-act="vault-filter" data-f="${k}" aria-pressed="${f === k}"${k === 'restricted' ? ' title="Restreintes"' : ''}>${l}</button>`).join('')}</div>
+          <div class="sec-row"><h2 id="docs-h" class="sr">Pièces et attestations</h2>
+            <div class="seg" role="group" aria-label="Filtrer les pièces">${[['all', ic('list', 14) + '<b>' + all.length + '</b>', 'Toutes les pièces'], ['review', ic('alert', 14) + '<b>' + review + '</b>', 'À revoir'], ['restricted', ic('lock', 14), 'Restreintes']].map(([k, l, t]) => `<button type="button" class="seg-b${f === k ? ' is-on' : ''}" data-act="vault-filter" data-f="${k}" aria-pressed="${f === k}" title="${t}" aria-label="${t}">${l}</button>`).join('')}</div>
           </div>
           <ul class="doclist">${docs.map(docRow).join('') || '<li class="kempty">Aucune pièce pour ce filtre.</li>'}</ul>
         </section>
@@ -89,7 +96,7 @@
             <div class="fold-a">${UI.btn('Ajouter', 'project-new', { cls: 'btn-ghost btn-sm', icon: 'plus', disabled: !S.can('forms'), title: 'Ajouter un projet de référence' })}</div>
             <ul class="projs projs-crud">${S.projects().map(projRow).join('')}</ul>
           </details>
-          <details class="fold"><summary>${ic('user', 16)}<span>Identité</span><small>NEQ ${esc(c.neq)}</small></summary>
+          <details class="fold"><summary>${ic('user', 16)}<span>Identité</span></summary>
           <dl class="id-dl">
             <div><dt>Nom légal</dt><dd>${esc(c.legalName)}</dd></div>
             <div><dt>NEQ</dt><dd>${esc(c.neq)} <small>confirmé le 2 sept. 2026</small></dd></div>

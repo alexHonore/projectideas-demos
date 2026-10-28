@@ -83,7 +83,7 @@
       $('studio-root').hidden = true; $('stage').hidden = false;
       const v = $('view'), prevScroll = v.scrollTop;
       v.innerHTML = view(r);
-      const full = FULL.includes(r.name);
+      const full = FULL.includes(r.name) || (['recall', 'speak-challenge'].includes(r.name) && !!document.querySelector('#view .recall--live'));
       $('screen').classList.toggle('is-full', full);
       $('tabbar').innerHTML = full ? '' : TABS.map(t => '<a href="#/' + t[0] + '" class="tab' + (tabOf(r) === t[0] ? ' is-on' : '') + '"' + (tabOf(r) === t[0] ? ' aria-current="page"' : '') + '>' + ic(t[2]) + '<span>' + t[1] + '</span></a>').join('');
       $('tabbar').hidden = full;
@@ -193,6 +193,7 @@
   };
   document.addEventListener('click', (ev) => { const m = $('demo-menu'); if (m && !m.hidden && !ev.target.closest('.demomenu-wrap')) APP.closeDemoMenu(); }, true);
   document.addEventListener('keydown', (ev) => { const m = $('demo-menu'); if (ev.key === 'Escape' && m && !m.hidden) { APP.closeDemoMenu(); const b = $('demo-btn'); if (b) b.focus(); } });
+  ACT['tip'] = (el) => U.toggleTip(el);
   /* Per-course voice picker (behind the speaker icon). */
   ACT['voice-picker'] = (el) => U.sheet(V.voicePicker(el.dataset.arg || (S.track() || {}).id));
   ACT['voice-sample'] = (el) => {

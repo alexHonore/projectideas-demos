@@ -74,7 +74,8 @@
       t('liveAi', 'Live AI allowed', 'Off: every “Read with live AI” falls back to rules, even with a key.') + t('offline', 'Offline', 'On: carrier, facility and accounting requests are refused; decisions you made are kept.') + t('clipboard', 'Clipboard available', 'Off: copy buttons explain how to copy by hand.') + t('crypto', 'SubtleCrypto available', 'Off: BOL checksums fall back to FNV-1a, labelled as such.') + t('storage', 'Save to this browser', 'Off: nothing is written to localStorage.'));
   }
   function ai() {
-    return sec('ai', 'Live AI (optional)', 'Bring your own Anthropic API key to read pasted or received emails with claude-opus-5-5 and to draft replies. Off by default; the demo stays fully usable on rules. Results show their provenance and always wait for your review.', '<div id="lab-ai-host" class="lab-ai"></div><p class="lab-sub">Cost and privacy: the message text and the counterparty list go to the Anthropic API and are billed to your key. Use a key with a low spend limit. Nothing is sent without a key.</p>');
+    /* Keys, budgets and killswitches live on the hub's API monitor; this demo only shows the state. */
+    return sec('ai', 'Live AI (optional)', 'Reads pasted or received emails with claude-opus-5-5 and drafts replies, metered under “tradedesk” on the hub’s API monitor. Off without a key; the demo stays fully usable on rules.', '<div id="lab-ai-host" class="lab-ai">' + V.aiStatus({ id: 'ai-status-lab', label: true }) + '<a class="btn small" href="../../index.html#api">' + icon('chart', 15) + '<span>API monitor</span></a></div><p class="lab-sub">Cost and privacy: the message text and the counterparty list go to the Anthropic API. Every call is checked against the monitor’s budgets and killswitches first, and recorded there.</p>');
   }
   function workspace(state) {
     const inv = E.invariants(state);

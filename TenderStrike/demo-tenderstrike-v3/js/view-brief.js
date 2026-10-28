@@ -44,7 +44,7 @@
           ${open.length ? `<p class="hero-sub">${ic('clock', 15)}<span>Clôture ${esc(U.dateShort(close))}, ${U.time(close)}</span>${hard ? UI.chip('alert', plural(hard, 'bloqueur', 'bloqueurs'), 'chip-bad') : UI.chip('check', 'Aucun bloqueur', 'chip-ok')}</p>` : ''}
           <div class="hero-cta">
             <a class="btn btn-primary btn-lg" href="${open.length ? next.href : '#/nouveau'}">${ic(open.length ? 'eye' : 'plus', 18)}<span>${esc(open.length ? next.label : 'Ajouter un appel d’offres')}</span></a>
-            ${UI.iconBtn('phone', 'Voir le message du matin (envoi simulé)', 'show-message', { t: id }, 'icon-lg')}
+            ${UI.iconBtn('mail', 'Voir le message du matin (envoi simulé)', 'show-message', { t: id }, 'icon-lg')}
           </div>
           <ul class="stats" aria-label="Cette nuit">${stats.map(([icn, l, v, tip]) => `<li title="${esc(tip)}">${ic(icn, 18)}<b>${esc(v)}</b><span>${esc(l)}</span></li>`).join('')}<li class="stats-i">${UI.info(night + (S.state.caps.offline ? ' SEAO injoignable (Labo de test).' : ' SEAO vérifié à 6 h 04.'), 'Pendant la nuit')}</li></ul>
         </div>

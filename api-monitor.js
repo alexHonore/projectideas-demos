@@ -19,7 +19,7 @@
     edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>'
   };
   var APP_ICON = { tradedesk: '🌾', langquest: '🗣️', tayoo: '🎙️', nexus: '🤝', tenderstrike: '📑', hub: '◻︎' };
-  var PROV_ICON = { anthropic: '✳︎', gemini: '✦', 'browser-speech': '🎤', 'browser-tts': '🔊' };
+  var PROV_ICON = { anthropic: '✳︎', openrouter: '◎', gemini: '✦', 'browser-speech': '🎤', 'browser-tts': '🔊' };
   function ic(n) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[n] + '</svg>'; }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function n(c, w) { return c + ' ' + w + (c === 1 ? '' : 's'); }
@@ -31,6 +31,7 @@
   }
   var openKey = null, logOpen = false;
 
+  function cachedModels() { try { var c = JSON.parse(localStorage.getItem('project-demos:openrouter-models:v1') || 'null'); return (c && c.list) || []; } catch (e) { return []; } }
   function render() {
     var s = M.state(), t = s.totals, budget = s.budgets.global;
     var pct = budget ? Math.min(100, (s.spent / budget) * 100) : 0;
@@ -59,6 +60,18 @@
         '<label class="am-budget" title="Monthly budget (USD)">' + ic('edit') + '$<input type="number" min="0" step="0.5" value="' + (b == null ? '' : b) + '" data-budget="' + a + '" aria-label="' + esc(M.APPS[a]) + ' monthly budget"></label></div>';
     });
     html += '</div>';
+
+    var eng = s.llm || M.llm(), orList = cachedModels();
+    html += '<h3 class="am-h">Live AI engine</h3><div class="am-engine">' +
+      '<div class="am-seg" role="radiogroup" aria-label="Live AI engine">' +
+      '<button type="button" role="radio" data-engine="anthropic" aria-checked="' + (eng.provider === 'anthropic') + '">✳︎ Claude</button>' +
+      '<button type="button" role="radio" data-engine="openrouter" aria-checked="' + (eng.provider === 'openrouter') + '">◎ OpenRouter</button></div>' +
+      (eng.provider === 'openrouter'
+        ? '<label class="am-engine-model"><span class="sr-only">OpenRouter model</span><input list="am-or-models" data-engine-model value="' + esc(eng.model) + '" placeholder="provider/model, e.g. google/gemini-…" aria-label="OpenRouter model for live AI"></label>' +
+          '<datalist id="am-or-models">' + orList.map(function (m) { return '<option value="' + esc(m.id) + '">' + esc(m.name + ' · $' + m.input + ' / $' + m.output + ' per 1M') + '</option>'; }).join('') + '</datalist>' +
+          '<button type="button" class="am-icon" data-act="or-models" title="' + (orList.length ? 'Refresh model list (' + orList.length + ')' : 'Load model list') + '" aria-label="Load OpenRouter model list">' + ic('reset') + '</button>'
+        : '<span class="am-engine-model fixed">claude-opus-5-5</span>') +
+      '</div>';
 
     html += '<h3 class="am-h">Providers</h3><div class="am-prov">';
     Object.keys(M.PROVIDERS).forEach(function (p) {
@@ -110,6 +123,8 @@
     else if (b.dataset.clear) { M.keys.clear(b.dataset.clear); }
     else if (b.dataset.act === 'close') { history.pushState('', document.title, location.pathname + location.search); show(false); if (openBtn) openBtn.focus(); }
     else if (b.dataset.act === 'log') { logOpen = !logOpen; render(); }
+    else if (b.dataset.engine) { var cur = M.llm(); M.setLlm(b.dataset.engine, b.dataset.engine === 'openrouter' ? (cur.provider === 'openrouter' ? cur.model : '') : 'claude-opus-5-5'); }
+    else if (b.dataset.act === 'or-models') { b.disabled = true; M.openrouter.models({ refresh: true }).then(render, function (err) { b.disabled = false; b.title = err.message; alert('Could not load the OpenRouter model list: ' + err.message); }); }
     else if (b.dataset.act === 'info') { var i = panel.querySelector('.am-info'); i.hidden = !i.hidden; b.setAttribute('aria-expanded', String(!i.hidden)); }
     else if (b.dataset.act === 'reset') { if (confirm('Reset all recorded usage in this browser?')) M.resetUsage(); }
     else if (b.dataset.act === 'csv') {
@@ -121,6 +136,7 @@
     var el = e.target;
     if (el.dataset.budget) M.setBudget(el.dataset.budget === 'global' ? 'global' : 'apps', el.dataset.budget, el.value);
     if (el.dataset.model) M.setModel(el.dataset.model, el.value.trim());
+    if (el.hasAttribute('data-engine-model')) M.setLlm('openrouter', el.value.trim());
   });
   panel.addEventListener('submit', function (e) {
     var f = e.target.closest('[data-keyform]'); if (!f) return;

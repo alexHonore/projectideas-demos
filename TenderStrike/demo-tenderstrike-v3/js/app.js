@@ -74,7 +74,7 @@
       <main id="main" class="main main-${r.name}" tabindex="-1">${inner}</main>
       <footer class="foot"><p>${ic('info', 13)} TenderStrike QC · démo V3 · données fictives${S.storageOk ? '' : ' · stockage local indisponible'}</p></footer>
       <nav class="bottomnav" aria-label="Navigation principale mobile">
-        ${N.map(([k, href, icon, label]) => `<a href="${href}" class="bn${r.name === k ? ' is-on' : ''}"${r.name === k ? ' aria-current="page"' : ''}>${ic(icon, 20)}<span>${esc(label)}</span>${dot(k)}</a>`).join('')}
+        ${N.map(([k, href, icon, label]) => `<a href="${href}" class="bn${r.name === k ? ' is-on' : ''}"${r.name === k ? ' aria-current="page"' : ''} title="${esc(label)}">${ic(icon, 22)}<span class="bn-l">${esc(label)}</span>${dot(k)}</a>`).join('')}
       </nav>
       ${UI.view.lab ? TS.Lab.html() : ''}`;
   };

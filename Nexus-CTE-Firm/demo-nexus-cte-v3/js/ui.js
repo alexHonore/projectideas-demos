@@ -281,7 +281,7 @@
     var sel = document.getElementById('role-select'); if (sel && sel.value !== st.role) sel.value = st.role;
     document.body.dataset.role = st.role;
     var dot = document.getElementById('ai-dot'), ai = g.AI && g.AI.status ? g.AI.status() : null;
-    if (dot && ai) { dot.className = 'ai-dot is-' + ai.state; }
+    if (dot && ai) { dot.className = 'ai-dot is-' + ai.state; var db = document.getElementById('demo-btn'); if (db) db.title = 'Démo, données fictives · IA en direct ' + { on: 'activée', off: 'désactivée', paused: 'en pause' }[ai.state] + (ai.reason ? ' : ' + ai.reason : ''); }
     var dm = document.getElementById('demo-menu'); if (dm && !dm.hidden) { var foc = document.activeElement && dm.contains(document.activeElement) ? document.activeElement.getAttribute('data-key') || document.activeElement.id : null; dm.innerHTML = demoHtml(); U.typoTree(dm); if (foc) { var fe = dm.querySelector('[data-key="' + foc + '"]') || document.getElementById(foc); if (fe) fe.focus(); } }
     renderInboxBadge();
   }
@@ -391,6 +391,8 @@
   UIA['role'] = function (p) { run('role', { value: p.value }); };
   UIA['demo-open'] = function (p, el) { popMenu('demo-menu', el, demoHtml()); };
   UIA['more-open'] = function (p, el) { popMenu('more-menu', el, moreHtml()); };
+  // Ouvre une section repliée et y amène la vue (bouton « un tap »).
+  UIA['fold-open'] = function (p) { var d = document.getElementById(p.id); if (!d) return; d.open = true; d.scrollIntoView({ block: 'start', behavior: 'smooth' }); var f = d.querySelector('input, select, textarea, button:not([disabled])'); if (f) setTimeout(function () { try { f.focus({ preventScroll: true }); } catch (e) {} }, 50); };
   UIA['info'] = function (p, el) {
     var pop = document.getElementById(p.for); if (!pop) return;
     var open = pop.hidden; closeMenus(); if (!open) return;

@@ -1303,3 +1303,69 @@ details:not([open]) > :not(summary) { display: none !important; }
   .pr .tz-fixed, .pr .tz-kept { background: none; padding: 0; border: 0; }
   .pr .ledger th, .pr .ledger td { border-bottom: 1px solid #bbb; padding: 4pt 6pt; }
 }
+
+/* CRM acheteurs compact */
+.counters.counters-inline { display: flex; gap: 6px; background: none; color: var(--ink); margin: 0; border-radius: 0; overflow: visible; }
+.counters.counters-inline li { padding: 6px 10px; flex-direction: row; align-items: center; gap: 6px; background: var(--wash); border-radius: 999px; border: 0; }
+.counters.counters-inline li + li { border-left: 0; }
+.counters.counters-inline strong { font: 600 16px/1 var(--serif); color: var(--ink); }
+.counters.counters-inline .ico { width: 15px; height: 15px; color: var(--slate); }
+.bl-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.bl-row .bl-flags { margin-top: 0; display: inline-flex; gap: 4px; align-items: center; }
+.bl-row .state-i { width: 22px; height: 22px; }
+.actions-icons { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 10px 0 4px; }
+@media (pointer: coarse) { .actions-icons .btn-sm { min-height: 44px; min-width: 44px; } }
+@media (max-width: 760px) {
+  .counters.counters-inline { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+  .counters.counters-inline { grid-template-columns: none; }
+  .counters.counters-inline li:nth-child(n+3) { border-top: 0; }
+}
+.crm-tools .field-inline select { min-width: 150px; }
+@media (max-width: 760px) {
+  .crm-tools { display: grid; grid-template-columns: 1fr 1fr auto; }
+  .crm-tools .field-inline:first-child { grid-column: 1 / -1; }
+  .crm-tools .field-inline input, .crm-tools .field-inline select { width: 100%; min-width: 0; }
+  .crm-tools .btn span { display: none; }
+}
+.actions-icons .btn { flex: none; width: auto; }
+
+/* Conformité compacte */
+.folds { display: grid; gap: 10px; margin-top: 14px; }
+.folds > .sheet { margin: 0; }
+.ghs li { grid-template-columns: 14px minmax(0, 1fr) auto; align-items: center; padding: 6px 0; }
+.ghs .gh-dot { margin-top: 0; }
+.gh-end { display: inline-flex; align-items: center; }
+.ghs-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
+@media (max-width: 760px) { .ghs li { grid-template-columns: 14px minmax(0, 1fr) auto; } .ghs-grid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .sheet.sheet-fold { padding: 0; } .sheet-fold > summary { padding: 12px 14px; } }
+.gate-rows .state-i b { font: 600 11px var(--sans); }
+.next-one { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 12px; background: var(--brass-tint); border-radius: 8px; flex-wrap: wrap; }
+.next-one .ico { color: var(--brass); }
+.next-one .btn { margin-left: auto; }
+.rv-note { white-space: nowrap; }
+.rv-note .state-i { vertical-align: middle; }
+.loi-rows > li.is-sel { background: var(--brass-tint); margin: 0 -10px; padding-left: 10px; padding-right: 10px; border-radius: 6px; }
+.loi-rows .row-val small { font: 400 12px var(--sans); color: var(--mute); }
+@media (max-width: 760px) { .loi-rows > li { grid-template-columns: minmax(0, 1fr) auto; } .loi-rows .row-acts { grid-column: 1 / -1; justify-content: flex-start; } }
+.form-fold { margin: 12px 0 0; border-top: 1px solid var(--rule); padding-top: 4px; }
+.form-fold > summary { min-height: 44px; font-weight: 600; }
+.page-head.page-head-row { max-width: none; }
+.page-head.page-head-row.page-head-form { max-width: 1080px; }
+/* cibles tactiles de 44 px pour l'en-tête, les menus et les pastilles d'état cliquables */
+@media (pointer: coarse) {
+  .mast-btn, .menu-item, .bn, .d-tabs a, .seg a, .seg button { min-height: 44px; }
+  .mast-btn { min-width: 44px; }
+  .btn-sm { min-height: 44px; }
+}
+@media (pointer: coarse) {
+  .btn { min-height: 44px; }
+  .more-icon > summary { min-width: 44px; min-height: 44px; width: 44px; height: 44px; justify-content: center; }
+}
+.ledger-panel > summary { min-height: 44px; display: flex; align-items: center; gap: 8px; }
+@media (max-width: 760px) {
+  .queue-rows > li { grid-template-columns: minmax(0, 1fr) auto; }
+  .queue-rows .row-title { flex-wrap: nowrap; align-items: flex-start; }
+  .queue-rows .row-title a { min-width: 0; }
+  .queue-rows > li > .chip { grid-column: 1; grid-row: 2; justify-self: start; margin-left: 34px; }
+  .queue-rows .row-acts { grid-column: 2; grid-row: 1 / span 2; }
+}

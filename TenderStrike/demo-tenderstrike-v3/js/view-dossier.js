@@ -33,13 +33,12 @@
     if (s.act && /^confirm:/.test(s.act)) act = UI.iconBtn('check', s.actLabel || 'Confirmer', 'confirm', { t: id, key: s.act.slice(8) });
     else act = fixLink(id, s.fix);
     const canAsk = S.def(id).questionsDeadline && S.nowTs() < Date.parse(S.def(id).questionsDeadline) && r.kind !== 'info';
-    const tip = [r.plain, s.detail, r.unverifiedQuote ? 'Citation non retrouvée dans le texte.' : '', 'Lecture ' + U.pct(r.conf || 0.9, 0) + '.'].filter(Boolean).join(' ');
+    const tip = [clause ? 'Devis : « ' + (clause.length > 320 ? clause.slice(0, 320) + '…' : clause) + ' »' : '', 'Lecture : ' + (r.plain || ''), s.detail, r.unverifiedQuote ? 'Citation non retrouvée dans le texte.' : '', 'Confiance ' + U.pct(r.conf || 0.9, 0) + '.'].filter(Boolean).join(' ');
     return `<li class="req req-${r.kind}${UI.viewer(id).clause === r.clause ? ' is-on' : ''}" data-req="${r.id}">
       <span class="req-k" title="${esc(kind[1])}">${ic(kind[0], 16)}<span class="sr">${esc(kind[1])}</span></span>
       <h4 class="req-t"><button type="button" class="req-open" data-act="cite" data-t="${esc(id)}" data-clause="${esc(r.clause)}" data-doc="${r.doc}" data-page="${r.page}" title="Ouvrir la page ${r.page}">${esc(r.title)}</button></h4>
       <span class="req-s">${UI.status(s.k)}</span>
       <span class="req-a">${UI.cite(id, r, 'p. ' + r.page)}${act}${canAsk ? UI.iconBtn('q', 'Poser une question au donneur d’ouvrage', 'q-new', { t: id, req: r.id }) : ''}${UI.info(tip, 'Lecture de l’exigence')}</span>
-      ${clause ? `<details class="req-more"><summary>${ic('doc', 13)}<span>Texte du devis</span></summary><blockquote class="verbatim">${esc(clause)}</blockquote></details>` : ''}
     </li>`;
   };
 

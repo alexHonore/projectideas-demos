@@ -7,10 +7,11 @@
   const V = (TS.V = TS.V || {});
   const WD = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
   const KIND_CLS = { Clôture: 'close', Visite: 'visit', Questions: 'q', Garantie: 'bond', Interne: 'int', Ouverture: 'open', Expiration: 'exp', Registre: 'reg' };
+  const KIND_IC = { Clôture: 'stamp', Visite: 'pin', Questions: 'q', Garantie: 'shield', Interne: 'user', Ouverture: 'chart', Expiration: 'clock', Registre: 'reset' };
 
   const hrefOf = (x) => (x.tender ? '#/dossier/' + x.tender + '/' + (x.kind === 'Visite' ? 'conformite' : x.kind === 'Questions' ? 'radiographie' : 'revue') : '#/coffre');
   const state = (x) => (x.done ? 'done' : Date.parse(x.at) < S.nowTs() ? 'late' : Date.parse(x.at) - S.nowTs() < 2 * 86400000 ? 'soon' : 'n');
-  const evChip = (x) => `<a class="cev cev-${KIND_CLS[x.kind] || 'n'} is-${state(x)}" href="${hrefOf(x)}" title="${esc(x.label + (x.buyer ? ' · ' + x.buyer : '') + ' · ' + U.time(x.at))}"><span class="cev-t">${U.time(x.at)}</span><span class="cev-l">${esc(x.buyer || x.label.replace('Fin de validité : ', ''))}</span></a>`;
+  const evChip = (x) => `<a class="cev cev-${KIND_CLS[x.kind] || 'n'} is-${state(x)}" href="${hrefOf(x)}" title="${esc(x.label + (x.buyer ? ' · ' + x.buyer : '') + ' · ' + U.time(x.at))}" aria-label="${esc(x.label + (x.buyer ? ' · ' + x.buyer : '') + ' · ' + U.time(x.at))}"><span class="cev-t">${U.time(x.at)}</span><span class="cev-l">${esc(x.buyer || x.label.replace('Fin de validité : ', ''))}</span></a>`;
 
   V.calendrier = () => {
     const now = S.now();
@@ -37,15 +38,15 @@
     const late = list.filter((x) => state(x) === 'late');
     const upcoming = list.filter((x) => !x.done && Date.parse(x.at) >= S.nowTs()).slice(0, 14);
     const tenders = S.tenders().filter((t) => all.some((x) => x.tender === t.id));
-    const agenda = (arr) => { let lastDay = ''; return arr.map((x) => { const dd = U.isoDay(x.at); const h = dd !== lastDay ? `<li class="ag-day">${esc(U.day(x.at))}</li>` : ''; lastDay = dd; return h + `<li class="ag ag-${state(x)}"><time datetime="${esc(x.at)}">${U.time(x.at)}</time><span class="ag-k ag-k-${KIND_CLS[x.kind] || 'n'}" title="${esc(x.kind)}">${esc(x.kind)}</span><a href="${hrefOf(x)}" class="ag-t" title="${esc((x.buyer ? x.buyer + ' · ' : '') + (x.note || ''))}"><b>${esc(x.label)}</b>${x.buyer ? `<small>${esc(x.buyer)}${state(x) === 'late' ? ' · en retard' : state(x) === 'soon' ? ' · < 48 h' : ''}</small>` : ''}</a></li>`; }).join(''); };
+    const agenda = (arr) => { let lastDay = ''; return arr.map((x) => { const dd = U.isoDay(x.at); const h = dd !== lastDay ? `<li class="ag-day">${esc(U.day(x.at))}</li>` : ''; lastDay = dd; return h + `<li class="ag ag-${state(x)}"><time datetime="${esc(x.at)}">${U.time(x.at)}</time><span class="ag-k ag-k-${KIND_CLS[x.kind] || 'n'}" title="${esc(x.kind)}">${ic(KIND_IC[x.kind] || 'cal', 14)}<span class="sr">${esc(x.kind)}</span></span><a href="${hrefOf(x)}" class="ag-t" title="${esc((x.buyer ? x.buyer + ' · ' : '') + (x.note || ''))}"><b>${esc(x.label)}</b>${x.buyer ? `<small>${esc(x.buyer)}${state(x) === 'late' ? ' · en retard' : state(x) === 'soon' ? ' · < 48 h' : ''}</small>` : ''}</a></li>`; }).join(''); };
     return `<div class="cal">
       <div class="pagehead"><h1 class="page-h1">Agenda</h1>${late.length ? UI.chip('alert', late.length + ' en retard', 'chip-bad') : ''}${UI.info('Questions, visites, garanties, approbations, clôtures et ouvertures de tous vos dossiers, plus les expirations du coffre-fort. L’horloge de démo fait passer les échéances. Couleurs : ' + Object.keys(KIND_CLS).join(', ') + '.', 'À propos de l’agenda')}
         <div class="pagehead-a">${UI.iconBtn('download', 'Exporter tout (.ics)', 'ics', {})}</div></div>
       <div class="cal-tools">
-        <div class="cal-nav">${UI.btn('', 'cal-month', { cls: 'icon-btn', icon: 'back', data: { dir: '-1' }, title: 'Mois précédent' })}<h2 class="cal-m" aria-live="polite">${esc(monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1))}</h2>${UI.btn('', 'cal-month', { cls: 'icon-btn', icon: 'arrow', data: { dir: '1' }, title: 'Mois suivant' })}${UI.iconBtn('pin', 'Aujourd’hui', 'cal-today', {})}</div>
-        <label class="crit-sel" title="Afficher">${ic('filter', 15)}<span class="sr">Afficher</span><select data-act-change="cal-filter" aria-label="Filtrer les échéances"><option value="all">Toutes les échéances</option><option value="vault"${f === 'vault' ? ' selected' : ''}>Coffre-fort seulement</option>${tenders.map((t) => `<option value="${t.id}"${f === t.id ? ' selected' : ''}>${esc(t.buyerShort)}</option>`).join('')}</select></label>
+        <div class="cal-nav">${UI.iconBtn('back', 'Mois précédent', 'cal-month', { dir: '-1' })}<h2 class="cal-m" aria-live="polite">${esc(monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1))}</h2>${UI.iconBtn('arrow', 'Mois suivant', 'cal-month', { dir: '1' })}${UI.iconBtn('cal', 'Aujourd’hui', 'cal-today', {})}</div>
+        <label class="crit-sel" title="Afficher">${ic('filter', 15)}<span class="sr">Afficher</span><select data-act-change="cal-filter" aria-label="Filtrer les échéances"><option value="all">Toutes</option><option value="vault"${f === 'vault' ? ' selected' : ''}>Coffre-fort seulement</option>${tenders.map((t) => `<option value="${t.id}"${f === t.id ? ' selected' : ''}>${esc(t.buyerShort)}</option>`).join('')}</select></label>
       </div>
-      <div class="cal-grid-wrap"><div class="cal-grid" role="grid" aria-label="${esc(monthLabel)}">${WD.map((w) => `<div class="cwd" role="columnheader">${w}</div>`).join('')}${cells.join('')}</div></div>
+      <div class="cal-grid-wrap"><div class="cal-grid" role="grid" aria-label="${esc(monthLabel)}">${WD.map((w) => `<div class="cwd" role="columnheader" title="${esc(w)}"><span class="wd-l">${w}</span><span class="wd-s" aria-hidden="true">${w.charAt(0).toUpperCase()}</span></div>`).join('')}${cells.join('')}</div></div>
       <div class="cal-cols">
         <section aria-labelledby="ag-h"><h2 id="ag-h" class="sec-h">À venir</h2><ol class="agenda">${agenda(upcoming) || '<li class="kempty">Aucune échéance à venir.</li>'}</ol></section>
         <section aria-labelledby="late-h"><h2 id="late-h" class="sec-h">En retard <b class="cnt${late.length ? ' is-bad' : ''}">${late.length}</b></h2><ol class="agenda">${agenda(late.slice().reverse()) || '<li class="kempty">Rien en retard.</li>'}</ol></section>

@@ -50,7 +50,9 @@
   R.avatar = avatar;
   function provBadge(pv) {
     if (!pv) return '';
-    return '<span class="pv pv-' + (pv.kind === 'ai' ? 'ai' : 'rules') + '" title="' + (pv.kind === 'ai' ? 'Read by live AI; validated against your records before use' : 'Read by deterministic rules in your browser') + '">' + I(pv.kind === 'ai' ? 'spark' : 'search') + h(T.ai.badge(pv)) + '</span>';
+    // a compact chip: "AI" or "Rules"; the model, timing and any fallback are in the tooltip
+    var full = T.ai.badge(pv) + '. ' + (pv.kind === 'ai' ? 'Read by live AI; validated against your records before use.' : 'Read by deterministic rules in your browser.');
+    return '<span class="pv pv-' + (pv.kind === 'ai' ? 'ai' : 'rules') + (pv.fallback ? ' is-fallback' : '') + '" title="' + h(full) + '" aria-label="' + h(full) + '">' + I(pv.kind === 'ai' ? 'spark' : pv.fallback ? 'alert' : 'search') + (pv.kind === 'ai' ? 'AI' : 'Rules') + '</span>';
   }
   R.provBadge = provBadge;
 
@@ -69,7 +71,7 @@
       '<span class="speaking" id="speaking" hidden><span class="spk-bars" aria-hidden="true"><i></i><i></i><i></i></span><button type="button" data-act="hush" class="spk-stop" aria-label="Stop speaking" title="Stop speaking">' + I('stop') + '</button></span>' +
       (s.role === 'coordinator' ? '<button type="button" class="icon-btn role-chip" data-act="lab" title="Signed in as Maude, coordinator" aria-label="Signed in as Maude, coordinator">' + I('people') + '</button>' : '') +
       (s.caps.offline ? '<span class="icon-btn off-chip" title="Offline: sends are queued" aria-label="Offline">' + I('ban') + '</span>' : '') +
-      '<button type="button" class="icon-btn" data-act="search" aria-label="Search (Ctrl or Cmd K)" title="Search">' + I('search') + '</button>' +
+      '<button type="button" class="icon-btn search-btn" data-act="search" aria-label="Search (Ctrl or Cmd K)" title="Search">' + I('search') + '</button>' +
       '<a class="icon-btn bell" href="#/inbox" aria-label="Inbox, ' + T.unread() + ' unread" title="Inbox">' + I('mail') + (T.unread() ? '<span class="bell-n">' + Math.min(99, T.unread()) + '</span>' : '') + '</a>' +
       R.aiIcon() +
       '<button type="button" class="demo-btn" data-act="demo" aria-haspopup="dialog" aria-label="Demo menu: fictional data, tour, Test lab, reset" title="Demo · fictional data">' + I('flask') + '<span>Demo</span></button>';
@@ -469,10 +471,10 @@
           }).join('') + '</div>' +
           '<p class="cf-note">Tayoo won’t pick for you or treat a conflicting date as a deadline until you do. This isn’t legal advice; confirm with the other broker.' + (inCard ? ' <button type="button" class="btn-link" data-act="resolve" data-tx="' + tx.id + '" data-key="' + x.key + '" data-choice="none">Leave unresolved</button>' : '') + '</p></div>';
       }
-      var act = x.type === 'missing-calendar' ? '<button type="button" class="btn btn-ghost btn-sm" data-act="tx-cal" data-tx="' + tx.id + '" data-key="' + x.key + '">' + I('calendar') + 'Add to calendar</button>' :
-        x.type === 'calendar-mismatch' ? '<button type="button" class="btn btn-ghost btn-sm" data-act="tx-move" data-tx="' + tx.id + '" data-key="' + x.key + '" data-ev="' + x.event + '">' + I('calendar') + 'Move the event to match the file</button>' :
-          x.type === 'overdue' || x.type === 'lender-late' ? '<span class="muted">Human-led: talk to the other broker about a waiver or an extension.</span>' : '';
-      return '<div class="issue issue-' + x.type + '">' + I(x.type === 'overdue' || x.type === 'lender-late' ? 'alert' : 'calendar') + '<div><p>' + h(x.label) + '</p>' + (x.source ? '<p class="muted">Source: ' + h(x.source) + '</p>' : '') + (act ? '<p class="issue-act">' + act + '</p>' : '') + '</div></div>';
+      var act = x.type === 'missing-calendar' ? '<button type="button" class="btn btn-ghost btn-sm" data-act="tx-cal" data-tx="' + tx.id + '" data-key="' + x.key + '">' + I('calendar') + 'Add</button>' :
+        x.type === 'calendar-mismatch' ? '<button type="button" class="btn btn-ghost btn-sm" data-act="tx-move" data-tx="' + tx.id + '" data-key="' + x.key + '" data-ev="' + x.event + '">' + I('calendar') + 'Match file</button>' :
+          x.type === 'overdue' || x.type === 'lender-late' ? '<span class="muted" title="Human-led: talk to the other broker about a waiver or an extension.">' + I('people') + 'Human-led</span>' : '';
+      return '<div class="issue issue-' + x.type + '">' + I(x.type === 'overdue' || x.type === 'lender-late' ? 'alert' : 'calendar') + '<div title="' + h(x.label) + '"><p>' + (x.type === 'calendar-mismatch' ? '<strong>' + h(x.short) + '</strong> <span class="iss-dt"><s title="Your calendar">' + h(x.from) + '</s> → ' + h(x.to) + '</span>' : h(x.short || x.label)) + '</p>' + (x.source ? '<p class="muted">' + h(x.source) + '</p>' : '') + (act ? '<p class="issue-act">' + act + '</p>' : '') + '</div></div>';
     }).join('');
   };
   R.fileLists = function (tx) {
@@ -589,7 +591,8 @@
       if (counts.skipped) parts.push(counts.skipped + ' skipped');
       if (counts.excluded) parts.push(counts.excluded + ' excluded');
       if (counts.shadow) parts.push(counts.shadow + ' step' + (counts.shadow === 1 ? '' : 's') + ' would have run');
-      return '<footer class="bind is-run is-done"><p class="bind-sum" title="' + h(meta.replace(/<[^>]+>/g, '')) + '">' + I(card.status === 'shadow' ? 'eye' : 'check') + '<span>' + h(parts.join(' · ')) + '</span></p></footer>';
+      // the outcome counts live on the receipt right below; the card keeps who approved it and when
+      return '<footer class="bind is-run is-done"><p class="bind-sum" title="' + h(meta.replace(/<[^>]+>/g, '') + ': ' + parts.join(' · ')) + '">' + I(card.status === 'shadow' ? 'eye' : 'check') + '<span>' + (card.status === 'shadow' ? 'Shadow run' : 'Approved') + ' ' + h(T.fmtTime(card.approvedAt.split('T')[1])) + ' · v' + card.approvedVersion + '</span></p></footer>';
     }
     return '<footer class="bind is-run"><ol class="run">' + card.steps.map(function (x) {
       var st = ST[x.status] || ST.pending;
@@ -651,8 +654,9 @@
     var c = r.clientId && T.client(r.clientId);
     var counts = {};
     r.steps.forEach(function (x) { counts[x.status] = (counts[x.status] || 0) + 1; });
-    return '<article class="receipt' + (r.shadow ? ' is-shadow' : '') + '" aria-labelledby="rt-' + r.id + '">' +
-      '<header class="rc-h"><p class="rc-tag" title="Plan v' + r.version + ' #' + h(r.fingerprint) + ', approved by ' + h(r.approver) + ' at ' + h(T.fmtTime(r.approvedAt.split('T')[1])) + '">' + I(r.shadow ? 'eye' : 'check') + (r.shadow ? 'Shadow receipt' : 'Receipt') + '</p><h3 id="rt-' + r.id + '">' + h(r.title) + '</h3></header>' +
+    // in the thread the receipt sits right under its card, so the title isn't repeated there
+    return '<article class="receipt' + (r.shadow ? ' is-shadow' : '') + '" aria-label="' + h((r.shadow ? 'Shadow receipt: ' : 'Receipt: ') + r.title) + '">' +
+      '<header class="rc-h"><p class="rc-tag" title="Plan v' + r.version + ' #' + h(r.fingerprint) + ', approved by ' + h(r.approver) + ' at ' + h(T.fmtTime(r.approvedAt.split('T')[1])) + '">' + I(r.shadow ? 'eye' : 'check') + (r.shadow ? 'Shadow receipt' : 'Receipt') + '</p>' + (compact ? '<h3>' + h(r.title) + '</h3>' : '') + '</header>' +
       '<p class="rc-counts">' + Object.keys(counts).map(function (k) { var st = ST[k] || ST.pending; return '<span class="rc-n st-' + st.cls + '" title="' + h(st.label) + '">' + I(st.icon) + counts[k] + ' ' + h(st.short || st.label.split(',')[0].toLowerCase()) + '</span>'; }).join('') + '</p>' +
       '<details class="rc-more" data-ui="rcm-' + r.id + '"' + (T.ui.open['rcm-' + r.id] ? ' open' : '') + '><summary>' + I('down') + '<span>' + r.steps.length + ' steps</span></summary>' +
       '<ol class="rc-steps">' + r.steps.map(function (x) {

@@ -34,7 +34,7 @@
     const kinds = { trap: ['alert', 'Piège éliminatoire'], pill: ['info', 'Clause de risque'], req: ['check', 'Exigence'], info: ['info', 'À savoir'] };
     const prov = ex.provenance.source === 'ai' ? ex.provenance : null;
     return `<section class="nt-review" aria-labelledby="ntr-h">
-      <div class="sec-row"><h2 id="ntr-h" class="sec-h">2. Revoir</h2><span class="nt-prov">${UI.prov(prov)}${ex.fallback ? `<span class="st st-wait" title="${esc(ex.fallback)}">${ic('alert', 13)}<span>Repli sur les règles</span></span>` : ''}</span>${ex.unverified ? UI.chip('alert', ex.unverified + ' citation(s) non retrouvée(s)', 'chip-bad', 'Marquées « à vérifier » : elles n’ont pas été retrouvées mot pour mot dans le texte.') : ''}${UI.info((prov ? 'Champs et exigences proposés par l’IA en direct; chaque citation a été recherchée mot pour mot dans le texte.' : 'Champs lus par des règles déterministes, sans réseau.') + ' Corrigez au besoin : rien n’est créé avant votre clic.' + (ex.fallback ? ' ' + ex.fallback : ''), 'Comment revoir')}</div>
+      <div class="sec-row"><h2 id="ntr-h" class="sec-h">2. Revoir</h2><span class="nt-prov">${UI.prov(prov)}${ex.fallback ? `<span class="st st-wait" title="${esc(ex.fallback)}">${ic('alert', 13)}<span>IA indisponible · règles</span></span>` : ''}</span>${ex.unverified ? UI.chip('alert', ex.unverified + ' citation(s) non retrouvée(s)', 'chip-bad', 'Marquées « à vérifier » : elles n’ont pas été retrouvées mot pour mot dans le texte.') : ''}${UI.info((prov ? 'Champs et exigences proposés par l’IA en direct; chaque citation a été recherchée mot pour mot dans le texte.' : 'Champs lus par des règles déterministes, sans réseau.') + ' Corrigez au besoin : rien n’est créé avant votre clic.' + (ex.fallback ? ' ' + ex.fallback : ''), 'Comment revoir')}</div>
       <div class="nt-fields">
         ${field('buyer', 'Donneur d’ouvrage', inp('buyer', n.buyer), findSeg(ex, n.buyer))}
         ${field('title', 'Objet', inp('title', n.title), findSeg(ex, n.title))}
@@ -83,7 +83,7 @@
           </section>
           ${ex ? review(ex) : ''}
         </div>
-        <details class="fold nt-side"${segs.length && UI.view.ntSrcOpen ? ' open' : ''}><summary>${ic('doc', 16)}<span>Texte source</span>${segs.length ? `<small>${segs.length} phrases · ${Object.keys(quoted).length} citées</small>` : ''}</summary>
+        <details class="fold nt-side"${segs.length && UI.view.ntSrcOpen ? ' open' : ''}><summary>${ic('doc', 16)}<span>Texte source</span>${segs.length ? `<small title="${segs.length} phrases, dont ${Object.keys(quoted).length} citées">${Object.keys(quoted).length}/${segs.length}</small>` : ''}</summary>
           <div class="nt-source" tabindex="0">${segs.length ? segs.map((s, i) => `<p id="nt-seg-${i}" class="nt-s${quoted[i] ? ' is-q nt-s-' + quoted[i] : ''}"><span class="nt-sn">${i + 1}</span>${esc(s)}</p>`).join('') : '<p class="kempty">Lancez une analyse : chaque phrase citée sera surlignée ici.</p>'}</div>
         </details>
       </div>
