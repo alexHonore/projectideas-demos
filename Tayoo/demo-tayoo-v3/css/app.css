@@ -1335,3 +1335,14 @@ details:not([open]) > :not(summary) { display: none !important; }
 .iss-dt { color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .iss-dt s { color: var(--ink-3); }
 body.touring .toast { bottom: auto; top: 70px; }
+/* touch targets: at least 44 × 44 px */
+.top-brand { min-height: 44px; display: inline-flex; align-items: center; }
+.demo-btn, .chip-say, .btn, .btn-sm, .fchips button, .seg .btn, .tabs-in a, .ag-r .btn-link, .records.is-compact .rec, .fld select, .fld input { min-height: 44px; }
+.icon-btn, .blk-link, a.blk-link, .v-back, .task-ctl .icon-btn, .ag-ctl .icon-btn, .ag-more > summary, .v-info > summary, .fchip-ic, .seg a.btn { min-width: 44px; min-height: 44px; }
+.ag-more > summary, .v-info > summary { width: 44px; height: 44px; }
+.card-more > summary, .blk-d > summary, .cma-note > summary, .comp-adj > summary, .rc-more > summary, .lf-more > summary { min-height: 44px; display: flex; align-items: center; }
+.card-more > summary, .rc-more > summary, .cma-note > summary { display: inline-flex; }
+.inc { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; margin: -13px; }
+label.check { min-height: 44px; display: flex; align-items: center; gap: 10px; }
+.ag-r .btn-link { display: inline-flex; align-items: center; }
+.fchips button { min-width: 44px; }

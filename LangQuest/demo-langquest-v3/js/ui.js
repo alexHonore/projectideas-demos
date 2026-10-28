@@ -77,7 +77,6 @@
   };
   /* Tiny tier icon (a button that opens the per-course voice picker). */
   U.voiceChip = (track, enr) => { const v = U.voiceStatus(track, enr); return '<button class="voicechip voicechip--' + v.tier + '" data-act="voice-picker" data-arg="' + esc(track.id) + '" aria-label="Voice: ' + esc(v.label) + '. Choose a voice" title="' + esc(v.text) + '">' + LQ.art.icon(v.icon, 'ic--xs') + '</button>'; };
-  /* ⓘ chip: an explanation behind an icon (native disclosure, keyboard accessible). */
   /* Remember the transcript disclosure across re-renders. */
   document.addEventListener('toggle', e => { const d = e.target; if (d && d.matches && d.matches('details.txd')) LQ.ui.txOpen = d.open; }, true);
   /* ⓘ chip: an icon button (valid inside headings and paragraphs) that reveals one short note.

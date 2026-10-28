@@ -51,7 +51,7 @@
     const st = S.vaultStatus(v), restricted = v.sensitivity === 'restricted', canR = S.can('restricted'), canV = S.can('vault');
     const used = V.usedBy(v.kind);
     const registry = v.kind === 'amp' || v.kind === 'rena';
-    const key = v.revoked ? 'Révoquée' : v.expires ? 'jusqu’au ' + U.dateShort(dayIso(v.expires)) : '';
+    const key = v.revoked ? 'Révoquée' : v.expires ? U.dateShort(dayIso(v.expires)) : '';
     const meta = restricted && !canR ? 'Accès restreint : visible par la propriétaire et l’administratrice seulement.' : [v.issuer + ' · ' + kindLabel(v.kind) + (v.tender && S.def(v.tender) ? ' · ' + S.def(v.tender).buyerShort : ''), v.file + (v.hash ? ' · empreinte ' + v.hash.slice(0, 12) : '') + (v.verified ? ' · ' + v.verified : ''), v.expires ? 'Délivrée le ' + U.date(dayIso(v.issued)) + ', valide jusqu’au ' + U.date(dayIso(v.expires)) : '', v.amount ? 'Couverture ' + U.money(v.amount) : '', v.revoked ? 'Révoquée le ' + U.dayTime(v.revoked.at) + ' : ' + v.revoked.reason : '', v.note || '', restricted ? 'Pièce restreinte.' : used.length ? 'Exigée par ' + used.length + ' dossier' + (used.length > 1 ? 's' : '') + ' ouvert' + (used.length > 1 ? 's' : '') + '.' : 'Données de l’entreprise.'].filter(Boolean).join(' · ');
     const warn = ['expired', 'pending', 'suspended', 'unverified'].includes(st.k);
     const dis = canV ? '' : ' disabled';
@@ -62,7 +62,7 @@
         <button type="button" class="menu-i" data-act="vault-remove" data-v="${esc(v.id)}"${dis}>${ic('trash', 16)}<span>Retirer</span></button></div></details>`;
     return `<li class="doc${restricted ? ' doc-restricted' : ''}${v.created ? ' doc-new' : ''}" id="doc-${esc(v.id)}">
       <span class="doc-s" title="${esc(st.label)}">${UI.status(st.k, st.label)}</span>
-      <div class="doc-t"><b>${restricted ? ic('lock', 13) : ''}${esc(v.title)}</b>${warn || key ? `<small class="${warn ? 'is-' + (st.k === 'pending' ? 'wait' : 'bad') : ''}">${esc(warn ? st.label : key)}</small>` : ''}</div>
+      <div class="doc-t"><b>${restricted ? ic('lock', 13) : ''}${esc(v.title)}</b>${warn ? `<small class="is-${st.k === 'pending' ? 'wait' : 'bad'}">${esc(st.label)}</small>` : key ? `<small title="${esc('Valide jusqu’au ' + key)}">${ic('cal', 12)}<span class="sr">Valide jusqu’au </span>${esc(key)}</small>` : ''}</div>
       <span class="doc-a">${UI.info(meta, 'Détails de la pièce')}${restricted && !canR ? '' : `${UI.iconBtn('upload', 'Remplacer', 'vault-replace', { v: v.id }).replace('<button ', canV ? '<button ' : '<button disabled ')}${more}`}</span>
       ${(v.versions || []).length ? `<details class="vers-d"><summary>${ic('log', 13)}${v.versions.length} version${v.versions.length > 1 ? 's' : ''} précédente${v.versions.length > 1 ? 's' : ''}</summary><ul>${v.versions.slice().reverse().map((o, i) => `<li><b>v${v.versions.length - i}</b> ${esc(o.file)} · ${o.expires ? 'valide jusqu’au ' + esc(U.dateShort(dayIso(o.expires))) : 'sans échéance'} · remplacée ${esc(U.dayTime(o.replacedAt))}</li>`).join('')}</ul></details>` : ''}
     </li>`;

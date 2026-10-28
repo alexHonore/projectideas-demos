@@ -1369,3 +1369,4 @@ details:not([open]) > :not(summary) { display: none !important; }
   .queue-rows > li > .chip { grid-column: 1; grid-row: 2; justify-self: start; margin-left: 34px; }
   .queue-rows .row-acts { grid-column: 2; grid-row: 1 / span 2; }
 }
+@media (max-width: 760px) { .hero-compact .hero-line { display: none; } }

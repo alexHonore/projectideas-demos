@@ -134,7 +134,7 @@
     const changes = d.packageApproval && !S.packageApproved(id) && !d.receipt ? `<p class="since">${ic('alert', 16)}<span>Modifié depuis la v${d.packageApproval.rev}</span>${UI.info('Des changements depuis l’approbation de la version ' + d.packageApproval.rev + ' : ' + (d.packageApproval.bundle !== S.bundleKey(id) ? 'nouvel addenda intégré, ' : '') + 'nouvelle empreinte. Revoyez les lignes ouvertes puis approuvez la version ' + d.rev + '.', 'Ce qui a changé')}</p>` : '';
     return `${UI.dossierHead(id, 'revue')}
     <div class="review"><div class="cards">
-      <div class="sec-row"><h2 class="sec-h">À confirmer</h2>${UI.info('Proposer → confirmer → exécuter. Rien d’externe n’est envoyé sans confirmation.', 'Comment ça marche')}</div>
+      <div class="sec-row"><h2 class="sec-h">À confirmer</h2>${UI.chip('flask', 'Simulé', '', 'Envois au courtier, signatures, dépôt et reçu sont simulés : aucun courriel ni portail réel.')}${UI.info('Proposer → confirmer → exécuter. Rien d’externe n’est envoyé sans confirmation; les envois de cette démo sont simulés.', 'Comment ça marche')}</div>
       ${changes}${priceCard(id)}${bondCard(id)}${ackCard(id)}${declCard(id)}
     </div>${pkgPanel(id)}</div>`;
   };

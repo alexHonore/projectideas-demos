@@ -15,8 +15,13 @@
     if (!s.caps.ai) return { on: false, state: 'off', why: 'Live AI is off in the Test lab' };
     if (s.caps.offline) return { on: false, state: 'off', why: 'Offline: live AI needs the network' };
     if (!s.settings.useAI) return { on: false, state: 'off', why: 'Live AI is off in Settings' };
-    if (M) { var g = M.check('tayoo', 'anthropic'); if (!g.ok) return { on: false, state: /^No /.test(g.reason) ? 'off' : 'paused', why: g.reason + ' (API monitor)' }; }
-    else if (!L.isOn()) return { on: false, state: 'off', why: 'No API key' };
+    // the engine (Anthropic, or an OpenRouter model) is chosen on the hub's API monitor; check that provider
+    var prov = L.provider || 'anthropic';
+    if (M) {
+      var g = M.check('tayoo', prov);
+      if (!g.ok) return { on: false, state: /^No /.test(g.reason) ? 'off' : 'paused', why: g.reason + ' (API monitor)' };
+      if (!L.isOn()) return { on: false, state: 'off', why: (prov === 'openrouter' ? 'No OpenRouter model chosen' : 'No API key') + ' (API monitor)' };
+    } else if (!L.isOn()) return { on: false, state: 'off', why: 'No API key' };
     return { on: true, state: 'on', why: 'Live AI (' + L.model + ') reads free text; you still approve every plan' };
   };
   AI.on = function () { return AI.status().on; };

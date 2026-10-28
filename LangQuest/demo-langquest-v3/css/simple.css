@@ -194,3 +194,8 @@ details:not([open]) > :not(summary) { display: none; }
 /* Icons sit inline with their words (flex and grid containers lay them out as before). */
 svg.ic { display: inline-block; vertical-align: -0.2em; }
 .chip-demo--btn { min-height: 44px; padding: 0 14px; cursor: pointer; font-family: var(--f-ui); }
+
+/* In full-screen activities the toast sits under the header, never over the mic dock. */
+.screen.is-full .toast--screen { bottom: auto; top: 64px; transform: translateX(-50%) translateY(-12px); }
+.screen.is-full .toast--screen.is-on { transform: translateX(-50%); }
+@media (min-width: 760px) { .screen.is-full .toast--screen { top: 104px; } }
