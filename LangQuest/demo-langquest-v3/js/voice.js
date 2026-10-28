@@ -107,7 +107,9 @@
   let audio = null, pending = null, gen = 0;
   VX.stop = () => { gen++; if (audio) { try { audio.pause(); } catch (e) { } audio = null; } if (pending) { const d = pending; pending = null; d('cancelled'); } };
   function playUrl(url, rate, o, g, onfail) {
-    const a = new root.Audio(url); audio = a; a.playbackRate = rate; try { a.preservesPitch = true; } catch (e) { }
+    // the shared element the first tap unlocked (see speech.js), so playback after a network call still starts on phones
+    const a = LQ.speech.audioEl ? LQ.speech.audioEl() : new root.Audio(); a.onplaying = a.onended = a.onerror = null; try { a.pause(); } catch (e) { }
+    a.src = url; audio = a; a.playbackRate = rate; try { a.preservesPitch = true; } catch (e) { }
     let done = false;
     const end = (why) => { if (done) return; done = true; if (pending === fin) pending = null; if (audio === a) audio = null; o.onend && o.onend(why); };
     const fin = (why) => end(why); pending = fin;

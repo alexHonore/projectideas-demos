@@ -19,7 +19,8 @@
  *   ApiMeter.keys.get/set/clear/has/remembered(provider)
  *   ApiMeter.llm(app) / setLlm(provider, model, app?) / clearLlm(app)   live-AI engine, per app or default
  *   ApiMeter.route() / setRoute(patch)     OpenRouter routing: sort, privacy, zdr, fallbacks
- *   ApiMeter.voice() / setVoice(kind, {provider, model, voice})        speech engines ('tts' | 'stt')
+ *   ApiMeter.voice() / setVoice(kind, {provider, model, voice})        speech engines ('tts' | 'stt'); on
+ *       OpenRouter an empty model means auto (best-suited model from the live list, shown as v.auto)
  *   ApiMeter.tts({app, text, voice, signal}) -> {blob, usage}           via the chosen voice engine
  *   ApiMeter.transcribe({app, blob, lang, seconds, signal}) -> {text, usage}
  *   ApiMeter.openrouter.models({kind, refresh})   kind 'text' | 'speech' | 'transcription'
@@ -153,20 +154,30 @@
     r = Object.assign({}, DEFAULT_ROUTE, r || {});
     return { sort: /^(price|throughput|latency)$/.test(r.sort) ? r.sort : '', privacy: !!r.privacy, zdr: !!r.zdr, fallbacks: (r.fallbacks || []).filter(Boolean).slice(0, 2) };
   }
-  // Speech engines: Gemini direct unless OpenRouter is chosen, or is the only key added (then a
-  // voice model must still be picked on the API page).
+  // Speech engines: Gemini direct unless OpenRouter is chosen, or is the only key added. On OpenRouter
+  // an empty model means "auto": the best-suited voice or transcription model from its live list.
   function normVoice(m) {
     var t = m.ttsVia || {}, s = m.sttVia || {}, orOnly = keys.has('openrouter') && !keys.has('gemini');
     if (!t.provider && orOnly) t = Object.assign({ provider: 'openrouter' }, t);
     if (!s.provider && orOnly) s = Object.assign({ provider: 'openrouter' }, s);
     return {
-      tts: t.provider === 'openrouter' ? { provider: 'openrouter', model: t.model || '', voice: t.voice || '' } : { provider: 'gemini', model: m.tts || DEFAULT_MODELS.tts, voice: t.voice || 'Kore' },
-      stt: s.provider === 'openrouter' ? { provider: 'openrouter', model: s.model || '' } : { provider: 'gemini', model: m.transcribe || DEFAULT_MODELS.transcribe }
+      tts: t.provider === 'openrouter' ? { provider: 'openrouter', model: t.model || autoModel('speech'), auto: !t.model, voice: t.voice || '' } : { provider: 'gemini', model: m.tts || DEFAULT_MODELS.tts, voice: t.voice || 'Kore' },
+      stt: s.provider === 'openrouter' ? { provider: 'openrouter', model: s.model || autoModel('transcription'), auto: !s.model } : { provider: 'gemini', model: m.transcribe || DEFAULT_MODELS.transcribe }
     };
   }
-  function gateWith(app, provider, model, what) {
+  // Auto picks, from the cached OpenRouter lists: Gemini TTS first (natural, multilingual, and the
+  // demos' character voices are Gemini voice names), then other TTS; Whisper first for transcription.
+  var AUTO_PREF = { speech: [/gemini[^/]*flash[^/]*tts/i, /gemini[^/]*tts/i, /tts/i], transcription: [/whisper/i, /transcri/i] };
+  function autoModel(kind) {
+    var list = ((orCache[kind] || {}).list) || [];
+    if (!list.length) return '';
+    var prefs = AUTO_PREF[kind] || [], cheap = function (a, b) { return (a.input || 0) - (b.input || 0); };
+    for (var i = 0; i < prefs.length; i++) { var hit = list.filter(function (m) { return prefs[i].test(m.id); }).sort(cheap)[0]; if (hit) return hit.id; }
+    return list[0].id;
+  }
+  function gateWith(app, provider, model, what, auto) {
     var g = api.check(app, provider);
-    if (g.ok && provider === 'openrouter' && !model) return { ok: false, reason: 'No OpenRouter ' + what + ' chosen' };
+    if (g.ok && provider === 'openrouter' && !model && !auto) return { ok: false, reason: 'No OpenRouter ' + what + ' chosen' };
     return g;
   }
 
@@ -212,8 +223,8 @@
       return { ok: true };
     },
     checkLlm: function (app) { var l = api.llm(app); return gateWith(app, l.provider, l.model, 'model'); },
-    checkTts: function (app) { var v = api.voice().tts; return gateWith(app, v.provider, v.model, 'voice model'); },
-    checkStt: function (app) { var v = api.voice().stt; return gateWith(app, v.provider, v.model, 'transcription model'); },
+    checkTts: function (app) { var v = api.voice().tts; return gateWith(app, v.provider, v.model, 'voice model', v.auto); },
+    checkStt: function (app) { var v = api.voice().stt; return gateWith(app, v.provider, v.model, 'transcription model', v.auto); },
 
     record: function (e) {
       var s = load(), t = now(), m = month(t);
@@ -402,6 +413,7 @@
       });
     },
     cached: function (kind) { return ((orCache[kind || 'text'] || {}).list) || []; },
+    auto: function (kind) { return autoModel(kind); },
     find: function (id) { var hit = null; Object.keys(orCache).some(function (k) { return (orCache[k].list || []).some(function (m) { if (m.id === id) { hit = m; return true; } return false; }); }); return hit; },
     // The key's own label, limit and usage. Free; needs the key, and nothing is recorded.
     account: function (o) {
@@ -439,52 +451,95 @@
       }).then(function (r) { return { text: r.result.text, finish: r.result.finish, model: r.result.servedBy, provider: r.result.host, usage: r.usage }; });
     },
     speech: function (o) {
-      var v = api.voice().tts, model = o.model || v.model, info = api.openrouter.find(model), voice = o.voice;
-      // A demo may ask for a voice this model does not have (e.g. a Gemini voice name); then the chosen one is used.
-      if (info && info.voices && voice && !has(info.voices, voice)) voice = '';
-      voice = voice || v.voice || (info && info.voices && info.voices[0]) || '';
-      return api.run({ app: o.app, provider: 'openrouter', op: 'tts', model: model }, function () {
-        var body = { model: model, input: o.text, response_format: 'mp3' };
-        if (voice) body.voice = voice;
-        if (o.instructions) body.instructions = o.instructions;
-        var prov = orProvider(null, true); if (prov) body.provider = prov;
-        return fetch(OR + 'audio/speech', { method: 'POST', signal: o.signal, headers: orHeaders(true), body: JSON.stringify(body) }).then(function (res) {
-          if (!res.ok) return res.json().catch(function () { return {}; }).then(function (j) { throw orError(res, j); });
-          return res.blob().then(function (b) {
+      return resolveModel('speech', o.model).then(function (model) {
+        var v = api.voice().tts, info = api.openrouter.find(model), voice = o.voice;
+        // A demo may ask for a voice this model does not have (e.g. a Gemini voice name); then the chosen one is used.
+        if (info && info.voices && voice && !has(info.voices, voice)) voice = '';
+        if (info && info.voices && v.voice && !has(info.voices, v.voice)) v.voice = '';
+        voice = voice || v.voice || (info && info.voices && info.voices[0]) || '';
+        return api.run({ app: o.app, provider: 'openrouter', op: 'tts', model: model }, function () {
+          var once = function (fmt) {
+            var body = { model: model, input: o.text, response_format: fmt };
+            if (voice) body.voice = voice;
+            if (o.instructions) body.instructions = o.instructions;
+            var prov = orProvider(null, true); if (prov) body.provider = prov;
+            return fetch(OR + 'audio/speech', { method: 'POST', signal: o.signal, headers: orHeaders(true), body: JSON.stringify(body) }).then(function (res) {
+              if (!res.ok) return res.json().catch(function () { return {}; }).then(function (j) { throw orError(res, j); });
+              return speechBlob(res, fmt);
+            });
+          };
+          // Raw PCM is the format every voice model takes (some take nothing else); it is wrapped as WAV.
+          // If a model rejects the format, the other one is tried once and remembered for that model.
+          var fmt = speechFormat(model);
+          return once(fmt).catch(function (err) {
+            if (!(err && err.status === 400 && /response_format|format/i.test(err.message || ''))) throw err;
+            var alt = /"?pcm"?/i.test(err.message) && fmt !== 'pcm' ? 'pcm' : /"?mp3"?/i.test(err.message) && fmt !== 'mp3' ? 'mp3' : fmt === 'pcm' ? 'mp3' : 'pcm';
+            return once(alt).then(function (b) { speechFormat(model, alt); return b; });
+          }).then(function (b) {
             var chars = (o.text || '').length;
-            return { result: { blob: /^audio\//.test(b.type || '') ? b : new Blob([b], { type: 'audio/mpeg' }), voice: voice }, model: model, usage: { inputTokens: Math.ceil(chars / 4), chars: chars } };
+            return { result: { blob: b, voice: voice }, model: model, usage: { inputTokens: Math.ceil(chars / 4), chars: chars } };
           });
         });
       }).then(function (r) { return { blob: r.result.blob, voice: r.result.voice, usage: r.usage }; });
     },
     transcribe: function (o) {
-      var model = o.model || api.voice().stt.model;
-      return api.run({ app: o.app, provider: 'openrouter', op: 'transcribe', model: model }, function () {
-        return toWav(o.blob).catch(function () { return o.blob; }).then(function (b) {
-          return blobToB64(b).then(function (data) {
-            var body = { model: model, input_audio: { data: data, format: audioFormat(b.type) } };
-            if (o.lang) body.language = String(o.lang).split('-')[0];
-            var prov = orProvider(null, true); if (prov) body.provider = prov;
-            return fetch(OR + 'audio/transcriptions', { method: 'POST', signal: o.signal, headers: orHeaders(true), body: JSON.stringify(body) }).then(orJson);
-          });
-        }).then(function (j) {
-          var u = j.usage || {}, usage = { inputTokens: u.input_tokens || 0, outputTokens: u.output_tokens || 0, seconds: u.seconds || o.seconds || 0 };
-          if (u.cost != null) usage.costUSD = Number(u.cost);
-          return { result: { text: String(j.text || '').trim() }, model: model, usage: usage };
-        });
-      }).then(function (r) { return { text: r.result.text, usage: r.usage }; });
+      return resolveModel('transcription', o.model).then(function (model) { return orTranscribe(o, model); });
     }
   };
+  function orTranscribe(o, model) {
+    return api.run({ app: o.app, provider: 'openrouter', op: 'transcribe', model: model }, function () {
+      return toWav(o.blob).catch(function () { return o.blob; }).then(function (b) {
+        return blobToB64(b).then(function (data) {
+          var body = { model: model, input_audio: { data: data, format: audioFormat(b.type) } };
+          if (o.lang) body.language = String(o.lang).split('-')[0];
+          var prov = orProvider(null, true); if (prov) body.provider = prov;
+          return fetch(OR + 'audio/transcriptions', { method: 'POST', signal: o.signal, headers: orHeaders(true), body: JSON.stringify(body) }).then(orJson);
+        });
+      }).then(function (j) {
+        var u = j.usage || {}, usage = { inputTokens: u.input_tokens || 0, outputTokens: u.output_tokens || 0, seconds: u.seconds || o.seconds || 0 };
+        if (u.cost != null) usage.costUSD = Number(u.cost);
+        return { result: { text: String(j.text || '').trim() }, model: model, usage: usage };
+      });
+    }).then(function (r) { return { text: r.result.text, usage: r.usage }; });
+  }
+  // The model to use: the one asked for, else the chosen one, else the auto pick (loading the list if needed).
+  function resolveModel(kind, asked) {
+    var v = api.voice()[kind === 'speech' ? 'tts' : 'stt'], m = asked || (v.provider === 'openrouter' ? v.model : '');
+    if (m) return Promise.resolve(m);
+    return api.openrouter.models({ kind: kind }).then(function () {
+      var a = autoModel(kind);
+      if (!a) throw new Error('OpenRouter lists no ' + (kind === 'speech' ? 'voice' : 'transcription') + ' model');
+      return a;
+    });
+  }
+  var FORMATS = 'project-demos:or-speech-format:v1';
+  function speechFormat(model, set) {
+    var all = read(FORMATS) || {};
+    if (set) { all[model] = set; write(FORMATS, all); return set; }
+    return all[model] || 'pcm';
+  }
+  // Speech bytes as a playable blob: WAV and MP3 pass through; raw PCM (16-bit mono) gets a WAV header.
+  function speechBlob(res, fmt) {
+    var ct = (res.headers && res.headers.get('content-type')) || '';
+    return res.arrayBuffer().then(function (buf) {
+      var u = new Uint8Array(buf);
+      if (u.length > 4 && u[0] === 0x52 && u[1] === 0x49 && u[2] === 0x46 && u[3] === 0x46) return new Blob([u], { type: 'audio/wav' });
+      if (fmt === 'mp3' || /mpeg|mp3/i.test(ct) || (u[0] === 0x49 && u[1] === 0x44 && u[2] === 0x33)) return new Blob([u], { type: 'audio/mpeg' });
+      if (/ogg|opus|webm|aac|mp4/i.test(ct)) return new Blob([u], { type: ct.split(';')[0] });
+      var rate = Number((/rate=(\d+)/i.exec(ct) || [])[1] || 24000);
+      return pcmToWav(u.length % 2 ? u.slice(0, u.length - 1) : u, rate);
+    });
+  }
 
   // ---- the chosen speech engines, for the demos
   api.tts = function (o) {
     var v = api.voice().tts;
-    if (v.provider === 'openrouter') return api.openrouter.speech(Object.assign({}, o, { model: v.model }));
+    if (v.provider === 'openrouter') return api.openrouter.speech(Object.assign({}, o, { model: v.auto ? '' : v.model }));
     return api.gemini.tts(Object.assign({}, o, { voice: o.voice || v.voice }));
   };
   api.transcribe = function (o) {
     var v = api.voice().stt;
-    if (v.provider === 'openrouter') return api.openrouter.transcribe(Object.assign({}, o, { model: v.model }));
+    if (v.provider === 'openrouter') return api.openrouter.transcribe(Object.assign({}, o, { model: v.auto ? '' : v.model }));
     return api.gemini.transcribe(o);
   };
 

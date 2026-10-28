@@ -28,6 +28,18 @@
   }
   if (S.hasTTS) { loadVoices(); try { synth.addEventListener('voiceschanged', loadVoices); } catch (e) { synth.onvoiceschanged = loadVoices; } }
   S.onVoices = fn => listeners.add(fn);
+  /* Phones (iOS above all) only let audio and speech start inside a tap. The first tap unlocks one
+     shared <audio> element and the speech engine; later playback, even after a network call, reuses them. */
+  const SILENT = 'data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
+  let shared = null;
+  S.audioEl = () => { if (!shared) { shared = new W.Audio(); shared.preload = 'auto'; } return shared; };
+  const UNLOCK = ['pointerdown', 'touchend', 'keydown'];
+  function unlock() {
+    UNLOCK.forEach(e => document.removeEventListener(e, unlock, true));
+    try { const a = S.audioEl(); if (!a.src || a.paused) { a.src = SILENT; const p = a.play(); if (p && p.catch) p.catch(() => { }); } } catch (e) { }
+    try { if (synth && W.SpeechSynthesisUtterance && navigator.maxTouchPoints > 0) { const u = new W.SpeechSynthesisUtterance(' '); u.volume = 0; synth.speak(u); } } catch (e) { }
+  }
+  if (typeof document !== 'undefined') UNLOCK.forEach(e => document.addEventListener(e, unlock, true));
   const norm = l => String(l || '').replace('_', '-').toLowerCase();
   S.voiceCount = () => voices.length;
   /* Voice ranking: the most natural voice wins for each locale. Exact locale first (a nearby
@@ -178,7 +190,9 @@
   S.startRecording = (onLevel) => {
     if (!S.hasRecorder) return Promise.reject(new Error('unsupported'));
     const gen = ++generation;
-    return navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+    // made and resumed inside the tap, or iOS keeps it suspended and the level (and auto-stop) never moves
+    try { const AC = W.AudioContext || W.webkitAudioContext; if (AC && onLevel) { ctx = new AC(); if (ctx.resume) ctx.resume(); } } catch (e) { ctx = null; }
+    return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then(s => {
       if (gen !== generation) { s.getTracks().forEach(t => t.stop()); throw new Error('stale'); }
       stream = s; chunks = [];
       rec = new W.MediaRecorder(s);
@@ -187,7 +201,8 @@
       try {
         const AC = W.AudioContext || W.webkitAudioContext;
         if (AC && onLevel) {
-          ctx = new AC(); const src = ctx.createMediaStreamSource(s); analyser = ctx.createAnalyser(); analyser.fftSize = 512; src.connect(analyser);
+          if (!ctx || ctx.state === 'closed') ctx = new AC();
+          const src = ctx.createMediaStreamSource(s); analyser = ctx.createAnalyser(); analyser.fftSize = 512; src.connect(analyser);
           const buf = new Uint8Array(analyser.fftSize);
           const tick = () => { if (!analyser) return; analyser.getByteTimeDomainData(buf); let sum = 0; for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v; } onLevel(Math.min(1, Math.sqrt(sum / buf.length) * 4)); raf = requestAnimationFrame(tick); };
           tick();
@@ -205,7 +220,7 @@
       const blob = new Blob(chunks, { type: r.mimeType || 'audio/webm' });
       try { stream && stream.getTracks().forEach(t => t.stop()); } catch (e) { }
       stream = null; rec = null;
-      resolve(blob.size ? { url: URL.createObjectURL(blob), seconds: secs, size: blob.size } : null);
+      resolve(blob.size ? { url: URL.createObjectURL(blob), seconds: secs, size: blob.size, blob } : null);
     };
     try { r.stop(); } catch (e) { rec = null; resolve(null); }
   });

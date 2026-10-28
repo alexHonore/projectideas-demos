@@ -203,3 +203,28 @@ button.ltool { width: 32px; height: 32px; border-radius: 50%; border: 1px solid 
 .tx__seg--pause .ic { vertical-align: -3px; margin-right: 4px; }
 .tx__jump { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); display: grid; place-items: center; cursor: pointer; font-size: .7rem; font-weight: 800; color: var(--ink-3); padding: 0; }
 .tx .gloss { font-weight: 500; }
+
+/* Verdict after every spoken or typed answer */
+.verdict { display: flex; gap: 10px; align-items: center; width: 100%; border-radius: var(--r-md); padding: 12px 14px; margin: 8px 0 4px; text-align: left; animation: verdict-in .22s ease-out; }
+.verdict > div { display: grid; gap: 2px; min-width: 0; }
+.verdict strong { font-size: 1.05rem; }
+.verdict span { font-size: .84rem; overflow-wrap: anywhere; }
+.verdict q { font-family: var(--f-target); font-weight: 650; }
+.verdict__ic { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; flex: none; color: #fff; }
+.verdict--ok { background: var(--ok-50); color: var(--ok-ink); }
+.verdict--ok .verdict__ic { background: var(--ok); }
+.verdict--close { background: var(--warn-50); color: var(--ink); }
+.verdict--close .verdict__ic { background: var(--warn); }
+.verdict--miss { background: var(--live-50); color: var(--ink); }
+.verdict--miss .verdict__ic { background: var(--live); }
+.verdict--miss { animation: verdict-shake .32s ease-out; }
+@keyframes verdict-in { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes verdict-shake { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+@media (prefers-reduced-motion: reduce) { .verdict, .verdict--miss { animation: none; } }
+.lfoot__pair { display: inline-flex; gap: 8px; }
+.ratebtn.is-suggested { box-shadow: 0 0 0 3px var(--accent-100, rgba(49, 73, 224, .25)); position: relative; }
+.ratebtn__sug { font-size: .66rem; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--accent); }
+.score { display: flex; align-items: center; gap: 8px; justify-content: center; font-size: .95rem; margin: 4px 0 10px; color: var(--ink-2); }
+.score strong { font-size: 1.25rem; color: var(--ink); }
+.score .ic { color: var(--ok); }
+.cap.is-ai-wait .mic { animation: none; opacity: .7; }

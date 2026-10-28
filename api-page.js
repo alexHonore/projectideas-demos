@@ -300,12 +300,12 @@
   }
   function inUse(kind, prov, model, voice) {
     var v = M.voice()[kind];
-    return v.provider === prov && (prov === 'gemini' ? (kind === 'stt' || v.voice === voice) : v.model === model && (kind === 'stt' || v.voice === voice));
+    return v.provider === prov && (prov === 'gemini' ? (kind === 'stt' || v.voice === voice) : (v.auto ? '' : v.model) === model && (kind === 'stt' || v.voice === voice));
   }
   function useBtn(kind, prov, model, voice) {
     if (prov === 'device' || prov === 'browser') return '<span class="ap-muted">' + ic('check') + 'Free fallback in the demos</span>';
     var on = inUse(kind, prov, model, voice);
-    return '<button type="button" class="ap-link" data-use-voice="' + kind + '"' + (on || (prov === 'openrouter' && !model) ? ' disabled' : '') + '>' + (on ? ic('check') + 'Demos use this' : 'Use in demos') + '</button>';
+    return '<button type="button" class="ap-link" data-use-voice="' + kind + '"' + (on ? ' disabled' : '') + '>' + (on ? ic('check') + 'Demos use this' : 'Use in demos') + '</button>';
   }
   function voice(s) {
     var cur = s.voice;
@@ -313,21 +313,21 @@
     if (!vs.tts) vs.tts = cur.tts.provider === 'gemini' && orOnly ? 'openrouter' : cur.tts.provider;
     if (!vs.stt) vs.stt = cur.stt.provider === 'gemini' && orOnly ? 'openrouter' : cur.stt.provider;
     if (!vs.gvoice) vs.gvoice = cur.tts.provider === 'gemini' ? cur.tts.voice : 'Kore';
-    if (!vs.orTts && cur.tts.provider === 'openrouter') { vs.orTts = cur.tts.model; vs.orVoice = cur.tts.voice; }
-    if (!vs.orStt && cur.stt.provider === 'openrouter') vs.orStt = cur.stt.model;
+    // '' means Auto: the meter picks the best-suited model from OpenRouter's live list.
+    if (!vs.orTts && cur.tts.provider === 'openrouter' && !cur.tts.auto) { vs.orTts = cur.tts.model; vs.orVoice = cur.tts.voice; }
+    if (!vs.orStt && cur.stt.provider === 'openrouter' && !cur.stt.auto) vs.orStt = cur.stt.model;
     var needT = vs.tts === 'openrouter' && !data.speech.length, needS = vs.stt === 'openrouter' && !data.transcription.length;
     if (needT) autoLoad('speech');
     if (needS) autoLoad('transcription');
-    if (vs.tts === 'openrouter' && !vs.orTts && data.speech.length) vs.orTts = data.speech[0].id;
-    if (vs.stt === 'openrouter' && !vs.orStt && data.transcription.length) vs.orStt = data.transcription[0].id;
+    var effTts = vs.orTts || M.openrouter.auto('speech'), effStt = vs.orStt || M.openrouter.auto('transcription');
     var text = vs.text || sample(), o = vs.out.tts, busy = vs.busy === 'tts';
 
     // Speak
     var prov = vs.tts === 'device' ? 'browser-tts' : vs.tts, g = vs.tts === 'device' ? M.check(APP, 'browser-tts') : M.check(APP, prov), body = '';
     if (vs.tts === 'openrouter') {
-      var tm = info(vs.orTts), voices = (tm && tm.voices) || [];
+      var tm = info(effTts), voices = (tm && tm.voices) || [];
       if (voices.length && vs.orVoice && voices.indexOf(vs.orVoice) < 0) vs.orVoice = '';
-      body = '<label class="ap-field"><span>' + ic('cpu') + 'Model</span><select data-f="orTts">' + (data.speech.length ? data.speech.map(function (m) { return opt(m.id, shortName(m.id) + (m.input != null ? ' · ' + per(m.input) + '/1M' : ''), vs.orTts); }).join('') : '<option value="">' + (data.loading.speech ? 'Loading…' : esc(data.error.speech || 'No voice models')) + '</option>') + '</select></label>' +
+      body = '<label class="ap-field"><span>' + ic('cpu') + 'Model</span><select data-f="orTts">' + (data.speech.length ? opt('', 'Auto · ' + shortName(effTts), vs.orTts) + data.speech.map(function (m) { return opt(m.id, shortName(m.id) + (m.input != null ? ' · ' + per(m.input) + '/1M' : ''), vs.orTts); }).join('') : '<option value="">' + (data.loading.speech ? 'Loading…' : esc(data.error.speech || 'No voice models')) + '</option>') + '</select></label>' +
         '<label class="ap-field"><span>' + ic('speaker') + 'Voice</span>' + (voices.length ? '<select data-f="orVoice">' + voices.map(function (v) { return opt(v, v, vs.orVoice || voices[0]); }).join('') + '</select>' : '<input data-f="orVoice" value="' + esc(vs.orVoice) + '" placeholder="default">') + '</label>';
     } else if (vs.tts === 'gemini') {
       body = '<label class="ap-field"><span>' + ic('speaker') + 'Voice</span><select data-f="gvoice">' + GEMINI_VOICES.map(function (v) { return opt(v[0], v[0] + ' · ' + v[1], vs.gvoice); }).join('') + '</select></label>' +
@@ -338,24 +338,24 @@
       body = '<label class="ap-field"><span>' + ic('speaker') + 'Voice</span><select data-f="dvoice">' + (dv.length ? dv.map(function (v, i) { return opt(v.name, (voiceScore(v, vs.lang) >= 5 ? '★ ' : '') + v.name + (i === 0 ? ' (best)' : ''), vs.dvoice || dv[0].name); }).join('') : '<option value="">No voice for this language</option>') + '</select></label>' +
         '<label class="ap-field"><span>' + ic('clock') + 'Speed ' + vs.rate.toFixed(2) + '</span><input type="range" min="0.6" max="1.3" step="0.05" value="' + vs.rate + '" data-f="rate"></label>';
     }
-    var tModel = vs.tts === 'openrouter' ? vs.orTts : vs.tts === 'gemini' ? M.model('tts') : '';
+    var tModel = vs.tts === 'openrouter' ? effTts : vs.tts === 'gemini' ? M.model('tts') : '';
     var html = '<div class="ap-card ap-voice"><div class="ap-card-head"><h3>' + ic('speaker') + 'Speak</h3>' + seg('tts', vs.tts, [['openrouter', 'route', 'OpenRouter'], ['gemini', 'spark', 'Gemini'], ['device', 'speaker', 'Device']]) + '</div>' +
       (g.ok ? '' : '<p class="ap-paused" role="status">' + ic('power') + esc(g.reason) + (/key/.test(g.reason) ? ' · <a href="#api/keys">add it</a>' : '') + '</p>') +
       '<div class="ap-grid3">' + langSel() + body + '</div>' +
       '<label class="ap-field wide"><span class="sr-only">Text to speak</span><input data-f="vText" value="' + esc(text) + '" aria-label="Text to speak"></label>' +
-      '<div class="ap-row"><button type="button" class="ap-run" data-run="tts"' + (busy || !g.ok || (vs.tts === 'openrouter' && !vs.orTts) ? ' disabled' : '') + '>' + (busy ? '…' : ic('play') + 'Speak') + '<small>' + (vs.tts === 'device' ? 'free' : '≈ ' + usd4(vs.tts === 'gemini' ? M.costOf(M.model('tts'), { inputTokens: Math.ceil(text.length / 4) + 10, audioOutTokens: Math.ceil(Math.max(1, text.length / 14) * 25) }) : M.costOf(tModel, { inputTokens: Math.ceil(text.length / 4) }))) + '</small></button>' +
-      useBtn('tts', vs.tts, tModel, vs.tts === 'gemini' ? vs.gvoice : vs.orVoice || ((info(vs.orTts) || {}).voices || [])[0] || '') + '</div>' +
+      '<div class="ap-row"><button type="button" class="ap-run" data-run="tts"' + (busy || !g.ok || (vs.tts === 'openrouter' && !effTts) ? ' disabled' : '') + '>' + (busy ? '…' : ic('play') + 'Speak') + '<small>' + (vs.tts === 'device' ? 'free' : '≈ ' + usd4(vs.tts === 'gemini' ? M.costOf(M.model('tts'), { inputTokens: Math.ceil(text.length / 4) + 10, audioOutTokens: Math.ceil(Math.max(1, text.length / 14) * 25) }) : M.costOf(tModel, { inputTokens: Math.ceil(text.length / 4) }))) + '</small></button>' +
+      useBtn('tts', vs.tts, vs.tts === 'openrouter' ? vs.orTts : tModel, vs.tts === 'gemini' ? vs.gvoice : vs.orVoice || ((info(effTts) || {}).voices || [])[0] || '') + '</div>' +
       (o && o.url ? '<audio class="ap-audio" controls src="' + o.url + '"></audio>' : '') + meta(o) + '</div>';
 
     // Listen
     var so = vs.out.stt, SR = window.SpeechRecognition || window.webkitSpeechRecognition, sprov = vs.stt === 'browser' ? 'browser-speech' : vs.stt, sg = M.check(APP, sprov), sbody = '';
-    if (vs.stt === 'openrouter') sbody = '<label class="ap-field"><span>' + ic('cpu') + 'Model</span><select data-f="orStt">' + (data.transcription.length ? data.transcription.map(function (m) { return opt(m.id, shortName(m.id), vs.orStt); }).join('') : '<option value="">' + (data.loading.transcription ? 'Loading…' : esc(data.error.transcription || 'No transcription models')) + '</option>') + '</select></label>';
+    if (vs.stt === 'openrouter') sbody = '<label class="ap-field"><span>' + ic('cpu') + 'Model</span><select data-f="orStt">' + (data.transcription.length ? opt('', 'Auto · ' + shortName(effStt), vs.orStt) + data.transcription.map(function (m) { return opt(m.id, shortName(m.id), vs.orStt); }).join('') : '<option value="">' + (data.loading.transcription ? 'Loading…' : esc(data.error.transcription || 'No transcription models')) + '</option>') + '</select></label>';
     else if (vs.stt === 'gemini') sbody = '<label class="ap-field"><span>' + ic('cpu') + 'Model</span><input data-f="gSttModel" value="' + esc(M.model('transcribe')) + '"></label>';
     var rec = vs.recording || vs.listening, sbusy = vs.busy === 'stt';
     html += '<div class="ap-card ap-voice"><div class="ap-card-head"><h3>' + ic('mic') + 'Listen</h3>' + seg('stt', vs.stt, [['openrouter', 'route', 'OpenRouter'], ['gemini', 'spark', 'Gemini'], ['browser', 'mic', 'Browser']]) + '</div>' +
       (vs.stt === 'browser' && !SR ? '<p class="ap-paused">This browser has no speech recognition. Try Chrome or Edge.</p>' : sg.ok ? '' : '<p class="ap-paused" role="status">' + ic('power') + esc(sg.reason) + (/key/.test(sg.reason) ? ' · <a href="#api/keys">add it</a>' : '') + '</p>') +
       '<div class="ap-grid3">' + langSel().replace('data-f="vLang"', 'data-f="vLang2"') + sbody + '</div>' +
-      '<div class="ap-row"><button type="button" class="ap-run' + (rec ? ' rec' : '') + '" data-run="stt"' + (sbusy || (!rec && (!sg.ok || (vs.stt === 'browser' && !SR) || (vs.stt === 'openrouter' && !vs.orStt))) ? ' disabled' : '') + '>' + (rec ? ic('stop') + 'Stop' : sbusy ? '…' : ic('rec') + 'Record') + '<small>' + (rec ? (vs.stt === 'browser' ? 'listening' : 'max 8 s') : vs.stt === 'browser' ? 'free' : '8 s max') + '</small></button>' +
+      '<div class="ap-row"><button type="button" class="ap-run' + (rec ? ' rec' : '') + '" data-run="stt"' + (sbusy || (!rec && (!sg.ok || (vs.stt === 'browser' && !SR) || (vs.stt === 'openrouter' && !effStt))) ? ' disabled' : '') + '>' + (rec ? ic('stop') + 'Stop' : sbusy ? '…' : ic('rec') + 'Record') + '<small>' + (rec ? (vs.stt === 'browser' ? 'listening' : 'max 8 s') : vs.stt === 'browser' ? 'free' : '8 s max') + '</small></button>' +
       useBtn('stt', vs.stt, vs.stt === 'openrouter' ? vs.orStt : M.model('transcribe')) + '</div>' +
       (so && (so.text != null || so.interim) ? '<blockquote class="ap-out">' + esc(so.text || (so.interim ? '' : '(silence)')) + (so.interim ? ' <i>' + esc(so.interim) + '</i>' : '') + '</blockquote>' : '') + meta(so) + '</div>';
     return html;
@@ -581,7 +581,7 @@
     }
     vs.busy = 'tts'; draw();
     var p = vs.tts === 'openrouter'
-      ? M.openrouter.speech({ app: APP, model: vs.orTts, voice: vs.orVoice || ((info(vs.orTts) || {}).voices || [])[0], text: text, instructions: 'Speak naturally, in ' + lang + '.' })
+      ? M.openrouter.speech({ app: APP, model: vs.orTts, voice: vs.orVoice || ((info(vs.orTts || M.openrouter.auto('speech')) || {}).voices || [])[0], text: text, instructions: 'Speak naturally, in ' + lang + '.' })
       : M.gemini.tts({ app: APP, voice: vs.gvoice, text: 'Say naturally, in ' + lang + ': ' + text });
     p.then(function (r) {
       vs.busy = ''; var c = lastCost();
@@ -652,7 +652,7 @@
     else if (d.run === 'stt') listen();
     else if (d.tts) { vs.tts = d.tts; vs.out.tts = null; keep(); draw(); }
     else if (d.stt) { vs.stt = d.stt; vs.out.stt = null; keep(); draw(); }
-    else if (d.useVoice === 'tts') M.setVoice('tts', vs.tts === 'openrouter' ? { provider: 'openrouter', model: vs.orTts, voice: vs.orVoice || ((info(vs.orTts) || {}).voices || [])[0] || '' } : { provider: 'gemini', voice: vs.gvoice });
+    else if (d.useVoice === 'tts') M.setVoice('tts', vs.tts === 'openrouter' ? { provider: 'openrouter', model: vs.orTts, voice: vs.orVoice || ((info(vs.orTts || M.openrouter.auto('speech')) || {}).voices || [])[0] || '' } : { provider: 'gemini', voice: vs.gvoice });
     else if (d.useVoice === 'stt') M.setVoice('stt', vs.stt === 'openrouter' ? { provider: 'openrouter', model: vs.orStt } : { provider: 'gemini' });
     else if (d.key) { ui.keyOpen = ui.keyOpen === d.key ? null : d.key; draw(); var k = root.querySelector('[data-keyform="' + d.key + '"] input[name=k]'); if (k) k.focus(); }
     else if (d.clear) { M.keys.clear(d.clear); if (d.clear === 'openrouter') { data.account = null; data.accErr = ''; } }

@@ -12,7 +12,7 @@
 
   function newRun(m) {
     return { mid: m.id, tid: m.track, phase: 'context', ctx: { answer: null, ok: false, translate: false, text: null }, modelIdx: 0, model: {}, antIdx: 0, ant: {}, antResults: [],
-      turn: m.roleplay ? m.roleplay.start : null, vars: {}, log: [], credits: {}, turnHelp: null, misses: 0, subs: null, ended: false, summary: null, hints: 0, typedOpen: false, started: S.today(), talkStarted: false };
+      turn: m.roleplay ? m.roleplay.start : null, vars: {}, log: [], credits: {}, turnHelp: null, misses: 0, subs: null, ended: false, summary: null, hints: 0, typedOpen: false, started: S.today(), talkStarted: false, checks: { ok: 0, total: 0, seen: {} } };
   }
   function saveDraft() {
     if (!R) return;
@@ -128,20 +128,30 @@
     h += '<div class="lfoot">' + U.tool('phase-skip', 'skip', 'Skip this step') + (R.ctx.ok ? '<button class="btn btn--primary" data-act="phase-next">Continue</button>' : '') + '</div>';
     return h;
   };
+  /* First-try score: each phrase or prompt counts once, on its first checked attempt. */
+  function tally(id, ok) { const c = R.checks || (R.checks = { ok: 0, total: 0, seen: {} }); if (c.seen[id]) return; c.seen[id] = true; c.total++; if (ok) c.ok++; }
   /* 2. Model phrases: hear normal/slow, say it, optional word help */
   PHASE.model = () => {
     const m = mis(), list = m.expressions, ex = list[R.modelIdx], at = R.model[ex.id];
-    C.on('model', a => { R.model[ex.id] = a; if (a.mode !== 'self' || true) S.award('say:' + ex.id + ':' + S.today(), 5, 'Said “' + U.nm(ex.t) + '”', R.tid); S.save(); LQ.app.render(); });
+    C.on('model', a => {
+      const v = C.verdict(U.nm(ex.t), a.text); a.verdict = v ? v.k : null;
+      R.model[ex.id] = a; if (v) { C.cue(v.k); tally('m:' + ex.id, v.k === 'ok'); }
+      if (!v || v.k !== 'miss') S.award('say:' + ex.id + ':' + S.today(), 5, 'Said “' + U.nm(ex.t) + '”', R.tid);
+      S.save(); LQ.app.render();
+    });
     let h = '<p class="kicker" aria-label="Phrase ' + (R.modelIdx + 1) + ' of ' + list.length + '">' + (R.modelIdx + 1) + ' / ' + list.length + '</p>' +
       '<div class="pcard"><div class="pcard__phrase">' + U.phrase(ex, { track: trk() }) + '</div><p class="pcard__m">' + esc(U.nm(L(ex.m))) + fbNote(ex.m) + '</p>' +
       '<div class="tools"><button class="tool tool--main" data-act="ref-play" data-arg="' + ex.id + '" title="Listen">' + ic('volume', 'ic--sm') + 'Listen</button>' + U.tool('ref-slow', 'slow', 'Slowly', ' data-arg="' + ex.id + '"') +
       (ex.words ? U.tool('words-toggle', 'list', 'Word by word', ' aria-expanded="' + !!R.words + '"') : '') + saveExprBtn(ex) + (ex.note ? U.info(L(ex.note), 'Tip', 'bulb') : '') + '</div>' +
       (ex.words && R.words ? '<dl class="words">' + ex.words.map(w => '<div><dt dir="auto">' + esc(w[0]) + '</dt><dd>' + esc(L(w[1])) + '</dd></div>').join('') + '</dl>' : '') + '</div>';
-    if (!at) h += C.widget('model', { lang: srLang(), langName: trk().name, label: C.srUsable() ? 'Tap and say it' : 'Tap to record yourself' });
+    if (!at) h += C.widget('model', { lang: srLang(), langName: trk().name, label: C.canSpeak() ? 'Tap and say it' : 'Tap to record yourself' });
     else h += '<div class="after">' + (at.mode === 'self' ? '<p class="yes">' + ic('check', 'ic--sm') + '<span>Marked as said aloud. Compare with the reference whenever you like.</span></p>' : '') + C.compareHtml(U.nm(ex.t), at) + C.takeHtml('model', true) +
-      '<button class="linkbtn" data-act="model-again" title="Try it again">' + ic('replay', 'ic--xs') + 'Again</button></div>';
+      (at.verdict && at.verdict !== 'ok' ? '' : '<button class="linkbtn" data-act="model-again" title="Try it again">' + ic('replay', 'ic--xs') + 'Again</button>') + '</div>';
+    const retry = at && at.verdict && at.verdict !== 'ok';
     h += '<div class="dots" aria-hidden="true">' + list.map((x, i) => '<span class="' + (i === R.modelIdx ? 'is-on' : R.model[x.id] ? 'is-done' : '') + '"></span>').join('') + '</div>' +
-      '<div class="lfoot"><button class="btn btn--quiet" data-act="model-skip" aria-label="Skip phrase" title="Skip phrase">' + ic('skip', 'ic--sm') + '</button><button class="btn btn--primary" data-act="model-next"' + (at ? '' : ' disabled') + '>' + (R.modelIdx < list.length - 1 ? 'Next' : 'Continue') + '</button></div>';
+      '<div class="lfoot"><button class="btn btn--quiet" data-act="model-skip" aria-label="Skip phrase" title="Skip phrase">' + ic('skip', 'ic--sm') + '</button>' +
+      (retry ? '<span class="lfoot__pair"><button class="btn btn--ghost" data-act="model-next">' + (R.modelIdx < list.length - 1 ? 'Next' : 'Continue') + '</button><button class="btn btn--primary" data-act="model-again">' + ic('replay', 'ic--sm') + 'Try again</button></span>'
+        : '<button class="btn btn--primary" data-act="model-next"' + (at ? '' : ' disabled') + '>' + (R.modelIdx < list.length - 1 ? 'Next' : 'Continue') + '</button>') + '</div>';
     return h;
   };
   /* 3. Anticipation (Pimsleur): attempt before the model answer is revealed */
@@ -156,13 +166,17 @@
   PHASE.anticipate = () => {
     const m = mis(), item = m.anticipate[R.antIdx], model = antModel(item), st = R.ant[R.antIdx] || { state: 'prompt' };
     R.ant[R.antIdx] = st;
-    C.on('ant', a => { st.attempt = a; st.state = 'compare'; LQ.app.render(); setTimeout(() => LS.say(model, { ref: true }), 250); });
+    C.on('ant', a => {
+      const v = C.verdict(U.nm(model.t), a.text); st.attempt = a; st.verdict = v ? v.k : null; st.state = 'compare';
+      if (v) { C.cue(v.k); tally('a:' + R.antIdx, v.k === 'ok'); }
+      LQ.app.render(); setTimeout(() => LS.say(model, { ref: true }), v ? 700 : 250);
+    });
     let h = '<p class="kicker" aria-label="Prompt ' + (R.antIdx + 1) + ' of ' + m.anticipate.length + '">' + (R.antIdx + 1) + ' / ' + m.anticipate.length + '</p>' +
       '<div class="prompt"><p class="prompt__t">' + esc(U.nm(L(item.prompt))) + fbNote(item.prompt) + '</p></div>';
     if (st.state === 'prompt') {
       h += ring('prompt') +
         (st.hint ? '<p class="hint">' + ic('bulb', 'ic--sm') + '<span>Starts with: <strong dir="auto">' + esc(U.nm(model.r && enr().script === 'roman' ? model.r : model.t).split(' ').slice(0, 2).join(' ')) + '…</strong></span></p>' : '') +
-        C.widget('ant', { lang: srLang(), langName: trk().name, label: C.srUsable() ? 'Say your answer' : 'Record your answer' }) +
+        C.widget('ant', { lang: srLang(), langName: trk().name, label: C.canSpeak() ? 'Say your answer' : 'Record your answer' }) +
         '<div class="lfoot"><button class="btn btn--quiet" data-act="ant-hint"' + (st.hint ? ' disabled' : '') + ' title="Hint">' + ic('bulb', 'ic--sm') + 'Hint</button><button class="btn btn--ghost" data-act="ant-reveal" title="Reveal the answer (it returns sooner)">' + ic('eye', 'ic--sm') + 'Reveal</button></div>';
     } else {
       const assisted = st.revealed && !st.attempt ? 'revealed' : st.hint ? 'hint' : false;
@@ -171,7 +185,8 @@
         C.compareHtml(U.nm(model.t), st.attempt) + (st.attempt && st.attempt.mode === 'record' ? C.takeHtml('ant', true) : '') +
         '';
       if (!st.rated) {
-        h += '<h3 class="q q--sm">How close?</h3><div class="rate" role="group" aria-label="Rate your attempt"><button class="ratebtn ratebtn--got" data-act="ant-rate" data-arg="got">' + ic('check', 'ic--sm') + 'Got it</button><button class="ratebtn ratebtn--close" data-act="ant-rate" data-arg="close">' + ic('loop', 'ic--sm') + 'Close</button><button class="ratebtn ratebtn--again" data-act="ant-rate" data-arg="again">' + ic('replay', 'ic--sm') + 'Not yet</button></div>' +
+        const sug = { ok: 'got', close: 'close', miss: 'again' }[st.verdict] || null, rb = (k, icon, label) => '<button class="ratebtn ratebtn--' + k + (sug === k ? ' is-suggested' : '') + '" data-act="ant-rate" data-arg="' + k + '">' + ic(icon, 'ic--sm') + label + (sug === k ? '<span class="ratebtn__sug">Suggested</span>' : '') + '</button>';
+        h += '<h3 class="q q--sm">How close?</h3><div class="rate" role="group" aria-label="Rate your attempt">' + rb('got', 'check', 'Got it') + rb('close', 'loop', 'Close') + rb('again', 'replay', 'Not yet') + '</div>' +
           (assisted ? '<p class="muted small">' + ic('bulb', 'ic--xs') + ' Helped ' + U.info(assisted === 'revealed' ? 'You revealed it first; that’s fine and is noted as help, so it returns sooner.' : 'You used a hint; it’s noted, so it returns sooner.', 'About help') + '</p>' : '');
       } else {
         h += '<p class="sched">' + ic('calendar', 'ic--sm') + '<span>' + esc(st.why) + '</span></p><div class="lfoot"><span></span><button class="btn btn--primary" data-act="ant-next">' + (R.antIdx < m.anticipate.length - 1 ? 'Next prompt' : (m.roleplay ? 'Talk to ' + who() : 'Finish')) + '</button></div>';
@@ -212,6 +227,8 @@
   PHASE.feedback = () => {
     const m = mis(), sm = R.summary || summarize();
     let h = '<div class="fb-hero">' + U.mascot(sm.met === sm.total ? 'celebrate' : 'encouraging', 80) + '<div><h2 class="h3">' + (m.firstWords ? 'First words done' : sm.met === sm.total ? 'Mission complete' : 'Mission finished') + '</h2><p class="muted small">' + sm.met + '/' + sm.total + ' goals' + (sm.xp ? ' · +' + sm.xp + ' XP' : '') + ' ' + U.info((m.roleplay ? sm.met + ' of ' + sm.total + ' goals shown in conversation. ' : sm.met + ' of ' + sm.total + ' phrases anticipated and self-checked. ') + (sm.xp ? '+' + sm.xp + ' XP for effort. ' : 'XP already earned today for this mission. ') + 'Goals come from what the meaning matcher accepted in conversation. Typed answers count for meaning, not for speaking. No pronunciation score is given.', 'How this was judged') + '</p></div></div>';
+    const ck = R.checks || { ok: 0, total: 0 };
+    if (ck.total) h += '<p class="score' + (ck.ok === ck.total ? ' score--all' : '') + '">' + ic('check', 'ic--sm') + '<strong>' + ck.ok + ' / ' + ck.total + '</strong><span>right first time</span></p>';
     h += '<ul class="goals" role="list">' + sm.goals.map(g => '<li class="goal' + (g.ok ? ' is-ok' : '') + '" title="' + esc(g.how) + '">' + (g.ok ? ic('check', 'ic--sm') : '<span class="goal__ring" aria-hidden="true"></span>') + '<span><strong>' + esc(LQ.SKILLS[g.skill].en) + '</strong></span>' + U.stateChip(g.state) + '</li>').join('') + '</ul>';
     h += '<div class="stack-sm"><a class="btn btn--primary btn--block" href="#/home" data-act="lesson-done">Done</a>' + (S.due(R.tid).length ? '<a class="btn btn--ghost btn--block" href="#/recall" data-act="lesson-done">' + ic('refresh', 'ic--sm') + 'Recall ' + S.due(R.tid).length + '</a>' : '') + '</div>';
     h += '<details class="more"><summary>' + ic('list', 'ic--sm') + 'Details</summary>' +
@@ -333,7 +350,7 @@
   }
   function miss(text, input, why, idx) {
     const m = mis(), turn = m.roleplay.turns[R.turn], speak = [];
-    R.misses++;
+    R.misses++; C.cue('miss');
     const label = R.misses >= 2 ? 'Not understood yet: a hint and ideas are shown' : 'Not understood yet';
     if (idx != null && R.log[idx]) Object.assign(R.log[idx], { miss: label, pending: false }); else R.log.push({ who: 'me', text, mode: input, miss: label });
     if (why) note(why, 'info');
@@ -344,6 +361,7 @@
   }
   function applyMatch(x, text, input, autonomy, judged, idx, second) {
     const m = mis(), speak = [], by = judged ? 'live-ai' : null;
+    if (input !== 'suggested') C.cue('ok');
     const entry = { who: 'me', text, mode: input, intent: x.intent, intent2: second ? second.intent : null, judged: by };
     if (idx != null && R.log[idx]) Object.assign(R.log[idx], entry, { pending: false }); else R.log.push(entry);
     const me = idx != null && R.log[idx] ? R.log[idx] : R.log[R.log.length - 1];
@@ -424,7 +442,7 @@
   act['ctx-translate'] = () => { R.ctx.translate = !R.ctx.translate; LQ.app.render(); };
   act['ctx-answer'] = (el) => {
     const i = +el.dataset.arg, m = mis(), o = m.context.options[i];
-    R.ctx.answer = i; R.ctx.ok = !!o.ok;
+    R.ctx.answer = i; R.ctx.ok = !!o.ok; C.cue(o.ok ? 'ok' : 'miss'); tally('c', !!o.ok);
     const sk = m.roleplay ? (m.roleplay.turns[m.roleplay.start].expect.slice(-1)[0] || {}).skill : m.skills[0];
     if (o.ok) S.observe(R.tid, sk, { mission: m.id, scene: m.scene, kind: 'listening', autonomy: R.ctx.translate ? 'hint' : 'independent', input: 'choice', ok: true });
     LQ.app.render();

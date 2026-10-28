@@ -209,7 +209,7 @@
   ACT['tour-do'] = () => PN.doStep();
   ACT['tour-end'] = () => PN.end(false);
   // capture widget
-  ACT['cap-speak'] = (el) => { const k = el.dataset.arg; if (k === 'talk' && !C.srUsable()) { C.typing.talk = true; APP.render(); return; } const t = S.track(); C.speak(k, U.srLocale(t, S.enr())); };
+  ACT['cap-speak'] = (el) => { const k = el.dataset.arg; if (k === 'talk' && !C.canSpeak()) { C.typing.talk = true; APP.render(); return; } const t = S.track(); C.speak(k, U.srLocale(t, S.enr())); };
   ACT['cap-record'] = (el) => C.record(el.dataset.arg);
   ACT['cap-type'] = (el) => { const k = el.dataset.arg; C.typing[k] = !C.typing[k]; APP.render(); const i = $('type-' + k); if (i) i.focus(); };
   ACT['cap-self'] = (el) => C.self(el.dataset.arg);

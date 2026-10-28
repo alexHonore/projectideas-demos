@@ -52,7 +52,9 @@
     if (!track) return null;
     let locales = track.tts.slice();
     if (track.regions && enr && enr.region) { const r = track.regions.find(x => x.id === enr.region); if (r) locales = [r.locale].concat(locales.filter(l => l !== r.locale)); }
-    return { locales, never: track.never || [], allowNear: !!(enr && enr.voiceNear) };
+    // A nearby regional voice (never one the course forbids) is used when the exact locale has none,
+    // so the course isn't silent; the voice chip names it. A learner can turn that off per course.
+    return { locales, never: track.never || [], allowNear: !(enr && enr.voiceNear === 'off') };
   };
   U.srLocale = (track, enr) => {
     if (track.regions && enr && enr.region) { const r = track.regions.find(x => x.id === enr.region); if (r) return r.locale; }

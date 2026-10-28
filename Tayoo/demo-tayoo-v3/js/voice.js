@@ -130,11 +130,25 @@
   }
   function cacheGet(k) { return idb().then(function (db) { return new Promise(function (ok) { var r = db.transaction('clips').objectStore('clips').get(k); r.onsuccess = function () { ok(r.result || null); }; r.onerror = function () { ok(null); }; }); }).catch(function () { return null; }); }
   function cachePut(k, blob) { return idb().then(function (db) { db.transaction('clips', 'readwrite').objectStore('clips').put(blob, k); }).catch(function () {}); }
+  // Phones (iOS above all) only let audio and speech start inside a tap. The first tap unlocks one shared
+  // <audio> element and the speech engine, and AI replies (which arrive after a network call) reuse them.
+  var SILENT = 'data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==', shared = null;
+  function sharedAudio() { if (!shared) { shared = new Audio(); shared.preload = 'auto'; } return shared; }
+  var UNLOCK = ['pointerdown', 'touchend', 'keydown'];
+  function unlock() {
+    UNLOCK.forEach(function (e) { document.removeEventListener(e, unlock, true); });
+    try { var a = sharedAudio(); if (!a.src || a.paused) { a.src = SILENT; var p = a.play(); if (p && p.catch) p.catch(function () {}); } } catch (e) { /* optional */ }
+    try { if (window.speechSynthesis && navigator.maxTouchPoints > 0) { var u = new SpeechSynthesisUtterance(' '); u.volume = 0; window.speechSynthesis.speak(u); } } catch (e) { /* optional */ }
+  }
+  UNLOCK.forEach(function (e) { document.addEventListener(e, unlock, true); });
+  // Rejects when the audio can't play, so the caller falls back to the device voice instead of going silent.
   function playBlob(blob, text) {
-    var url = URL.createObjectURL(blob), au = new Audio(url);
+    var url = URL.createObjectURL(blob), au = sharedAudio();
+    au.onended = au.onerror = null; try { au.pause(); } catch (e) { /* ignore */ }
+    au.src = url;
     V.audio = au; V.speaking = true; T.app && T.app.onSpeaking(true, text);
     au.onended = au.onerror = function () { V.speaking = false; URL.revokeObjectURL(url); T.app && T.app.onSpeaking(false); };
-    return au.play().catch(function () { V.speaking = false; T.app && T.app.onSpeaking(false); });
+    return au.play().catch(function (err) { V.speaking = false; T.app && T.app.onSpeaking(false); throw err; });
   }
   function deviceSay(text, lang) {
     var g = gate('browser-tts');
@@ -154,7 +168,8 @@
     try {
       if (!T.store.state.settings.speak || !text) return;
       var set = T.store.state.settings;
-      if (set.voiceEngine === 'gemini' && meter() && gateTts().ok) {
+      // Reply voice: Auto (the default) and "AI voice" use the engine chosen on the API page when it is ready
+      if (set.voiceEngine !== 'device' && meter() && gateTts().ok) {
         var tv = meter().voice().tts, voice = lang === 'FR' ? 'Leda' : 'Kore', key = tv.provider + '|' + tv.model + '|' + (tv.provider === 'openrouter' ? tv.voice : voice) + '|' + text;
         cacheGet(key).then(function (hit) {
           if (hit) return playBlob(hit, text);
@@ -202,7 +217,7 @@
   var C = (T.capture = { open: false, state: 'idle', mode: null, text: '', interim: '', rec: null, timer: 0, started: 0, playId: 0 });
   T.capture.silenceMs = 1500;
   function $(id) { return document.getElementById(id); }
-  function isPhone() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || ''); }
+  function isPhone() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '') || (/Macintosh/.test(navigator.userAgent || '') && navigator.maxTouchPoints > 1); }
   function setState(st, text, hint, reason) {
     C.state = st; C.mode = st;
     var d = STATES[st] || STATES.error;
@@ -232,12 +247,19 @@
     var bars = $('cap-level').children;
     for (var i = 0; i < bars.length; i++) { var w = 1 - Math.abs(i - (bars.length - 1) / 2) / bars.length; bars[i].style.transform = 'scaleY(' + Math.max(0.12, Math.min(1, v * 3.2 * w + 0.1)).toFixed(2) + ')'; }
   }
+  // Created and resumed inside the tap: iOS keeps an AudioContext made later suspended, and a
+  // suspended meter never hears the silence that ends a recording.
+  L.prime = function () {
+    try { var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; if (!L.ctx || L.ctx.state === 'closed') L.ctx = new AC(); if (L.ctx.resume) L.ctx.resume(); } catch (e) { /* the meter is a visual aid */ }
+  };
   L.start = function (stream) {
     try {
       L.stream = stream;
       var AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
-      L.ctx = new AC(); L.an = L.ctx.createAnalyser(); L.an.fftSize = 512;
+      if (!L.ctx || L.ctx.state === 'closed') L.ctx = new AC();
+      if (L.ctx.resume) L.ctx.resume();
+      L.an = L.ctx.createAnalyser(); L.an.fftSize = 512;
       L.ctx.createMediaStreamSource(stream).connect(L.an);
       var buf = new Uint8Array(L.an.fftSize);
       (function frame() {
@@ -285,12 +307,17 @@
   // Must run inside the tap or press: recognition.start() and getUserMedia() are called synchronously from here
   C.listen = function () {
     C.text = ''; C.interim = ''; renderText();
-    var lang = T.store.state.settings.recLang || 'en-CA';
+    var set = T.store.state.settings, lang = set.recLang || 'en-CA', pref = set.voiceInput || 'auto';
+    // Voice input: Auto records and transcribes with the API page's engine when it is ready (every
+    // browser, phones included), and uses the browser's own recognizer otherwise; or force either one.
+    var aiOk = V.canRecord && gateStt().ok;
+    if (pref !== 'browser' && aiOk) { L.prime(); return C.startFallback(lang, ''); }
     if (V.supported) {
       var g = gate('browser-speech');
       if (!g.ok) return setState('paused', null, 'Type instead, or turn voice back on in the API monitor.', g.reason);
       return C.startLive(lang);
     }
+    L.prime();
     return C.startFallback(lang, SR ? 'Speech recognition is off (Test lab).' : 'This browser has no speech recognition.');
   };
   C.startLive = function (lang) {
@@ -337,8 +364,8 @@
       };
       r.start();
     } catch (e) { C.fail('audio-capture'); return; }
-    // the level meter, on its own stream; Android can't share the mic with recognition, so it relies on sound events
-    if (!/Android/i.test(navigator.userAgent || '')) openMic().then(function (st) { if (C.open && C.rec) L.start(st); else st.getTracks().forEach(function (t) { t.stop(); }); }, function () { /* the meter is optional */ });
+    // the level meter, on its own stream; phones and tablets can't share the mic with recognition, so they rely on sound events
+    if (!isPhone()) openMic().then(function (st) { if (C.open && C.rec) L.start(st); else st.getTracks().forEach(function (t) { t.stop(); }); }, function () { /* the meter is optional */ });
   };
   C.armSilence = function () {
     clearTimeout(C.silenceT);
@@ -395,7 +422,7 @@
       };
       mr.start(250);
       L.start(stream);
-      setState('recording', 'Recording', null, 'Your browser has no speech recognition here, so the audio is transcribed by ' + engineName('stt') + ' (metered).');
+      setState('recording', 'Recording', null, (why ? why + ' ' : '') + 'The audio is transcribed by ' + engineName('stt') + ' (metered). It stops by itself when you pause.');
       // stop after 1.5 s of quiet once you have spoken, or at 60 s
       var spoke = false;
       C.silenceT = setInterval(function () {
