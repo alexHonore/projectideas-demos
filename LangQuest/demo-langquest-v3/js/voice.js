@@ -53,8 +53,11 @@
     const list = MALE_NAMES.includes(name) ? MALE : FEMALE;
     return list[hash(name) % list.length];
   };
-  /* Stable clip key, shared with tools/generate-audio.mjs. */
+  /* Stable clip key, shared with tools/generate-audio.mjs. A region whose accent differs from the
+     course default (British English) gets its own clip set, e.g. "english.gb". */
   VX.clipKey = (course, voice, text) => 'c' + hash(course + '|' + voice + '|' + String(text).trim()).toString(36);
+  VX.clipCourse = (track, region) => { const rk = track.id + ':' + region; return region && REGION_ACCENT[rk] && REGION_ACCENT[rk] !== ACCENT[track.id] ? track.id + '.' + region : track.id; };
+  VX.ACCENT = ACCENT; VX.REGION_ACCENT = REGION_ACCENT;
   VX.clipPath = (course, key) => 'assets/audio/' + course + '/' + key + '.mp3';
 
   if (!root.document) return; // node (generation tool): policy, voices and keys only
@@ -85,7 +88,7 @@
   VX.tierFor = (track, enr) => {
     enr = enr || {};
     const pol = VX.policy(track, enr.region), g = VX.geminiGate();
-    if (VX.hasClips(track.id)) return { tier: 'clip', icon: 'film', label: 'Studio clips', why: 'Pre-generated neural recordings for this course.' };
+    if (pol.gemini && VX.hasClips(VX.clipCourse(track, enr.region))) return { tier: 'clip', icon: 'film', label: 'Studio clips', why: 'Pre-generated neural recordings for this course.' };
     if (pol.gemini && enr.neural !== false && g.ok) return { tier: 'gemini', icon: 'sparkle', label: 'Neural voice', why: 'Gemini TTS through the API monitor, cached after the first play.' };
     const f = LQ.speech.findVoice(LQ.ui.voiceFor(track, enr).locales, Object.assign({}, LQ.ui.voiceFor(track, enr), { voiceURI: enr.voiceURI }));
     const tts = LQ.speech.ttsGate();
@@ -115,7 +118,8 @@
     VX.stop(); try { root.speechSynthesis && root.speechSynthesis.cancel(); } catch (e) { }
     const g = gen, track = o.track, enr = o.enr || {};
     const text = LQ.ui.speakText(p).trim(); if (!text) { setTimeout(() => o.onend && o.onend('empty'), 0); return { ok: false, reason: 'empty' }; }
-    const course = track ? track.id : 'narration', voice = VX.voiceFor(o);
+    const pol = o.narrator ? VX.narratorPolicy(o.src) : VX.policy(track, enr.region);
+    const course = !track ? 'narration' : o.narrator ? track.id : VX.clipCourse(track, enr.region), voice = VX.voiceFor(o);
     const rate = o.slow ? LQ.speech.RATE.slow : o.fast ? LQ.speech.RATE.fast : 1;
     const device = () => {
       if (g !== gen) return;
@@ -125,16 +129,15 @@
       if (r.ok) VX.last = { tier: 'device', voice: r.voice };
       return r;
     };
-    // 1. pre-generated clip
+    // 1. pre-generated clip (never for a protected variety: the same rule as tier 2)
     const key = VX.clipKey(course, voice, text);
-    if (root.LQ_AUDIO && root.LQ_AUDIO[key]) {
+    if (pol.gemini && root.LQ_AUDIO && root.LQ_AUDIO[key]) {
       VX.last = { tier: 'clip', voice };
       playUrl(VX.clipPath(course, key), rate, o, g, () => { VX.lastError = 'clip missing'; tier2(); });
       return { ok: true, tier: 'clip' };
     }
     // 2. live Gemini, metered and cached
     function tier2() {
-      const pol = o.narrator ? VX.narratorPolicy(o.src) : VX.policy(track, enr.region);
       const gate = VX.geminiGate();
       if (!pol.gemini || enr.neural === false || !gate.ok || S.cap('offline')) return device();
       const m = meter(), model = m.model('tts'), prompt = pol.instruction + ' ' + text, ck = VX.cacheKey(model, voice, prompt);

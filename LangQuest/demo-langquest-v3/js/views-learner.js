@@ -272,7 +272,7 @@
     const e = S.enr(tid), enr = e || {}, tier = LQ.voice.tierFor(t, enr), pol = LQ.voice.policy(t, enr.region), g = LQ.voice.geminiGate();
     const v = U.voiceFor(t, enr), ranked = LQ.speech.rankVoices(v.locales, v);
     const q = x => /natural|neural|online|premium|enhanced|siri|google/i.test(x.voice.name) ? 'Natural' : /espeak|mbrola|festival/i.test(x.voice.name) ? 'Robotic' : 'Standard';
-    const clips = Object.values(window.LQ_AUDIO || {}).filter(c => c && c.c === tid).length;
+    const clips = Object.values(window.LQ_AUDIO || {}).filter(c => c && c.c === LQ.voice.clipCourse(t, enr.region)).length;
     let h = '<h2 class="h3" id="sheet-title">' + ic('volume', 'ic--sm') + ' ' + esc(t.name) + '</h2>' +
       '<ul class="tiers" role="list">' +
       '<li class="' + (tier.tier === 'clip' ? 'is-on' : '') + '">' + ic('film', 'ic--sm') + '<span>Studio clips</span><span class="small muted">' + (clips ? clips : '0') + '</span></li>' +
