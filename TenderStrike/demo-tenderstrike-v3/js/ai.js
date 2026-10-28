@@ -7,14 +7,32 @@
   const AI = (TS.AI = {});
   const fail = (code, message) => { const e = new Error(message); e.name = 'LiveAIError'; e.code = code; return e; };
 
-  AI.on = () => !!(window.LiveAI && window.LiveAI.isOn());
+  if (window.LiveAI) window.LiveAI.app = 'tenderstrike';
+  /* État de l’IA en direct, lu dans le moniteur d’API du hub (clés, budgets, coupe-circuits) */
+  const METER_FR = [[/^Killswitch: all APIs are off/, 'Coupe-circuit : toutes les API sont coupées'], [/^Killswitch: TenderStrike is off/, 'Coupe-circuit : TenderStrike est coupé'], [/^Killswitch: (.*) is off/, (m) => 'Coupe-circuit : ' + m[1] + ' est coupé'], [/^Monthly budget reached/, 'Budget mensuel atteint'], [/^TenderStrike budget reached/, 'Budget de TenderStrike atteint'], [/^Rate limit: (\d+)/, (m) => 'Limite : ' + m[1] + ' appels par minute'], [/^No (.*) key/, 'Aucune clé Anthropic']];
+  const meterFr = (r) => { for (const [re, out] of METER_FR) { const m = String(r || '').match(re); if (m) return typeof out === 'function' ? out(m) : out; } return String(r || ''); };
+  AI.status = () => {
+    if (!window.LiveAI || !window.LiveAI.available()) return { state: 'off', label: 'IA en direct indisponible', reason: 'SDK non chargé : la démo utilise les règles.' };
+    const M = window.ApiMeter;
+    if (M) {
+      const c = M.check('tenderstrike', 'anthropic');
+      if (c.ok) return { state: 'on', label: 'IA en direct active', reason: window.LiveAI.model + ' · appels comptés dans le moniteur d’API' };
+      if (/^No /.test(c.reason)) return { state: 'off', label: 'IA en direct désactivée', reason: 'Aucune clé : ajoutez-la dans le moniteur d’API. La démo utilise les règles.' };
+      return { state: 'paused', label: 'IA en direct en pause', reason: meterFr(c.reason) + ' : la démo utilise les règles.' };
+    }
+    return window.LiveAI.isOn() ? { state: 'on', label: 'IA en direct active', reason: window.LiveAI.model } : { state: 'off', label: 'IA en direct désactivée', reason: 'La démo utilise les règles.' };
+  };
+  AI.on = () => AI.status().state === 'on';
+  /* Icône d’état : lien vers le moniteur d’API du hub, où vivent clés, budgets et coupe-circuits */
+  AI.link = (cls, compact) => { const st = AI.status(); return `<a class="ai-status is-${st.state}${cls ? ' ' + cls : ''}" href="../../index.html#api" title="${U.esc(st.label + ' · ' + st.reason)}" aria-label="${U.esc(st.label + '. Ouvrir le moniteur d’API')}">${U.icon('bolt', 16)}${compact ? '' : `<span>${U.esc(st.state === 'on' ? 'IA en direct' : st.state === 'paused' ? 'IA en pause' : 'IA désactivée')}</span>`}</a>`; };
   const FR = [
-    [/^Live AI is off/, 'IA en direct désactivée : ajoutez une clé API dans le Labo de test.'],
+    [/^Live AI is off/, 'IA en direct désactivée : ajoutez une clé dans le moniteur d’API.'],
+    [/^Live AI is paused: (.*?)\.?$/, (m) => 'IA en direct en pause (' + meterFr(m[1]) + ').'],
     [/^The model declined this request:?\s*(.*)$/, (m) => 'Le modèle a refusé la demande' + (m[1] ? ' : ' + m[1] : '.')],
     [/^The answer was cut off/, 'Réponse tronquée avant la fin : essayez un texte plus court.'],
     [/^The answer was not valid JSON/, 'Réponse illisible (JSON invalide) : rien n’a été appliqué.'],
     [/^The answer was missing (.*), so nothing was applied\.$/, (m) => 'Réponse incomplète (' + m[1] + ' manquant) : rien n’a été appliqué.'],
-    [/^The API key was rejected/, 'Clé API refusée : vérifiez-la dans le Labo de test.'],
+    [/^The API key was rejected/, 'Clé API refusée : vérifiez-la dans le moniteur d’API.'],
     [/is not allowed to use/, 'Cette clé API n’a pas accès au modèle.'],
     [/is not available to this API key/, 'Modèle indisponible pour cette clé API.'],
     [/^Rate limited/, 'Limite de débit atteinte : réessayez dans un moment.'],

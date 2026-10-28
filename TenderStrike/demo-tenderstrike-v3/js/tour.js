@@ -25,31 +25,30 @@
     const r = S.reqById(ID, rid);
     UI.view.reqFilter[ID] = 'all';
     Object.assign(UI.viewer(ID), { doc: r.doc, page: r.page, clause: r.clause });
-    if (UI.isNarrow()) {
-      const fake = document.createElement('button');
-      fake.dataset.t = ID; fake.dataset.clause = r.clause; fake.dataset.doc = r.doc; fake.dataset.page = r.page;
-      TS.App.openCite(fake, true);
-    } else { UI.view.scrollPending = ID; TS.App.render(); }
+    TS.App.render();
+    const fake = document.createElement('button');
+    fake.dataset.t = ID; fake.dataset.clause = r.clause; fake.dataset.doc = r.doc; fake.dataset.page = r.page;
+    TS.App.openCite(fake, true);
   };
 
   const STEPS = [
     { route: '#/brief', target: '.brief-sheet', title: 'Le brief du matin', body: 'Chaque matin, une page sur le dossier ouvert le plus urgent : les trois points qui comptent avec leur page source, et le dernier résultat d’ouverture publique. Cinq autres dossiers attendent à d’autres étapes.' },
-    { route: '#/brief', target: '.night', title: 'Pendant la nuit', body: 'Ingestion SEAO à 6 h 00, tri par métier et territoire, lecture des devis, comparaison des prix. Ce sont des fenêtres de service : une source en retard donnerait un brief partiel, signalé comme tel.' },
+    { route: '#/brief', target: '.stats', title: 'Pendant la nuit', body: 'Lu, comparé, pré-rempli : ingestion SEAO à 6 h 00, tri par métier et territoire, lecture des devis, comparaison des prix. Le détail de la nuit est derrière ⓘ; une source en retard donnerait un brief partiel, signalé comme tel.' },
     { route: '#/dossier/' + ID + '/radiographie', target: '.scorecard', title: 'Go / No-Go en trois volets', body: 'Admissibilité, capacité et attrait commercial restent séparés. Un inconnu n’est pas un échec, et aucun score global ne cache un bloqueur.' },
     { route: '#/dossier/' + ID + '/radiographie', target: '[data-req="r-arq"]', title: 'Chaque exigence ouvre sa page', body: 'Le texte du devis est cité mot pour mot, à côté de la lecture de TenderStrike. Ici, l’attestation de Revenu Québec expire trois jours avant la clôture : la page 16 s’ouvre, passage surligné.', action: 'Ouvrir la page 16', run: cite('r-arq') },
     { route: '#/dossier/' + ID + '/radiographie', target: '[data-req="r-penalty"]', title: 'Les clauses de risque', body: 'Une pénalité de 2 500 $ par jour n’empêche pas de soumissionner, mais elle pèse sur la marge : elle est classée à part des pièges éliminatoires.', action: 'Ouvrir la page 48', run: cite('r-penalty') },
     { route: '#/dossier/' + ID + '/radiographie', target: '#decision', title: 'Vous décidez', body: 'Poursuivre, investiguer ou décliner, avec un motif, une personne responsable et une date de révision. Poursuivre ne transforme pas un point ouvert en conformité.', action: 'Poursuivre', run: E.decision },
     { route: '#/dossier/' + ID + '/prix', target: '.oracle-results', title: 'Les ouvertures publiques', body: 'Le même contrat en 2023 : gagnant, écart du 2e (+4,4 %), votre 3e place, et la plus basse soumission rejetée faute de garantie. Chaque montant ouvre sa source publique.' },
-    { route: '#/dossier/' + ID + '/prix', target: '.reco', title: 'Une recommandation expliquée', body: 'Repère ajusté (portée × inflation), écart habituel, plancher de marge : chaque étape du calcul est affichée. Aucune probabilité de gain : huit soumissions ne suffisent pas à en estimer une honnêtement.' },
+    { route: '#/dossier/' + ID + '/prix', target: '.reco', title: 'Une recommandation expliquée', body: 'La zone, votre prix et sa position d’abord. « Pourquoi ? » affiche chaque étape du calcul : repère ajusté (portée × inflation), écart habituel, plancher de marge. Aucune probabilité de gain : huit soumissions ne suffisent pas à en estimer une honnêtement.' },
     { route: '#/dossier/' + ID + '/prix', target: '.reco', title: 'Proposer, puis confirmer', body: 'TenderStrike propose un même coefficient pour chaque article; vous confirmez. Le bordereau, le corridor et la garantie requise se recalculent. Vos coûts internes sont modifiables et restent privés.', action: 'Proposer et confirmer', run: E.proposal },
     { route: '#/dossier/' + ID + '/prix', target: '.approve-price', title: 'L’approbation commerciale', body: 'La propriétaire approuve cette version exacte du bordereau. Si un prix ou une quantité change, l’approbation devient périmée.', action: 'Approuver le prix', run: E.price },
     { route: '#/dossier/' + ID + '/conformite', target: '[data-comp="arq"]', title: 'Le bouclier bloque l’export', body: 'Chaque pièce est vérifiée à la date et à l’heure de clôture. Versez la nouvelle attestation : le fichier est lu dans le navigateur et seule son empreinte SHA-256 est conservée. Les autres dossiers sont recalculés aussi.', action: 'Verser un fichier d’exemple', run: E.arq },
     { route: '#/dossier/' + ID + '/formulaires', target: '.fill-meter', title: 'Pré-rempli, et mesuré', body: 'Le pourcentage est compté champ par champ. Prix, déclarations et signatures restent à vous; un courriel absent du coffre-fort reste vide jusqu’à ce qu’une personne le saisisse.', action: 'Saisir le courriel et confirmer', run: E.forms },
-    { route: '#/dossier/' + ID + '/revue', target: '.cards', title: 'Propositions à confirmer', body: 'Demande au courtier, déclaration, accusé d’addenda : chaque carte montre le destinataire, les données partagées et la conséquence avant d’exécuter. Les envois sont simulés.', action: 'Confirmer les cartes', run: E.cards },
+    { route: '#/dossier/' + ID + '/revue', target: '.cards', title: 'Propositions à confirmer', body: 'Demande au courtier, déclaration, accusé d’addenda : chaque ligne indique son étape et, derrière ⓘ, le destinataire, les données partagées et la conséquence avant d’exécuter. Les envois sont simulés.', action: 'Confirmer les lignes', run: E.cards },
     { route: '#/dossier/' + ID + '/revue', target: '.package', title: 'Le verrou d’addenda', body: 'Le contrôle final revérifie SEAO juste avant l’export : un addenda n° 2 vient de modifier l’article 3. Les approbations du prix et du paquet deviennent périmées.', action: 'Approuver et lancer l’export', run: E.addenda },
     { route: '#/dossier/' + ID + '/revue', target: '.package', title: 'Export du paquet approuvé', body: 'Après une nouvelle approbation, le paquet s’exporte avec son manifeste (fichiers, empreintes, approbations), marqué comme démonstration. Exporté ne veut pas dire déposé.', action: 'Réapprouver et exporter', run: E.exported },
     { route: '#/dossier/' + ID + '/revue', target: '.package', title: 'Déposé, avec le reçu officiel', body: 'Le dossier ne passe à « Déposé » qu’avec le numéro de confirmation SEAO que vous saisissez. Après l’ouverture, les résultats saisis nourrissent l’historique du secteur Sud.', action: 'Enregistrer un reçu fictif', run: E.receipt },
-    { route: '#/journal', target: '.log', title: 'Tout est tracé', body: 'Décisions, approbations, versions des documents, valeurs avant et après : tout est au journal. Le Labo de test (bande du haut) fait avancer l’horloge, injecte des événements et charge d’autres scénarios.' }
+    { route: '#/journal', target: '.log', title: 'Tout est tracé', body: 'Décisions, approbations, versions des documents, valeurs avant et après : tout est au journal. Le Labo de test (menu Démo) fait avancer l’horloge, injecte des événements et charge d’autres scénarios.' }
   ];
 
   const T = (TS.Tour = { active: false, i: 0, done: {} });
@@ -94,6 +93,7 @@
     if (!T.active) return;
     const el = U.$(STEPS[T.i].target);
     if (!el) return;
+    if (el.tagName === 'DETAILS') el.open = true;
     el.classList.add('tour-target');
     const r = el.getBoundingClientRect();
     const p = U.$('#tour');

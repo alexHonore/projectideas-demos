@@ -45,8 +45,12 @@
     const view = { today: V.today, inbox: V.inbox, trades: V.trades, trade: V.trade, loads: V.loads, load: V.load, settle: V.settle, book: V.book, review: V.review }[r.section] || V.today;
     let html;
     try { html = view(state, r); } catch (e) { console.error(e); html = V.band('<div class="page-head"><div><h1>Something went wrong on this screen</h1><p>Reset the demo from the Test lab to restore the sample data.</p></div></div>', 'band-page'); }
+    /* Disclosures keep the state the user gave them while the screen re-renders (not across navigation). */
+    const folds = {};
+    if (!opts.nav) document.querySelectorAll('#main details[id]').forEach((d) => { folds[d.id] = d.open; });
     $('#desk').innerHTML = V.deskbar(state, { section: r.navSection });
     $('#main').innerHTML = html;
+    Object.keys(folds).forEach((id) => { const d = document.getElementById(id); if (d && d.tagName === 'DETAILS') d.open = folds[id]; });
     $('#bottom').innerHTML = V.bottomNav(state, { section: r.navSection });
     if (!($('#more-sheet') && $('#more-sheet').open)) $('#more-host').innerHTML = V.moreSheet(state);
     if (notifOpen) setNotif(true);
@@ -80,6 +84,9 @@
   function closeMenus() {
     const m = $('#role-menu'); const b = $('#who-btn');
     if (m && !m.hidden) { m.hidden = true; if (b) b.setAttribute('aria-expanded', 'false'); }
+    const dm = $('#demo-menu'); const db = $('#demo-btn');
+    if (dm && !dm.hidden) { dm.hidden = true; if (db) db.setAttribute('aria-expanded', 'false'); }
+    document.querySelectorAll('details.nav-more[open], details.ii[open]').forEach((d) => { d.open = false; });
     if (notifOpen) setNotif(false);
   }
   function setNotif(open) {
@@ -120,8 +127,6 @@
     const a = document.activeElement; const aid = a && dlg.contains(a) && a.id ? a.id : null;
     const sel = a && aid && typeof a.selectionStart === 'number' ? [a.selectionStart, a.selectionEnd] : null;
     $('#lab-root').innerHTML = V.lab(S.get());
-    const host = $('#lab-ai-host');
-    if (host && window.LiveAI) { window.LiveAI.renderSettings(host, { lang: 'en' }); }
     const nb = dlg.querySelector('.lab-body'); if (nb) nb.scrollTop = top;
     if (aid) { const el = document.getElementById(aid); if (el) { el.focus({ preventScroll: true }); if (sel && el.setSelectionRange) try { el.setSelectionRange(sel[0], sel[1]); } catch (e) { /* not a text input */ } } }
   }
@@ -174,8 +179,10 @@
   /* ---------- Actions ---------- */
   const tid = () => route.id;
   const act = {
-    'tour-start': (el) => { const d = el.closest('dialog'); if (d) closeDialog(d); TD.tour && TD.tour.start(); },
-    'role-menu': (el) => { const m = $('#role-menu'); const open = m.hidden; m.hidden = !open; el.setAttribute('aria-expanded', String(open)); if (open) { setNotif(false); const f = m.querySelector('[aria-checked="true"]') || m.querySelector('button'); f && f.focus(); } },
+    'tour-start': (el) => { const d = el.closest('dialog'); if (d) closeDialog(d); closeMenus(); TD.tour && TD.tour.start(); },
+    'demo-menu': (el) => { const m = $('#demo-menu'); const open = m.hidden; closeMenus(); m.hidden = !open; el.setAttribute('aria-expanded', String(open)); if (open) { const f = m.querySelector('button, a'); f && f.focus(); } },
+    tab: (el) => { const st = S.get(); st.ui.tabs = st.ui.tabs || {}; st.ui.tabs[el.dataset.g] = el.dataset.t; render(); const b = document.getElementById('tab-' + el.dataset.g + '-' + el.dataset.t); if (b) b.focus(); },
+    'role-menu': (el) => { const dmn = $('#demo-menu'); if (dmn) dmn.hidden = true; const m = $('#role-menu'); const open = m.hidden; m.hidden = !open; el.setAttribute('aria-expanded', String(open)); if (open) { setNotif(false); const f = m.querySelector('[aria-checked="true"]') || m.querySelector('button'); f && f.focus(); } },
     role: (el) => { closeMenus(); const d = el.closest('dialog'); if (d && d.id === 'more-sheet') closeDialog(d); A.setRole(el.dataset.role); },
     reset: () => { closeMenus(); confirmThen('reset', {}, 'Reset the workspace?', 'Everything returns to Friday, October 23, 09:40. Export the workspace from the Test lab first if you want to keep this state.', 'Reset demo'); },
     more: () => showDlg($('#more-sheet')),
@@ -277,7 +284,7 @@
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-act]');
     if (!el) {
-      if (!e.target.closest('.who') && !e.target.closest('.notif')) closeMenus();
+      if (!e.target.closest('.who') && !e.target.closest('.notif') && !e.target.closest('.demo') && !e.target.closest('details')) closeMenus();
       const dlg = e.target.closest('dialog');
       if (dlg && e.target === dlg) closeDialog(dlg);
       return;
@@ -391,6 +398,8 @@
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       const m = $('#role-menu'); if (m && !m.hidden) { closeMenus(); const b = $('#who-btn'); b && b.focus(); }
+      const dm = $('#demo-menu'); if (dm && !dm.hidden) { closeMenus(); const b = $('#demo-btn'); b && b.focus(); }
+      document.querySelectorAll('details.ii[open], details.nav-more[open]').forEach((d) => { d.open = false; });
       if (notifOpen) { setNotif(false); const b = $('#notif-btn'); b && b.focus(); }
     }
   });

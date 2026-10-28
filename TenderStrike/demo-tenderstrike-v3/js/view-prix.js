@@ -59,15 +59,6 @@
       ${ticks.map((v) => `<line class="tick" x1="${x(v)}" x2="${x(v)}" y1="${plotBottom}" y2="${plotBottom + 5}"/><text class="tick-t" x="${x(v)}" y="${plotBottom + 21}" text-anchor="middle">${fmt(v)}</text>`).join('')}
     </svg>`;
   };
-  const legend = () => `<ul class="corr-legend">
-    <li><svg width="30" height="14" aria-hidden="true"><line x1="5" x2="24" y1="7" y2="7" class="db"/><circle cx="5" cy="7" r="4" class="pt-pub"/><circle cx="24" cy="7" r="5.5" class="pt-adj"/></svg>Montant publié → ajusté 2026</li>
-    <li><svg width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="5.5" class="pt-adj pt-win"/></svg>Adjugé</li>
-    <li><svg width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="5.5" class="pt-adj pt-you"/></svg>Vos soumissions</li>
-    <li><svg width="14" height="14" aria-hidden="true"><rect x="2" y="2" width="10" height="10" rx="5" class="pt-adj" transform="rotate(45 7 7)"/></svg>Résultat enregistré par vous</li>
-    <li><svg width="14" height="14" aria-hidden="true"><g class="pt-nc"><circle cx="7" cy="7" r="5.5"/><path d="M4 4l6 6M10 4l-6 6"/></g></svg>Non conforme, exclu</li>
-    <li><span class="sw sw-zone"></span>Zone recommandée</li><li><span class="sw sw-floor"></span>Plancher : coût + marge minimale</li>
-  </ul>`;
-
   /* ---------- Résultats publiés ---------- */
   const results = (id, O) => {
     if (!O.cycles.length && !S.def(id).externalComparable) return `<p class="kempty">Aucune ouverture publique importée pour cet acheteur. Après votre dépôt, enregistrez les résultats lus à l’ouverture : ils alimenteront ce tableau pour le prochain appel semblable.</p>`;
@@ -119,16 +110,14 @@
         <li><b>Plancher.</b> Votre coût interne de ${U.money(Math.round(O.T.costC / 100))} ÷ (1 − ${U.pct(def.minMargin, 0)} de marge minimale) = ${U.money(Math.round(O.floor))}. ${O.floor < O.zoneLo ? 'La zone reste au-dessus.' : 'Le plancher relève le bas de la zone.'}</li>
         ${O.refInternal.length ? `<li><b>Articles sans historique.</b> ${O.refInternal.map((l) => 'Article ' + l.a.n).join(', ')} : pondérés dans la portée avec un prix de référence interne, signalé comme tel.</li>` : ''}`;
     } else steps = `<li><b>Historique.</b> ${O.mode === 'award' ? 'Adjudication seulement : aucun écart 1er-2e connu.' : 'Aucun cycle comparable.'}</li><li><b>Cible.</b> Coût interne ${U.money(Math.round(O.T.costC / 100))} ÷ (1 − ${U.pct((def.minMargin || 0.1) + 0.04, 0)}) = ${U.money(Math.round(O.target))}.</li><li><b>Plancher.</b> ${U.money(Math.round(O.floor))} (marge minimale de ${U.pct(def.minMargin || 0.1, 0)}).</li>`;
+    const rankTip = 'À ' + U.money(Math.round(O.current)) + ', vous auriez été ' + O.rank + (O.rank === 1 ? 'er' : 'e') + ' sur ' + O.rankOf + ' soumissions conformes de ' + (O.recent ? O.recent.year : '') + ' ajustées, et sous ' + O.below + ' des ' + (O.conformAll || []).length + ' soumissions conformes observées. Aucune probabilité de gain : quelques soumissions sur un ou deux cycles ne permettent pas de l’estimer, et personne ne sait qui soumissionnera cette année.';
+    const ai = TS.AI.on();
     return `<section class="reco" aria-labelledby="reco-h">
-      <h2 id="reco-h" class="sec-h">Recommandation de prix</h2>
-      <p class="reco-l">${O.mode === 'bids' ? 'Zone recommandée, total du bordereau' : 'Cible fondée sur votre coût'}</p>
+      <div class="reco-top"><h2 id="reco-h" class="reco-l">${O.mode === 'bids' ? 'Zone recommandée' : 'Cible de prix'}</h2>${UI.info(O.mode === 'bids' ? 'Total du bordereau avant taxes, comparé aux ouvertures publiques du même acheteur ramenées à 2026.' : 'Cible fondée sur votre coût interne : aucun écart entre soumissionnaires n’est publié pour cet acheteur.', 'Comment lire')}</div>
       <p class="reco-range">${O.mode === 'bids' ? (O.feasible ? U.money(Math.round(O.zoneLo)) + ' à ' + U.money(Math.round(O.zoneHi)) : 'Aucune zone rentable') : U.money(Math.round(O.target))}</p>
-      <div class="reco-cur"><span>Votre prix actuel</span><b>${U.money(Math.round(O.current))}</b>${zoneChip(O)}</div>
-      <ol class="reco-steps">${steps}</ol>
-      ${O.mode === 'bids' ? `<p class="reco-hist">${ic('chart', 15)}<span>Lecture historique : à ${U.money(Math.round(O.current))}, vous auriez été <b>${O.rank}<sup>${O.rank === 1 ? 'er' : 'e'}</sup> sur ${O.rankOf}</b> soumissions conformes de ${O.recent.year} ajustées, et sous ${O.below} des ${O.conformAll.length} soumissions conformes observées.</span></p>` : ''}
-      <details class="why-no"><summary>Pourquoi aucune probabilité de gain ?</summary><p>Quelques soumissions sur un ou deux cycles ne permettent pas d’estimer une probabilité fiable, et personne ne sait qui soumissionnera cette année. TenderStrike montre la position de votre prix par rapport à l’historique, avec ses hypothèses, au lieu d’un pourcentage.</p></details>
-      <div class="why" aria-live="polite">${why ? `<p class="why-t">${esc(why.text)}</p><p class="muted-note">${UI.prov(why.provenance)}${why.fallback ? ' · ' + esc(why.fallback) : ''}</p>` : ''}<div class="reco-act">${UI.btn('Pourquoi ce prix ?', 'why', { cls: 'btn-ghost-inv btn-sm', icon: 'q', data: { t: id } })}${window.LiveAI && window.LiveAI.isOn() ? UI.btn('Expliquer avec l’IA en direct', 'why-ai', { cls: 'btn-ghost-inv btn-sm', icon: 'bolt', data: { t: id } }) : ''}</div></div>
-      ${proposed ? proposalCard(id) : `<div class="reco-act">${UI.btn(O.zoneState === 'in' ? 'Proposer le milieu de la zone' : 'Proposer un ajustement vers la cible', 'propose', { cls: 'btn-hl', icon: 'pen', disabled: !O.feasible || !S.can('price') || !!d.receipt, data: { t: id } })}${p && p.status === 'applied' ? `<span class="muted-note">Proposition appliquée ${esc(U.time(p.appliedAt))}.</span>` : ''}</div>`}
+      <div class="reco-cur"><span>Votre prix</span><b>${U.money(Math.round(O.current))}</b>${zoneChip(O)}${O.mode === 'bids' ? `<span class="reco-rank" title="${esc(rankTip)}">${ic('chart', 14)}<b>${O.rank}<sup>${O.rank === 1 ? 'er' : 'e'}</sup>/${O.rankOf}</b><span class="sr"> en ${O.recent.year}</span></span>${UI.info(rankTip, 'Lecture historique')}` : ''}</div>
+      ${proposed ? proposalCard(id) : `<div class="reco-act">${UI.btn(O.zoneState === 'in' ? 'Proposer le milieu' : 'Proposer un ajustement', 'propose', { cls: 'btn-hl', icon: 'pen', disabled: !O.feasible || !S.can('price') || !!d.receipt, data: { t: id }, title: O.zoneState === 'in' ? 'Proposer le milieu de la zone' : 'Proposer un ajustement vers la cible' })}${UI.btn('Pourquoi ?', 'why', { cls: 'btn-ghost-inv btn-sm', icon: 'q', data: { t: id }, title: 'Pourquoi ce prix ? (règles)' })}${ai ? UI.btn('IA', 'why-ai', { cls: 'btn-ghost-inv btn-sm', icon: 'bolt', data: { t: id }, title: 'Expliquer avec l’IA en direct' }) : ''}${TS.AI.link('ai-inv', true)}${p && p.status === 'applied' ? UI.chip('check', 'Appliquée ' + U.time(p.appliedAt), 'chip-inv') : ''}</div>`}
+      <div class="why" aria-live="polite">${why ? `<p class="why-t">${esc(why.text)}</p><p class="why-m">${UI.prov(why.provenance)}${why.fallback ? ' · ' + esc(why.fallback) : ''}</p><ol class="reco-steps">${steps}</ol>` : ''}</div>
     </section>`;
   };
   const proposalCard = (id) => {
@@ -140,30 +129,27 @@
       <table class="pc-t"><thead><tr><th scope="col">Article</th><th scope="col" class="num">Avant</th><th scope="col" class="num">Après</th></tr></thead>
       <tbody>${S.articles(id).map((a) => `<tr><td>${a.n}. ${esc(a.label)}</td><td class="num">${U.cents(p.from[a.code])}</td><td class="num">${U.cents(p.to[a.code])}</td></tr>`).join('')}</tbody></table>
       <ul class="pc-cons"><li>Total avant taxes : ${U.cents(before.T.htC, 0)} → <b>${U.cents(after.T.htC, 0)}</b></li><li>Marge brute : ${U.pct(before.T.margin)} → <b>${U.pct(after.T.margin)}</b></li>${S.hasBond(id) ? `<li>Garantie requise : ${U.cents(before.T.bondC, 0)} → ${U.cents(after.T.bondC, 0)}</li>` : ''}<li>Conséquence : une approbation de prix existante deviendra périmée.</li></ul>
-      <div class="pc-act">${UI.btn('Confirmer et appliquer', 'proposal-confirm', { cls: 'btn-primary', icon: 'check', data: { t: id } })}${UI.btn('Rejeter', 'proposal-reject', { cls: 'btn-ghost', data: { t: id } })}</div>
-      <p class="muted-note">Les prix restent votre décision : vous pouvez aussi modifier chaque prix unitaire dans le bordereau.</p>
+      <div class="pc-act">${UI.btn('Confirmer et appliquer', 'proposal-confirm', { cls: 'btn-primary', icon: 'check', data: { t: id } })}${UI.btn('Rejeter', 'proposal-reject', { cls: 'btn-ghost', data: { t: id } })}${UI.info('Les prix restent votre décision : vous pouvez aussi modifier chaque prix unitaire dans le bordereau.', 'À savoir')}</div>
     </article>`;
   };
 
   const assumptions = (id, O) => {
     const k = S.D(id).inflation;
     if (!O.cycles.length) return '';
-    return `<section class="assume" aria-labelledby="as-h"><h2 id="as-h" class="sec-h">Hypothèses du scénario</h2>
+    return `<details class="fold assume" id="hypotheses"><summary>${ic('filter', 16)}<span>Hypothèses</span><small>${esc(D.indices[k].short || D.indices[k].label)}</small></summary>
       <div class="or-grid2"><fieldset class="idx"><legend>Ajustement de l’inflation</legend>
-        ${['ipc', 'composite', 'none', 'manual'].map((o) => `<label class="idx-o"><input type="radio" name="infl-${id}" value="${o}"${o === k ? ' checked' : ''} data-act-change="inflation" data-t="${esc(id)}"><span><b>${esc(D.indices[o].label)}</b><small>${esc(D.indices[o].detail)}</small></span>${o === 'manual' ? `<span class="idx-rate"><input type="number" step="0.1" min="-5" max="15" value="${esc(S.D(id).manualRate)}" aria-label="Taux annuel en pour cent" data-act-change="manual-rate" data-t="${esc(id)}"> % par an</span>` : ''}</label>`).join('')}
+        ${['ipc', 'composite', 'none', 'manual'].map((o) => `<label class="idx-o" title="${esc(D.indices[o].detail)}"><input type="radio" name="infl-${id}" value="${o}"${o === k ? ' checked' : ''} data-act-change="inflation" data-t="${esc(id)}"><span><b>${esc(D.indices[o].label)}</b></span>${o === 'manual' ? `<span class="idx-rate"><input type="number" step="0.1" min="-5" max="15" value="${esc(S.D(id).manualRate)}" aria-label="Taux annuel en pour cent" data-act-change="manual-rate" data-t="${esc(id)}"> % par an</span>` : ''}</label>`).join('')}
       </fieldset>
-      <div><table class="factors"><caption>Facteurs appliqués</caption><thead><tr><th scope="col">Cycle</th><th scope="col" class="num">Portée</th><th scope="col" class="num">Inflation</th><th scope="col" class="num">Total</th></tr></thead>
-        <tbody>${O.cycles.map((c) => `<tr><td>${c.year} · ${esc(c.ref)}${c.origin === 'recorded' ? ' (enregistré)' : ''}</td><td class="num">× ${f4(c.scope)}</td><td class="num">× ${f4(c.infl)}</td><td class="num"><b>× ${f4(c.factor)}</b></td></tr>`).join('')}</tbody></table>
-      <p class="muted-note">Portée = quantités de 2026 ÷ quantités du cycle, pondérées par des prix unitaires de référence. Changer d’hypothèse modifie seulement le scénario : les montants publiés restent intacts.</p></div></div></section>`;
+      <div><div class="sec-row"><h3 class="sec-h3">Facteurs appliqués</h3>${UI.info('Portée = quantités de 2026 ÷ quantités du cycle, pondérées par des prix unitaires de référence. Changer d’hypothèse modifie seulement le scénario : les montants publiés restent intacts.', 'Comment c’est calculé')}</div><table class="factors"><caption class="sr">Facteurs appliqués</caption><thead><tr><th scope="col">Cycle</th><th scope="col" class="num">Portée</th><th scope="col" class="num">Inflation</th><th scope="col" class="num">Total</th></tr></thead>
+        <tbody>${O.cycles.map((c) => `<tr><td>${c.year} · ${esc(c.ref)}${c.origin === 'recorded' ? ' (enregistré)' : ''}</td><td class="num">× ${f4(c.scope)}</td><td class="num">× ${f4(c.infl)}</td><td class="num"><b>× ${f4(c.factor)}</b></td></tr>`).join('')}</tbody></table></div></div></details>`;
   };
   const competitors = (id) => {
     const def = S.def(id);
     const rec = S.state.openings.filter((o) => o.family === def.family && o.tender !== id);
     const list = (def.competitors || []).slice();
     rec.forEach((o) => o.bids.filter((b) => !b.you).forEach((b) => { const x = list.find((c) => c.firm === b.firm); if (x) { x.note = (x.note || '') + ' Présent en 2026 (' + o.ref + ').'; } else list.push({ firm: b.firm, seen: 1, of: 1, wins: b.status === 'winner' ? 1 : 0, note: 'Observé à l’ouverture enregistrée ' + o.ref + '.' }); }));
-    return `<section class="compobs" aria-labelledby="co-h"><h2 id="co-h" class="sec-h">Concurrents observés</h2>
-      ${list.length ? `<ul>${list.map((c) => `<li><span class="co-n">${esc(c.firm)}</span><span class="co-c"><b>${c.seen} sur ${c.of}</b> appels comparables${c.wins ? ' · ' + c.wins + ' adjudication' + (c.wins > 1 ? 's' : '') : ''}</span><small>${esc(c.note)}</small></li>`).join('')}</ul>` : '<p class="muted-note">Aucun concurrent observé.</p>'}
-      <p class="muted-note">Observation historique, pas une liste des soumissionnaires de cette année. ${esc(def.coverage || '')}</p></section>`;
+    return `<section class="compobs" aria-labelledby="co-h"><div class="sec-row"><h3 id="co-h" class="sec-h3">Concurrents observés</h3>${UI.info('Observation historique, pas une liste des soumissionnaires de cette année. ' + (def.coverage || ''), 'À savoir')}</div>
+      ${list.length ? `<ul>${list.map((c) => `<li title="${esc(c.note)}"><span class="co-n">${esc(c.firm)}</span><span class="co-c"><b>${c.seen}/${c.of}</b>${c.wins ? ' · ' + ic('check', 12) + c.wins : ''}</span></li>`).join('')}</ul>` : '<p class="kempty">Aucun concurrent observé.</p>'}</section>`;
   };
 
   /* ---------- Bordereau ---------- */
@@ -186,8 +172,7 @@
     const T = S.totals(id), def = S.def(id), d = S.D(id);
     const canP = S.can('price') && !d.receipt;
     return `<section class="bord" aria-labelledby="bo-h" id="bordereau">
-      <div class="sec-row"><h2 id="bo-h" class="sec-h">Bordereau de prix · ${esc(S.bundleLabel(id).replace('Devis v1 + ', 'version de l’').replace('Devis v1', 'version originale'))}</h2><span class="muted-note">${ic('lock', 13)} Les coûts internes restent privés et ne sont jamais exportés.</span></div>
-      <p class="muted-note">Saisissez vos prix unitaires (champs surlignés) et vos coûts internes : TenderStrike ne remplit jamais les prix pour vous. Arrondi au cent par ligne, comme sur le formulaire officiel.${d.receipt ? ' Dossier déposé : bordereau figé.' : ''}</p>
+      <div class="sec-row"><h2 id="bo-h" class="sec-h">Bordereau</h2>${UI.chip('doc', S.bundleLabel(id).replace('Devis v1 + ', '').replace('Devis v1', 'Version originale'), '', 'Version du devis prise en compte')}${UI.chip('lock', 'Coûts privés', '', 'Les coûts internes restent privés et ne sont jamais exportés.')}${d.receipt ? UI.chip('lock', 'Figé', 'chip-wait', 'Dossier déposé : bordereau figé.') : ''}${UI.info('Saisissez vos prix unitaires (champs surlignés) et vos coûts internes : TenderStrike ne remplit jamais les prix pour vous. Arrondi au cent par ligne, comme sur le formulaire officiel.', 'Comment saisir')}</div>
       <div class="bord-wrap"><table class="bord-t">
         <thead><tr><th scope="col">Art.</th><th scope="col">Description</th><th scope="col" class="num">Quantité</th><th scope="col" class="num">Coût interne</th><th scope="col" class="num">Prix unitaire</th><th scope="col" class="num">Total</th><th scope="col" class="num">Marge</th>${def.custom ? '<th scope="col"><span class="sr">Actions</span></th>' : ''}</tr></thead>
         <tbody>${T.lines.map((l) => `<tr class="${l.changed ? 'is-changed' : ''}" data-line="${l.a.code}">
@@ -200,37 +185,33 @@
           <td data-l="Marge" class="num ${l.marginRate < (def.minMargin || 0.1) ? 'is-low' : ''}" id="lm-${id}-${l.a.code}">${U.pct(l.marginRate)}</td>
           ${def.custom ? `<td data-l="Actions" class="row-act">${UI.btn('Modifier', 'line-edit', { cls: 'btn-link btn-sm', data: { t: id, code: l.a.code }, disabled: !canP })}${UI.btn('Supprimer', 'line-del', { cls: 'btn-link btn-sm', data: { t: id, code: l.a.code }, disabled: !canP || T.lines.length <= 1 })}</td>` : ''}
         </tr>`).join('')}</tbody></table></div>
-      ${def.custom ? `<div class="fix-row">${UI.btn('Ajouter un article', 'line-new', { cls: 'btn-ghost btn-sm', icon: 'plus', data: { t: id }, disabled: !canP })}<span class="muted-note">Recopiez les articles du bordereau officiel (quantités du donneur d’ouvrage).</span></div>` : ''}
+      ${def.custom ? `<div class="fix-row">${UI.btn('Ajouter un article', 'line-new', { cls: 'btn-ghost btn-sm', icon: 'plus', data: { t: id }, disabled: !canP })}${UI.info('Recopiez les articles du bordereau officiel (quantités du donneur d’ouvrage).', 'À savoir')}</div>` : ''}
       <div id="bord-foot-${id}">${V.bordFoot(id, T)}</div>
       ${approval(id)}
     </section>`;
   };
   const approval = (id) => {
     const d = S.D(id), pa = d.priceApproval, ok = S.priceApproved(id), T = S.totals(id);
-    if (ok) return `<div class="approve-price is-ok"><span class="stamp">Prix approuvé</span><p>Par ${esc(S.actorName(pa.by))}, ${esc(U.dayTime(pa.at))} · ${U.cents(pa.ht)} avant taxes · ${esc(S.bundleLabel(id))}. Toute modification de prix ou de quantité annulera cette approbation.</p></div>`;
-    return `<div class="approve-price${pa ? ' is-stale' : ''}">${pa ? `<p class="stale">${ic('alert', 16)}<span>L’approbation de ${esc(U.time(pa.at))} (${U.cents(pa.ht, 0)}) ne couvre plus ce bordereau : ${pa.bundle !== S.bundleKey(id) ? 'un addenda a changé les quantités' : 'des prix ont changé'}.</span></p>` : ''}
-      <p>Approbation commerciale de ${U.cents(T.htC)} avant taxes, marge de ${U.pct(T.margin)}. ${S.can('approvePrice') ? '' : 'Réservée à la propriétaire.'}</p>
-      ${UI.btn(pa ? 'Approuver de nouveau' : 'Approuver le prix', 'approve-price', { cls: 'btn-primary', icon: 'stamp', disabled: !S.can('approvePrice') || !!d.receipt, data: { t: id } })}</div>`;
+    if (ok) return `<div class="approve-price is-ok"><span class="stamp">Prix approuvé</span><span class="ap-by">${UI.avatar(pa.by, 'sm')}${U.cents(pa.ht, 0)}</span>${UI.info('Par ' + S.actorName(pa.by) + ', ' + U.dayTime(pa.at) + ' · ' + U.cents(pa.ht) + ' avant taxes · ' + S.bundleLabel(id) + '. Toute modification de prix ou de quantité annulera cette approbation.', 'Détails de l’approbation')}</div>`;
+    return `<div class="approve-price${pa ? ' is-stale' : ''}">${pa ? `<p class="stale">${ic('alert', 16)}<span>Approbation périmée</span>${UI.info('L’approbation de ' + U.time(pa.at) + ' (' + U.cents(pa.ht, 0) + ') ne couvre plus ce bordereau : ' + (pa.bundle !== S.bundleKey(id) ? 'un addenda a changé les quantités' : 'des prix ont changé') + '.', 'Pourquoi')}</p>` : ''}
+      ${UI.btn(pa ? 'Approuver de nouveau' : 'Approuver le prix', 'approve-price', { cls: 'btn-primary', icon: 'stamp', disabled: !S.can('approvePrice') || !!d.receipt, data: { t: id }, title: S.can('approvePrice') ? 'Approbation commerciale de ' + U.cents(T.htC) + ' avant taxes, marge de ' + U.pct(T.margin) : 'Réservée à la propriétaire' })}<span class="ap-sum">${U.cents(T.htC, 0)} · ${U.pct(T.margin)}</span></div>`;
   };
 
   V.prix = (id) => {
     const O = S.oracle(id), def = S.def(id);
     const sel = UI.view.oracleCycle[id] || (O.cycles[0] ? O.cycles[0].id : 'ext');
-    const segs = O.cycles.map((c) => [c.id, String(c.year) + (c.origin === 'recorded' ? ' · enregistré' : c.tender && c.tender !== id ? '' : '')]).concat(def.externalComparable ? [['ext', 'Autre acheteur']] : []);
+    const segs = O.cycles.map((c) => [c.id, String(c.year) + (c.origin === 'recorded' ? ' · enregistré' : '')]).concat(def.externalComparable ? [['ext', 'Autre acheteur']] : []);
+    const nBids = O.cycles.reduce((n, c) => n + (c.bids ? c.bids.length : c.award ? 1 : 0), 0);
     return `${UI.dossierHead(id, 'prix')}
     <div class="oracle">
-      <div class="or-grid">
-        <div class="or-left">
-          <section class="oracle-results" aria-labelledby="or-h">
-            <div class="sec-row"><h2 id="or-h" class="sec-h">Ouvertures publiques ${O.mode === 'award' ? '(adjudication seule)' : 'du même acheteur'}</h2>
-              ${segs.length > 1 ? `<div class="seg" role="group" aria-label="Cycle affiché">${segs.map(([k, l]) => `<button type="button" class="seg-b${sel === k ? ' is-on' : ''}" data-act="oracle-cycle" data-t="${esc(id)}" data-c="${k}" aria-pressed="${sel === k}">${esc(l)}</button>`).join('')}</div>` : ''}</div>
-            ${results(id, O)}
-          </section>
-          ${competitors(id)}
-        </div>
-        ${reco(id, O)}
-      </div>
-      <section class="corr-box" aria-labelledby="cr-h"><div class="sec-row"><h2 id="cr-h" class="sec-h">Corridor historique et votre prix</h2><span class="muted-note">Total du bordereau, avant taxes</span></div><div id="corridor-${id}">${V.corridor(id, O)}</div>${O.cycles.length ? legend() : ''}</section>
+      ${reco(id, O)}
+      <details class="fold oracle-results" id="historique-prix"><summary>${ic('chart', 16)}<span>Ouvertures publiques</span><small>${O.cycles.length ? O.cycles.map((c) => c.year).join(' · ') + ' · ' + nBids + ' montants' : def.externalComparable ? 'autre acheteur' : 'aucune'}</small></summary>
+        <div class="sec-row"><h2 id="or-h" class="sec-h3">${O.mode === 'award' ? 'Adjudication seule' : 'Même acheteur'}</h2>
+          ${segs.length > 1 ? `<div class="seg" role="group" aria-label="Cycle affiché">${segs.map(([k, l]) => `<button type="button" class="seg-b${sel === k ? ' is-on' : ''}" data-act="oracle-cycle" data-t="${esc(id)}" data-c="${k}" aria-pressed="${sel === k}">${esc(l)}</button>`).join('')}</div>` : ''}</div>
+        ${results(id, O)}
+        <div class="corr-box"><div class="sec-row"><h3 class="sec-h3">Corridor et votre prix</h3>${O.cycles.length ? UI.info('Chaque ligne relie un montant publié (point creux) à son montant ajusté en 2026 (point plein). Bande : zone recommandée. Trait : votre plancher (coût + marge minimale). Losange : résultat enregistré par vous. Croix : non conforme, exclu.', 'Légende') : ''}</div><div id="corridor-${id}">${V.corridor(id, O)}</div></div>
+        ${competitors(id)}
+      </details>
       ${assumptions(id, O)}
       ${bordereau(id)}
     </div>`;

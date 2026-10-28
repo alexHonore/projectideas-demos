@@ -16,18 +16,15 @@
 <body>
   <a class="skip" href="#view">Skip to the app</a>
   <header class="topbar" aria-label="Demo">
-    <a class="topbar__back" href="../../index.html"><span aria-hidden="true">←</span> All demos</a>
+    <a class="topbar__back" href="../../index.html" aria-label="All demos" title="All demos"><span aria-hidden="true">←</span><span class="topbar__backtxt">Demos</span></a>
     <span class="topbar__brand"><strong>LangQuest</strong><span class="topbar__v">V3</span></span>
     <nav class="topbar__switch" aria-label="Product surface">
-      <a href="#/home" class="topbar__seg" data-surface="app">Learner app</a>
-      <a href="#/studio" class="topbar__seg" data-surface="studio">Content studio</a>
+      <a href="#/home" class="topbar__seg" data-surface="app">App</a>
+      <a href="#/studio" class="topbar__seg" data-surface="studio">Studio</a>
     </nav>
     <span class="topbar__spacer"></span>
-    <button class="topbar__btn topbar__btn--search" data-act="search-open" aria-keyshortcuts="Control+K Meta+K"><span>Search</span><kbd>Ctrl K</kbd></button>
-    <button class="topbar__btn" data-act="lab-open" aria-haspopup="dialog">Test lab</button>
-    <button class="topbar__btn" data-act="tour-start">Guided tour</button>
-    <button class="topbar__btn" data-act="reset-demo">Reset demo</button>
-    <span class="topbar__flag">Demo · fictional data</span>
+    <button class="topbar__icon" data-act="search-open" aria-label="Search (Ctrl or Cmd + K)" title="Search (Ctrl K)" aria-keyshortcuts="Control+K Meta+K"><span data-icon="search"></span></button>
+    <span class="demomenu-wrap"><button class="topbar__demo" id="demo-btn" data-act="demo-menu" aria-haspopup="true" aria-expanded="false" aria-controls="demo-menu" title="Demo tools: tour, Test lab, API monitor, reset. Fictional data."><span data-icon="flask"></span><span>Demo</span></button><div class="demomenu" id="demo-menu" hidden></div></span>
   </header>
 
   <div class="stage" id="stage">
@@ -51,11 +48,13 @@
   <div class="tour-ring" id="tour-ring" hidden aria-hidden="true"></div>
   <div id="tour-float"></div>
   <div id="search-host"></div>
-  <div class="lab" id="lab" hidden><div class="lab__scrim" data-act="lab-close"></div><section class="lab__panel" role="dialog" aria-modal="true" aria-labelledby="lab-title"><div id="lab-body"></div><section class="lab__sec" aria-labelledby="lab-ai-h"><h3 class="lab__h" id="lab-ai-h">Live AI (bring your own key)</h3><div id="lab-ai"></div></section><div id="lab-foot"></div></section></div>
+  <div class="lab" id="lab" hidden><div class="lab__scrim" data-act="lab-close"></div><section class="lab__panel" role="dialog" aria-modal="true" aria-labelledby="lab-title"><div id="lab-body"></div></section></div>
   <noscript><p class="noscript">LangQuest needs JavaScript to run this interactive demo.</p></noscript>
 
+  <script src="vendor/api-meter.js"></script>
   <script src="vendor/anthropic-sdk.js"></script>
   <script src="vendor/live-ai.js"></script>
+  <script src="assets/audio/manifest.js"></script>
   <script src="js/data-catalog.js"></script>
   <script src="js/data-missions.js"></script>
   <script src="js/data-missions-extra.js"></script>
@@ -67,6 +66,7 @@
   <script src="js/match.js"></script>
   <script src="js/store.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/voice.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/capture.js"></script>
   <script src="js/views-learner.js"></script>

@@ -58,28 +58,29 @@
     if (track.regions && enr && enr.region) { const r = track.regions.find(x => x.id === enr.region); if (r) return r.locale; }
     return track.sr;
   };
+  /* Voice status for a course: the tier that will speak (studio clip, neural, device, text). */
   U.voiceStatus = (track, enr) => {
-    if (!LQ.speech.hasTTS) return { ok: false, text: 'This browser has no speech synthesis. Phrases are shown as text.' };
-    const v = U.voiceFor(track, enr);
-    if (LQ.store.cap('noVoice') && LQ.store.state.active === track.id) return { ok: false, text: 'Test lab: this device has no ' + v.locales[0] + ' voice. Phrases are shown as text, and no other variety is substituted.' };
-    const f = LQ.speech.findVoice(v.locales, v);
-    if (f) return { ok: true, exact: f.exact, name: f.voice.name, lang: f.voice.lang, text: (f.exact ? 'Device voice: ' : 'Nearby regional voice (you opted in): ') + f.voice.name + ' (' + f.voice.lang + ')' };
-    const near = LQ.speech.nearVoice(v.locales, v.never);
-    if (LQ.speech.voiceCount() === 0) return { ok: false, text: 'No device voices are loaded in this browser yet. Phrases are shown as text.' };
-    return { ok: false, near: near ? near.lang : null, text: 'No ' + v.locales[0] + ' voice on this device. LangQuest won’t read ' + track.name + ' with a different variety' + (near ? ' (a ' + near.lang + ' voice is available if you opt in).' : '.') };
+    enr = enr || {};
+    const t = LQ.voice.tierFor(track, enr), v = U.voiceFor(track, enr);
+    const near = t.tier === 'text' && LQ.speech.hasTTS && LQ.speech.voiceCount() ? LQ.speech.nearVoice(v.locales, v.never) : null;
+    return { ok: t.tier !== 'text', tier: t.tier, icon: t.icon, label: t.label, why: t.why, near: near ? near.lang : null, name: t.tier === 'device' ? t.why.split(' (')[0] : t.label, text: t.label + '. ' + t.why };
   };
+  /* Speak a phrase through the voice tiers (js/voice.js). */
   U.say = (p, opts) => {
     opts = opts || {};
-    const track = opts.track || LQ.store.track(), enr = LQ.store.enr(track && track.id);
-    const v = U.voiceFor(track, enr);
-    const ch = opts.character && LQ.CHARACTERS[opts.character];
-    const rate = (opts.slow ? 0.68 : opts.fast ? 1.18 : 1) * ((ch && ch.voice && ch.voice.rate) || 1);
-    return LQ.speech.speak(U.speakText(p), Object.assign({}, v, { rate, pitch: (ch && ch.voice && ch.voice.pitch) || 1, onend: opts.onend, onstart: opts.onstart }));
+    const track = opts.track || LQ.store.track(), enr = LQ.store.enr(track && track.id) || {};
+    return LQ.voice.play(p, { track, enr, character: opts.character, speaker: opts.speaker, slow: opts.slow, fast: opts.fast, onend: opts.onend, onstart: opts.onstart });
   };
   U.sayNarrator = (text, src, opts) => {
-    const s = LQ.SOURCES.find(x => x.code === src) || LQ.SOURCES[0];
-    return LQ.speech.speak(text, Object.assign({ locales: s.voice, allowNear: true }, opts || {}));
+    opts = opts || {};
+    return LQ.voice.play({ t: text }, { narrator: true, src, track: opts.track || null, enr: {}, slow: opts.rate && opts.rate < 0.9, fast: opts.rate && opts.rate > 1.05, onend: opts.onend, onstart: opts.onstart });
   };
+  /* Tiny tier icon (a button that opens the per-course voice picker). */
+  U.voiceChip = (track, enr) => { const v = U.voiceStatus(track, enr); return '<button class="voicechip voicechip--' + v.tier + '" data-act="voice-picker" data-arg="' + esc(track.id) + '" aria-label="Voice: ' + esc(v.label) + '. Choose a voice" title="' + esc(v.text) + '">' + LQ.art.icon(v.icon, 'ic--xs') + '</button>'; };
+  /* ⓘ chip: an explanation behind an icon (native disclosure, keyboard accessible). */
+  U.info = (text, label, icon) => '<details class="tip' + (icon ? ' tip--icon' : '') + '"><summary aria-label="' + esc(label || 'More information') + '" title="' + esc(text) + '">' + (icon ? LQ.art.icon(icon, 'ic--xs') : '<span aria-hidden="true">i</span>') + '</summary><div class="tip__b" role="note">' + esc(text) + '</div></details>';
+  /* Icon-only tool button with a tooltip and an accessible name. */
+  U.tool = (act, icon, label, extra) => '<button class="tool tool--icon" data-act="' + act + '"' + (extra || '') + ' aria-label="' + esc(label) + '" title="' + esc(label) + '">' + LQ.art.icon(icon, 'ic--sm') + '</button>';
 
   /* Toasts */
   let toastTimer;

@@ -143,29 +143,33 @@
   };
   UI.confirm = (title, body, act, data, label) => UI.dialog(`<p>${body}</p><div class="dlg-actions"><button type="button" class="btn btn-ghost" data-act="dlg-close">Annuler</button>${UI.btn(label || 'Confirmer', act, { cls: 'btn-danger', data })}</div>`, { title });
 
-  /* ---------- En-tête de dossier ---------- */
-  UI.TABS = [['radiographie', 'Radiographie'], ['prix', 'Prix'], ['conformite', 'Conformité'], ['formulaires', 'Formulaires'], ['revue', 'Revue et export'], ['historique', 'Historique']];
+  /* ---------- Icône d’information (ⓘ) : le détail reste disponible sans occuper l’écran ---------- */
+  UI.info = (text, label) => `<button type="button" class="info-btn" data-act="info" data-tip="${esc(text)}" aria-label="${esc(label || 'Détails')}" title="${esc(text)}">${ic('info', 16)}</button>`;
+  UI.chip = (icon, text, cls, tip) => `<span class="chip2${cls ? ' ' + cls : ''}"${tip ? ` title="${esc(tip)}"` : ''}>${icon ? ic(icon, 14) : ''}<span>${esc(text)}</span></span>`;
+  UI.iconBtn = (icon, label, act, data, cls) => `<button type="button" class="icon-btn${cls ? ' ' + cls : ''}" data-act="${esc(act)}"${Object.entries(data || {}).map(([k, v]) => ` data-${k}="${esc(v)}"`).join('')} aria-label="${esc(label)}" title="${esc(label)}">${ic(icon, 17)}</button>`;
+
+  /* ---------- En-tête de dossier : titre, échéance, étape; le reste derrière ⓘ ---------- */
+  UI.TABS = [['radiographie', 'Radiographie', 'eye'], ['prix', 'Prix', 'chart'], ['conformite', 'Conformité', 'shield'], ['formulaires', 'Formulaires', 'doc'], ['revue', 'Revue', 'stamp'], ['historique', 'Historique', 'log']];
   UI.dossierHead = (id, tab) => {
     const t = S.def(id), k = S.stage(id);
     const blockers = S.hardBlockers(id).length;
     const fs = S.fieldStats(id);
-    const badge = { prix: S.priceApproved(id) ? '✓' : '', conformite: blockers ? String(blockers) : '', formulaires: U.pct(fs.share, 0), revue: S.D(id).receipt ? '✓' : '', historique: String(S.state.log.filter((e) => e.tender === id).length) };
+    const badge = { prix: S.priceApproved(id) ? '✓' : '', conformite: blockers ? String(blockers) : '', formulaires: U.pct(fs.share, 0), revue: S.D(id).receipt ? '✓' : '' };
     const close = S.close(id);
     const past = S.nowTs() > Date.parse(close);
+    const about = t.buyer + (t.custom ? ' (ajouté par vous)' : ' (fictive)') + ' · appel d’offres ' + t.ref + (t.seao !== '—' ? ' · avis SEAO ' + t.seao : '') + ' · ' + t.term + ' · ' + S.bundleLabel(id) + ' · clôture ' + U.dayTime(close) + ', heure de Montréal.';
     return `<div class="dhead">
-      <nav class="crumbs" aria-label="Fil d’Ariane"><a href="#/radar">Radar</a><span aria-hidden="true">/</span><span>${esc(t.buyerShort)}</span></nav>
-      <div class="dhead-row">
-        <div class="dhead-main">
-          <p class="dbuyer">${esc(t.buyer)} ${t.custom ? '<span class="fict">(ajouté par vous)</span>' : '<span class="fict">(fictive)</span>'} · <span class="dtrade">${UI.trade(t.trade)}</span></p>
-          <h1 class="dtitle">${esc(t.title)}</h1>
-          <p class="dmeta"><span>Appel d’offres ${esc(t.ref)}</span>${t.seao !== '—' ? `<span>Avis SEAO ${esc(t.seao)}</span>` : ''}<span>${esc(t.term)}</span></p>
-        </div>
-        <div class="dhead-side">
-          <div class="closing${past ? ' is-past' : ''}"><span class="closing-n">${past ? 'Clôturé' : U.countdown(S.now(), close)}</span><span class="closing-l">${past ? 'depuis le' : 'avant la clôture'}</span><span class="closing-d">${esc(U.day(close))}, ${U.time(close)} · heure de Montréal</span></div>
-          <div class="dchips">${UI.stage(k)}<span class="verchip" title="Version des documents utilisée par toutes les vérifications">${ic('doc', 14)}${esc(S.bundleLabel(id))}</span></div>
+      <div class="dh-row">
+        <a class="icon-btn dh-back" href="#/radar" aria-label="Retour au radar" title="Retour au radar">${ic('back', 17)}</a>
+        <div class="dh-main"><p class="dbuyer">${esc(t.buyerShort)} · ${UI.trade(t.trade)}</p><h1 class="dtitle">${esc(t.title)}</h1></div>
+        <div class="dh-side">
+          <span class="closing${past ? ' is-past' : ''}" title="Clôture : ${esc(U.dayTime(close))}, heure de Montréal">${ic('clock', 15)}<span class="closing-n">${past ? 'Clôturé' : U.countdown(S.now(), close)}</span></span>
+          ${UI.stage(k)}
+          ${UI.iconBtn('doc', 'Ouvrir le devis (' + S.bundleLabel(id) + ')', 'book', { t: id }, 'dh-book')}
+          ${UI.info(about, 'À propos de cet appel d’offres')}
         </div>
       </div>
-      <nav class="ftabs" aria-label="Sections du dossier">${UI.TABS.map(([tid, label]) => `<a href="#/dossier/${id}/${tid}" class="ftab${tab === tid ? ' is-on' : ''}"${tab === tid ? ' aria-current="page"' : ''}>${label}${badge[tid] ? `<span class="ftab-b${tid === 'conformite' && blockers ? ' is-bad' : ''}">${badge[tid]}</span>` : ''}</a>`).join('')}</nav>
+      <nav class="ftabs" aria-label="Sections du dossier">${UI.TABS.map(([tid, label, icon]) => `<a href="#/dossier/${id}/${tid}" class="ftab${tab === tid ? ' is-on' : ''}"${tab === tid ? ' aria-current="page"' : ''} title="${esc(label)}">${ic(icon, 16)}<span class="ftab-l">${label}</span>${badge[tid] ? `<span class="ftab-b${tid === 'conformite' && blockers ? ' is-bad' : ''}">${badge[tid]}</span>` : ''}</a>`).join('')}</nav>
     </div>`;
   };
 })();

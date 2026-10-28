@@ -9,33 +9,52 @@
 
   /* ---------------- Capacités (bascules du Labo de test) ---------------- */
   function caps() { return S.get().caps || {}; }
+  // Les API vocales du navigateur passent aussi par le moniteur d'API (gratuites, mais mesurées et coupables).
+  function gate(provider) { var M = meter(); if (!M) return { ok: true }; var c = M.check('nexus', provider); return c.ok ? c : { ok: false, reason: meterFr(c.reason) }; }
+  function recordUse(provider, op, usage) { var M = meter(); if (!M) return; try { M.record({ app: 'nexus', provider: provider, op: op, usage: usage }); } catch (e) { /* ignoré */ } }
   g.Caps = {
-    speech: function () { return caps().speech !== false && 'speechSynthesis' in g; },
+    speech: function () { return caps().speech !== false && 'speechSynthesis' in g && gate('browser-tts').ok; },
+    speechReason: function () { var gt = gate('browser-tts'); return caps().speech === false ? 'Synthèse vocale désactivée dans le Labo de test : la réplique reste écrite.' : !gt.ok ? 'Voix en pause (' + gt.reason + ') : la réplique reste écrite.' : 'Synthèse vocale indisponible dans ce navigateur : la réplique reste écrite.'; },
     voices: function () { return caps().voices !== false; },
-    recognition: function () { return caps().recognition !== false && !!(g.SpeechRecognition || g.webkitSpeechRecognition); },
-    recognitionReason: function () { return caps().recognition === false ? 'Reconnaissance vocale désactivée dans le Labo de test : saisissez les notes au clavier.' : 'Reconnaissance vocale non prise en charge par ce navigateur : saisissez les notes au clavier.'; },
-    online: function () { return caps().online !== false; }
+    recognition: function () { return caps().recognition !== false && !!(g.SpeechRecognition || g.webkitSpeechRecognition) && gate('browser-speech').ok; },
+    recognitionReason: function () { var gt = gate('browser-speech'); return caps().recognition === false ? 'Reconnaissance vocale désactivée dans le Labo de test : saisissez les notes au clavier.' : !gt.ok ? 'Dictée en pause (' + gt.reason + ') : saisissez les notes au clavier.' : 'Reconnaissance vocale non prise en charge par ce navigateur : saisissez les notes au clavier.'; },
+    online: function () { return caps().online !== false; },
+    gate: gate, record: recordUse
   };
 
+
   function lai() { return g.LiveAI || null; }
-  function available() { var L = lai(); return !!(L && L.isOn() && caps().liveAI !== false); }
-  function offReason() {
-    var L = lai();
-    if (!L || !L.available()) return 'IA en direct indisponible : SDK non chargé.';
-    if (caps().liveAI === false) return 'IA en direct désactivée dans le Labo de test.';
-    if (!L.isOn()) return 'IA en direct désactivée : ajoutez votre clé API dans le Labo de test (Capacités).';
-    return null;
+  function meter() { return g.ApiMeter || null; }
+  try { if (g.LiveAI) g.LiveAI.app = 'nexus'; } catch (e) { /* ignoré */ }
+  // Raisons du moniteur d'API (hub), en français.
+  var METER_FR = [
+    [/all APIs are off/i, 'interrupteur général coupé au moniteur d’API'], [/Nexus CTE is off/i, 'Nexus CTE coupé au moniteur d’API'], [/Anthropic is off/i, 'Anthropic coupé au moniteur d’API'],
+    [/No Anthropic key/i, 'aucune clé Anthropic au moniteur d’API'], [/Monthly budget reached/i, 'budget mensuel atteint'], [/budget reached/i, 'budget de Nexus CTE atteint'], [/Rate limit/i, 'limite de 30 appels par minute'],
+    [/Killswitch/i, 'interrupteur coupé au moniteur d’API']
+  ];
+  function meterFr(reason) { for (var i = 0; i < METER_FR.length; i++) if (METER_FR[i][0].test(reason || '')) return METER_FR[i][1]; return reason || 'moniteur d’API'; }
+  // État de l'IA en direct : activée, désactivée (aucune clé) ou en pause (interrupteur, budget, Labo), avec la raison.
+  function status() {
+    var L = lai(), M = meter();
+    if (!L || !L.available()) return { state: 'off', reason: 'SDK non chargé' };
+    if (caps().liveAI === false) return { state: 'paused', reason: 'désactivée dans le Labo de test' };
+    if (M) { var c = M.check('nexus', 'anthropic'); if (!c.ok) return { state: /key/i.test(c.reason) ? 'off' : 'paused', reason: meterFr(c.reason) }; }
+    else if (!L.isOn()) return { state: 'off', reason: 'aucune clé' };
+    if (caps().online === false) return { state: 'paused', reason: 'hors ligne (Labo de test) : aucune requête' };
+    return { state: 'on', reason: '' };
   }
+  function available() { var st = status(); return st.state === 'on' || (st.state === 'paused' && caps().online === false && caps().liveAI !== false); }
+  function offReason() { var st = status(); return st.state === 'on' ? null : 'IA en direct ' + (st.state === 'paused' ? 'en pause' : 'désactivée') + ' : ' + st.reason + '.'; }
   var FR = [
     [/Live AI is off/i, 'IA en direct désactivée'], [/API key was rejected/i, 'clé API refusée'], [/not allowed to use/i, 'cette clé n’a pas accès au modèle'], [/not available to this API key/i, 'modèle indisponible pour cette clé'],
     [/Rate limited/i, 'limite de débit atteinte'], [/request was rejected/i, 'requête refusée par l’API'], [/temporary problem/i, 'problème temporaire de l’API'], [/Could not reach the API/i, 'API injoignable'],
-    [/model declined/i, 'le modèle a refusé la demande'], [/cut off/i, 'réponse tronquée'], [/not valid JSON/i, 'réponse non conforme (JSON invalide)'], [/was missing/i, 'réponse incomplète (champs obligatoires manquants)'], [/^Cancelled/i, 'annulé']
+    [/Live AI is paused: (.*)/i, function (m) { return 'en pause, ' + meterFr(m[1]); }], [/model declined/i, 'le modèle a refusé la demande'], [/cut off/i, 'réponse tronquée'], [/not valid JSON/i, 'réponse non conforme (JSON invalide)'], [/was missing/i, 'réponse incomplète (champs obligatoires manquants)'], [/^Cancelled/i, 'annulé']
   ];
   function frDescribe(err) {
     if (err && err.name === 'ValidationError') return 'réponse invalide : ' + err.message.replace(/\.$/, '').toLowerCase();
     if (err && err.name === 'OfflineError') return err.message;
     var L = lai(), msg = L ? L.describe(err) : (err && err.message) || 'erreur';
-    for (var i = 0; i < FR.length; i++) if (FR[i][0].test(msg)) return FR[i][1];
+    for (var i = 0; i < FR.length; i++) { var mm = FR[i][0].exec(msg); if (mm) return typeof FR[i][1] === 'function' ? FR[i][1](mm) : FR[i][1]; }
     return 'erreur de l’API (' + String(msg).slice(0, 80) + ')';
   }
   function call(o) {
@@ -104,6 +123,7 @@
     });
   }
 
-  g.AI = { available: available, offReason: offReason, busy: function (k) { return !!busy[k]; }, extraction: extraction, adjustments: adjustments, teaser: teaser, frDescribe: frDescribe };
+  g.AI = { available: available, offReason: offReason, status: status, busy: function (k) { return !!busy[k]; }, extraction: extraction, adjustments: adjustments, teaser: teaser, frDescribe: frDescribe };
   try { if (lai()) lai().onChange(function () { UI.render(); }); } catch (e) { /* ignoré */ }
+  try { if (meter()) meter().onChange(function () { UI.render(); }); } catch (e) { /* ignoré */ }
 })(window);

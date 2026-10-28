@@ -1,5 +1,15 @@
-/* Tayoo V3 — voice: real browser speech recognition when available, scripted sample dictations otherwise,
-   spoken replies through speechSynthesis, and the luminous capture orb (canvas). */
+/* Tayoo V3 — voice: tap or hold to talk, hands-free send after a short silence, a live mic level, a metered
+   fallback to recorded audio + Gemini transcription, spoken replies with the best device voice, and the capture orb.
+
+   Why the mic "wasn't hearing" before this pass (root cause, fixed below):
+   1. Recognition ran with continuous = true. Android Chrome ends a continuous session at the first pause (and repeats
+      results), desktop Chrome ends it after silence. onend only said "Paused, tap Stop", so nothing was sent.
+   2. Even after Stop, the transcript only became a draft that needed a second tap on Send.
+   3. Nothing showed whether audio arrived: the orb moved only when words came back.
+   4. Without SpeechRecognition (Firefox) or when it is refused (iOS without Siri & Dictation: service-not-allowed),
+      the overlay offered scripted samples, so the microphone never started; errors blamed file:// pages.
+   Now: recognition starts synchronously in the gesture, single-utterance on phones, a 1.5 s silence sends it, a level
+   meter proves the mic hears, errors map to an icon and a short message, and samples live only in the Demo menu. */
 (function () {
   'use strict';
   var T = (window.Tayoo = window.Tayoo || {});
@@ -79,160 +89,338 @@
     c.fillStyle = sp; c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.fill();
   };
 
+  /* ======================= metering (hub API monitor) ======================= */
+  var APP = 'tayoo';
+  function meter() { return window.ApiMeter || null; }
+  function gate(provider) { var m = meter(); return m ? m.check(APP, provider) : { ok: true }; }
+  function rec(provider, op, usage, ok, err) { var m = meter(); if (m) try { m.record({ app: APP, provider: provider, op: op, usage: usage, ok: ok !== false, error: err || '' }); } catch (e) { /* metering is best effort */ } }
+  T.meterGate = gate;
+
   /* ======================= speech synthesis ======================= */
   // Capabilities respect the Test lab toggles, so fallbacks can be tested in any browser.
   var V = (T.voice = { speaking: false });
   function caps() { return (T.store.state && T.store.state.caps) || {}; }
   Object.defineProperty(V, 'supported', { get: function () { return !!SR && caps().sr !== false; } });
   Object.defineProperty(V, 'canSpeak', { get: function () { return !!window.speechSynthesis && caps().voices !== false; } });
+  Object.defineProperty(V, 'canRecord', { get: function () { return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder); } });
+  // The most natural voice for the locale: network/neural voices first, an exact locale over a language match
+  V.pickVoice = function (lang) {
+    var want = lang === 'FR' ? 'fr-ca' : 'en-ca', base = want.slice(0, 2);
+    var voices = (window.speechSynthesis && window.speechSynthesis.getVoices()) || [];
+    function score(v) {
+      var l = (v.lang || '').toLowerCase().replace('_', '-'), n = v.name || '';
+      if (l.indexOf(base) !== 0) return -1;
+      return (l === want ? 40 : l.indexOf(base) === 0 ? 10 : 0) + (/natural|neural|online|premium|enhanced/i.test(n) ? 30 : 0) + (/google/i.test(n) ? 20 : 0) + (v.localService === false ? 5 : 0);
+    }
+    return voices.map(function (v) { return [score(v), v]; }).filter(function (x) { return x[0] >= 0; }).sort(function (a, b) { return b[0] - a[0]; }).map(function (x) { return x[1]; })[0] || null;
+  };
+  // Gemini voices are opt-in (Settings), go through the hub meter, and are cached so a phrase is paid for once
+  var cacheDb = null;
+  function idb() {
+    if (cacheDb) return cacheDb;
+    cacheDb = new Promise(function (ok, no) {
+      try { var rq = indexedDB.open('tayoo-v3-tts', 1); rq.onupgradeneeded = function () { rq.result.createObjectStore('clips'); }; rq.onsuccess = function () { ok(rq.result); }; rq.onerror = function () { no(rq.error); }; } catch (e) { no(e); }
+    });
+    return cacheDb;
+  }
+  function cacheGet(k) { return idb().then(function (db) { return new Promise(function (ok) { var r = db.transaction('clips').objectStore('clips').get(k); r.onsuccess = function () { ok(r.result || null); }; r.onerror = function () { ok(null); }; }); }).catch(function () { return null; }); }
+  function cachePut(k, blob) { return idb().then(function (db) { db.transaction('clips', 'readwrite').objectStore('clips').put(blob, k); }).catch(function () {}); }
+  function playBlob(blob, text) {
+    var url = URL.createObjectURL(blob), au = new Audio(url);
+    V.audio = au; V.speaking = true; T.app && T.app.onSpeaking(true, text);
+    au.onended = au.onerror = function () { V.speaking = false; URL.revokeObjectURL(url); T.app && T.app.onSpeaking(false); };
+    return au.play().catch(function () { V.speaking = false; T.app && T.app.onSpeaking(false); });
+  }
+  function deviceSay(text, lang) {
+    var g = gate('browser-tts');
+    if (!g.ok) { V.paused = g.reason; return false; }
+    window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(text), v = V.pickVoice(lang);
+    if (v) u.voice = v;
+    u.lang = v ? v.lang : (lang === 'FR' ? 'fr-CA' : 'en-CA');
+    u.rate = 1; u.pitch = 1;
+    u.onstart = function () { V.speaking = true; T.app && T.app.onSpeaking(true, text); };
+    u.onend = u.onerror = function () { V.speaking = false; T.app && T.app.onSpeaking(false); };
+    window.speechSynthesis.speak(u);
+    rec('browser-tts', 'speak', { chars: text.length });
+    return true;
+  }
   V.say = function (text, lang) {
     try {
-      if (!V.canSpeak || !T.store.state.settings.speak || !text) return;
-      window.speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(text);
-      var want = lang === 'FR' ? 'fr' : 'en';
-      var voices = window.speechSynthesis.getVoices() || [];
-      var v = voices.filter(function (x) { return x.lang && x.lang.toLowerCase().indexOf(want + '-ca') === 0; })[0] ||
-        voices.filter(function (x) { return x.lang && x.lang.toLowerCase().indexOf(want) === 0; })[0];
-      if (v) u.voice = v;
-      u.lang = lang === 'FR' ? 'fr-CA' : 'en-CA';
-      u.rate = 1.03;
-      u.onstart = function () { V.speaking = true; T.app && T.app.onSpeaking(true, text); };
-      u.onend = u.onerror = function () { V.speaking = false; T.app && T.app.onSpeaking(false); };
-      window.speechSynthesis.speak(u);
+      if (!T.store.state.settings.speak || !text) return;
+      var set = T.store.state.settings;
+      if (set.voiceEngine === 'gemini' && meter() && gate('gemini').ok) {
+        var voice = lang === 'FR' ? 'Leda' : 'Kore', key = voice + '|' + text;
+        cacheGet(key).then(function (hit) {
+          if (hit) return playBlob(hit, text);
+          return meter().gemini.tts({ app: APP, text: text, voice: voice }).then(function (r) { cachePut(key, r.blob); return playBlob(r.blob, text); });
+        }).catch(function () { if (V.canSpeak) deviceSay(text, lang); });
+        return;
+      }
+      if (V.canSpeak) deviceSay(text, lang);
     } catch (e) { /* speech is optional */ }
   };
   V.hush = function () {
     try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+    try { if (V.audio) V.audio.pause(); } catch (e) { /* ignore */ }
     V.speaking = false; T.app && T.app.onSpeaking(false);
   };
 
-  /* ======================= capture overlay ======================= */
-  var C = (T.capture = { open: false, mode: null, text: '', interim: '', rec: null, timer: 0, started: 0, playId: 0 });
+  /* ======================= capture: a small state machine ======================= */
+  // idle → starting → listening → (1.5 s of silence or Done) → sending; or paused / error / unsupported;
+  // the fallback path is recording → transcribing → sending
+  var STATES = {
+    starting: { icon: 'mic', text: 'Starting the mic' },
+    listening: { icon: 'mic', text: 'Listening' },
+    recording: { icon: 'mic', text: 'Recording' },
+    transcribing: { icon: 'refresh', text: 'Transcribing' },
+    sending: { icon: 'check', text: 'Got it' },
+    sample: { icon: 'play', text: 'Scripted sample' },
+    paused: { icon: 'pause', text: 'Voice paused' },
+    error: { icon: 'alert', text: 'Couldn’t hear you' },
+    unsupported: { icon: 'micoff', text: 'No voice input here' }
+  };
+  // every failure gets an icon, a few words and one way forward
+  var ERR = {
+    'not-allowed': ['micoff', 'Mic blocked', 'Allow the microphone for this site, then try again.'],
+    'service-not-allowed': ['micoff', 'Speech not allowed', 'On iPhone, turn on Siri & Dictation. Or type.'],
+    'audio-capture': ['micoff', 'No microphone', 'Plug in or enable a microphone.'],
+    'no-speech': ['question', 'Didn’t catch that', 'Try again a little closer.'],
+    network: ['ban', 'Speech service offline', 'Check the connection, or type.'],
+    'language-not-supported': ['ban', 'Language not supported', 'Switch the dictation language in Settings.'],
+    'bad-grammar': ['alert', 'Couldn’t transcribe', 'Try again.'],
+    transcribe: ['alert', 'Couldn’t transcribe', 'Try again, or type.'],
+    silent: ['question', 'Didn’t catch that', 'Try again a little closer.']
+  };
+  var FALLBACK_ERRORS = { 'service-not-allowed': 1, network: 1, 'language-not-supported': 1 };
+  var C = (T.capture = { open: false, state: 'idle', mode: null, text: '', interim: '', rec: null, timer: 0, started: 0, playId: 0 });
+  T.capture.silenceMs = 1500;
   function $(id) { return document.getElementById(id); }
-  function setStatus(text, kind) {
-    $('cap-status-text').textContent = text;
-    $('capture').setAttribute('data-mode', kind || C.mode);
+  function isPhone() { return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || ''); }
+  function setState(st, text, hint, reason) {
+    C.state = st; C.mode = st;
+    var d = STATES[st] || STATES.error;
+    $('capture').setAttribute('data-mode', st);
+    $('cap-ic').innerHTML = T.icon(d.icon);
+    $('cap-status-text').textContent = text || d.text;
+    var hel = $('cap-hint');
+    hel.textContent = hint || '';
+    hel.title = reason || '';
+    $('cap-stop').hidden = !(st === 'listening' || st === 'recording' || st === 'starting' || st === 'sample');
+    $('capture').querySelector('[data-act="cap-retry"]').hidden = !(st === 'error' || st === 'paused' || st === 'unsupported');
   }
   function renderText() {
     var el = $('cap-text');
     var fin = C.text, inter = C.interim;
     $('capture').classList.toggle('is-long', (fin + ' ' + inter).length > 110);
-    el.innerHTML = fin || inter ? T.esc(fin) + (inter ? ' <span class="interim">' + T.esc(inter) + '</span>' : '') : '<span class="placeholder">' + (C.mode === 'live' ? 'Go ahead, I’m listening…' : '') + '</span>';
+    el.innerHTML = fin || inter ? T.esc(fin) + (inter ? ' <span class="interim">' + T.esc(inter) + '</span>' : '') : '';
   }
   function tickTimer() {
     var s = Math.floor((Date.now() - C.started) / 1000);
     $('cap-timer').textContent = Math.floor(s / 60) + ':' + T.pad(s % 60);
   }
 
+  /* ---------- the live level meter: getUserMedia + AnalyserNode ---------- */
+  var L = (C.level = { stream: null, ctx: null, an: null, raf: 0, value: 0, heardAt: 0 });
+  function levelBars(v) {
+    var bars = $('cap-level').children;
+    for (var i = 0; i < bars.length; i++) { var w = 1 - Math.abs(i - (bars.length - 1) / 2) / bars.length; bars[i].style.transform = 'scaleY(' + Math.max(0.12, Math.min(1, v * 3.2 * w + 0.1)).toFixed(2) + ')'; }
+  }
+  L.start = function (stream) {
+    try {
+      L.stream = stream;
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      L.ctx = new AC(); L.an = L.ctx.createAnalyser(); L.an.fftSize = 512;
+      L.ctx.createMediaStreamSource(stream).connect(L.an);
+      var buf = new Uint8Array(L.an.fftSize);
+      (function frame() {
+        L.an.getByteTimeDomainData(buf);
+        var sum = 0; for (var i = 0; i < buf.length; i++) { var x = (buf[i] - 128) / 128; sum += x * x; }
+        L.value = Math.sqrt(sum / buf.length);
+        if (L.value > 0.04) L.heardAt = Date.now();
+        levelBars(L.value); T.orb.pulse(0.2 + L.value * 2);
+        $('capture').classList.toggle('is-hearing', L.value > 0.04);
+        L.raf = requestAnimationFrame(frame);
+      })();
+    } catch (e) { /* the meter is a visual aid */ }
+  };
+  L.stop = function () {
+    cancelAnimationFrame(L.raf); L.raf = 0;
+    try { if (L.ctx) L.ctx.close(); } catch (e) { /* ignore */ }
+    if (L.stream && !C.recorder) L.stream.getTracks().forEach(function (t) { t.stop(); });
+    L.ctx = L.an = null; if (!C.recorder) L.stream = null; L.value = 0; levelBars(0);
+  };
+  function openMic() {
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return Promise.reject(new Error('no-media'));
+    return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+  }
+
+  /* ---------- show / start ---------- */
   C.show = function (opts) {
     opts = opts || {};
     T.voice.hush();
     var el = $('capture');
-    C.open = true; C.text = ''; C.interim = ''; C.error = null; C.lastFocus = document.activeElement;
-    // the one orchestrated moment: the desk view folds into midnight from the talk control
+    C.open = true; C.text = ''; C.interim = ''; C.error = null; C.lastFocus = document.activeElement; C.hold = !!opts.hold; C.sent = false;
+    var dv = $('device').getBoundingClientRect();
     var o = opts.origin && opts.origin.getBoundingClientRect ? opts.origin.getBoundingClientRect() : null;
-    el.style.setProperty('--ox', o ? Math.round(o.left + o.width / 2) + 'px' : '50%');
-    el.style.setProperty('--oy', o ? Math.round(o.top + o.height / 2) + 'px' : '80%');
+    el.style.setProperty('--ox', o ? Math.round(o.left - dv.left + o.width / 2) + 'px' : '50%');
+    el.style.setProperty('--oy', o ? Math.round(o.top - dv.top + o.height / 2) + 'px' : '80%');
     el.hidden = false;
-    el.classList.remove('is-in');
-    void el.offsetWidth;
-    el.classList.add('is-in');
+    el.classList.remove('is-in'); void el.offsetWidth; el.classList.add('is-in');
     document.body.classList.add('capturing');
     T.orb.start($('orb'));
     C.started = Date.now(); clearInterval(C.timer); C.timer = setInterval(tickTimer, 500); tickTimer();
-    renderSamples(opts.sample);
-    if (opts.sample) C.playSample(opts.sample);
-    else if (V.supported) C.startLive();
-    else {
-      C.mode = 'unsupported';
-      setStatus(SR ? 'Speech recognition is off (Test lab)' : 'Live transcription isn’t available in this browser', 'unsupported');
-      $('cap-hint').textContent = 'Nothing is being recorded. Pick a scripted sample dictation below, or type instead.';
-      renderText();
-    }
-    setTimeout(function () { var b = $('cap-stop'); if (b) b.focus(); }, 30);
+    renderText(); levelBars(0);
+    if (opts.sample) return C.playSample(opts.sample);
+    C.listen();
+    setTimeout(function () { var b = $('cap-stop'); if (b && !b.hidden) b.focus(); }, 30);
   };
-  function renderSamples(active) {
-    $('cap-samples').innerHTML = '<p class="cap-samples-h" id="cap-samples-h">Sample dictations (scripted)</p><div class="cap-samples-row" role="group" aria-labelledby="cap-samples-h">' + T.SAMPLES.map(function (s) {
-      return '<button type="button" class="cap-sample' + (s.id === active ? ' is-on' : '') + '" data-act="cap-sample" data-sample="' + s.id + '">' + T.esc(s.label) + '</button>';
-    }).join('') + '</div>';
-  }
-  C.startLive = function () {
-    C.mode = 'live';
+  // Must run inside the tap or press: recognition.start() and getUserMedia() are called synchronously from here
+  C.listen = function () {
+    C.text = ''; C.interim = ''; renderText();
     var lang = T.store.state.settings.recLang || 'en-CA';
-    var langName = lang === 'fr-CA' ? 'Français (Canada)' : 'English (Canada)';
-    setStatus('Starting the microphone…', 'starting');
-    $('cap-hint').textContent = 'If your browser asks for microphone access, allow it. Nothing is recorded until it does. Some browsers, Chrome among them, send the audio to their own speech service to transcribe it.';
-    clearTimeout(C.noAudioT);
-    C.noAudioT = setTimeout(function () {
-      if (C.open && C.mode === 'live' && !C.audio) $('cap-hint').textContent = 'No audio yet. If the microphone prompt was dismissed or blocked, use a sample dictation below or type instead.';
-    }, 4500 * T.speed);
-    C.audio = false;
-    renderText();
-    try {
-      var rec = new SR();
-      C.rec = rec;
-      rec.lang = lang; rec.interimResults = true; rec.continuous = true; rec.maxAlternatives = 1;
-      rec.onresult = function (ev) {
-        var fin = '', inter = '';
-        for (var i = 0; i < ev.results.length; i++) {
-          var r = ev.results[i];
-          if (r.isFinal) fin += r[0].transcript; else inter += r[0].transcript;
-        }
-        C.text = fin.trim(); C.interim = inter.trim();
-        T.orb.pulse(0.55 + Math.random() * 0.35);
-        renderText();
-      };
-      rec.onspeechstart = function () { T.orb.pulse(0.6); };
-      rec.onaudiostart = function () {
-        C.audio = true;
-        setStatus('Listening · ' + langName, 'live');
-        $('cap-hint').textContent = 'Microphone on. Your browser’s speech service writes the transcript; this demo doesn’t store audio. Tap Stop when you’re done.';
-      };
-      rec.onerror = function (ev) {
-        C.error = ev.error;
-        var msg = {
-          'not-allowed': 'Microphone permission was denied. Nothing was recorded.',
-          'service-not-allowed': 'This browser doesn’t allow speech recognition here (common on file:// pages). Nothing was recorded.',
-          network: 'Your browser’s speech service couldn’t be reached. Nothing was transcribed.',
-          'no-speech': 'I didn’t hear anything. Try again, play a sample, or type instead.',
-          'audio-capture': 'No microphone was found. Nothing was recorded.',
-          aborted: 'Listening stopped.'
-        }[ev.error] || ('Speech recognition stopped (' + ev.error + ').');
-        if (ev.error === 'aborted') return;
-        C.mode = 'error';
-        setStatus('Couldn’t transcribe', 'error');
-        $('cap-hint').textContent = msg + ' You can use a sample dictation below or type instead.';
-        renderText();
-      };
-      rec.onend = function () {
-        C.rec = null;
-        if (C.mode === 'live' && C.open && !C.stopping) {
-          // the browser ended on its own (silence): keep what we have and let the broker decide
-          setStatus('Paused. Tap Stop to review the transcript', 'paused');
-        }
-      };
-      rec.start();
-    } catch (e) {
-      C.mode = 'error';
-      setStatus('Couldn’t start the microphone', 'error');
-      $('cap-hint').textContent = 'Speech recognition failed to start here. Use a sample dictation or type instead.';
+    if (V.supported) {
+      var g = gate('browser-speech');
+      if (!g.ok) return setState('paused', null, 'Type instead, or turn voice back on in the API monitor.', g.reason);
+      return C.startLive(lang);
     }
+    return C.startFallback(lang, SR ? 'Speech recognition is off (Test lab).' : 'This browser has no speech recognition.');
   };
+  C.startLive = function (lang) {
+    setState('starting');
+    C.speechAt = 0; C.liveStart = Date.now(); C.prior = (C.text + ' ' + C.interim).trim(); C.interim = '';
+    try {
+      var r = new SR();
+      C.rec = r;
+      r.lang = lang; r.interimResults = true; r.maxAlternatives = 1;
+      // phones end a continuous session at the first pause and repeat results: one utterance at a time there
+      r.continuous = !isPhone();
+      r.onstart = function () { if (C.rec === r) setState('listening'); };
+      r.onaudiostart = function () { if (C.rec === r && C.state === 'starting') setState('listening'); };
+      r.onsoundstart = r.onspeechstart = function () { T.orb.pulse(0.6); if (!L.an) { levelBars(0.25); $('capture').classList.add('is-hearing'); } };
+      r.onresult = function (ev) {
+        if (C.rec !== r) return;
+        // rebuilt from the session's whole result list each time, so repeated results never double the words
+        var fin = '', inter = '';
+        for (var i = 0; i < ev.results.length; i++) { var x = ev.results[i]; if (x.isFinal) fin += ' ' + x[0].transcript; else inter += ' ' + x[0].transcript; }
+        C.text = ((C.prior || '') + ' ' + fin).replace(/\s+/g, ' ').trim(); C.interim = inter.replace(/\s+/g, ' ').trim();
+        C.speechAt = Date.now();
+        if (C.state !== 'listening') setState('listening');
+        T.orb.pulse(0.55 + Math.random() * 0.35); if (!L.an) levelBars(0.3 + Math.random() * 0.3);
+        renderText();
+        C.armSilence();
+      };
+      r.onerror = function (ev) {
+        if (C.rec !== r) return;
+        C.error = ev.error;
+        if (ev.error === 'aborted') return;
+        if (FALLBACK_ERRORS[ev.error] && gate('gemini').ok && V.canRecord) { C.stopLive(true); C.startFallback(lang, ''); return; }
+        if (ev.error === 'no-speech' && (C.text || C.interim)) return;
+        C.fail(ev.error);
+      };
+      r.onend = function () {
+        if (C.rec !== r) return;
+        C.rec = null; clearTimeout(C.silenceT);
+        C.meterListen(!C.error);
+        if (!C.open || C.state === 'error' || C.state === 'transcribing' || C.state === 'recording') return;
+        // the browser ended (silence, or a phone's single utterance): send what was heard, hands-free
+        if ((C.text + ' ' + C.interim).trim()) return C.finish();
+        if (C.hold && C.holding) return C.startLive(lang); // still holding: keep listening
+        C.fail(C.error || 'silent');
+      };
+      r.start();
+    } catch (e) { C.fail('audio-capture'); return; }
+    // the level meter, on its own stream; Android can't share the mic with recognition, so it relies on sound events
+    if (!/Android/i.test(navigator.userAgent || '')) openMic().then(function (st) { if (C.open && C.rec) L.start(st); else st.getTracks().forEach(function (t) { t.stop(); }); }, function () { /* the meter is optional */ });
+  };
+  C.armSilence = function () {
+    clearTimeout(C.silenceT);
+    if (C.hold && C.holding) return; // press-and-hold sends on release
+    C.silenceT = setTimeout(function () { if (C.open && C.rec && (C.text || C.interim)) C.stopLive(); }, C.silenceMs * (T.speed || 1));
+  };
+  C.stopLive = function (silent) {
+    var r = C.rec;
+    clearTimeout(C.silenceT);
+    if (!r) return;
+    if (silent) { C.rec = null; C.meterListen(false); }
+    try { silent ? r.abort() : r.stop(); } catch (e) { /* ignore */ }
+  };
+  C.meterListen = function (ok) {
+    if (!C.liveStart) return;
+    var secs = Math.max(0.1, Math.round((Date.now() - C.liveStart) / 100) / 10);
+    rec('browser-speech', 'listen', { seconds: secs }, ok, ok ? '' : C.error);
+    C.liveStart = 0;
+  };
+  C.fail = function (code, reason) {
+    var e = ERR[code] || ['alert', 'Couldn’t hear you', 'Try again, or type.'];
+    L.stop();
+    setState(code === 'unsupported' ? 'unsupported' : 'error', e[1], e[2], reason || code);
+    $('cap-ic').innerHTML = T.icon(e[0]);
+  };
+
+  /* ---------- fallback: record, then transcribe with Gemini through the hub meter ---------- */
+  C.startFallback = function (lang, why) {
+    var g = meter() ? gate('gemini') : { ok: false, reason: 'API monitor not loaded' };
+    if (!g.ok || !V.canRecord) return setState('unsupported', null, 'Type instead. ' + (why || ''), (g.reason || 'Recording isn’t available') + (why ? '. ' + why : ''));
+    setState('starting', 'Starting the mic', '', why);
+    openMic().then(function (stream) {
+      if (!C.open) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
+      var chunks = [], mr;
+      try { mr = new MediaRecorder(stream); } catch (e) { stream.getTracks().forEach(function (t) { t.stop(); }); return C.fail('audio-capture'); }
+      C.recorder = mr; C.recStart = Date.now();
+      mr.ondataavailable = function (ev) { if (ev.data && ev.data.size) chunks.push(ev.data); };
+      mr.onstop = function () {
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        C.recorder = null; L.stop();
+        if (!C.open || C.discarded) return;
+        var blob = new Blob(chunks, { type: (mr.mimeType || 'audio/webm') });
+        var secs = Math.round((Date.now() - C.recStart) / 100) / 10;
+        setState('transcribing');
+        meter().gemini.transcribe({ app: APP, blob: blob, lang: lang, seconds: secs }).then(function (r) {
+          if (!C.open) return;
+          C.text = (r.text || '').trim(); renderText();
+          if (C.text) C.finish('gemini'); else C.fail('silent');
+        }, function (err) {
+          if (!C.open) return;
+          if (err && err.name === 'ApiMeterBlocked') setState('paused', null, 'Type instead.', err.message);
+          else C.fail('transcribe', err && err.message);
+        });
+      };
+      mr.start(250);
+      L.start(stream);
+      setState('recording', 'Recording', '', 'Your browser has no speech recognition here, so the audio is transcribed by Gemini (metered).');
+      // stop after 1.5 s of quiet once you have spoken, or at 60 s
+      var spoke = false;
+      C.silenceT = setInterval(function () {
+        if (!C.recorder) return clearInterval(C.silenceT);
+        if (L.value > 0.04) spoke = true;
+        var quiet = Date.now() - (L.heardAt || C.recStart);
+        if ((spoke && quiet > C.silenceMs * (T.speed || 1) && !(C.hold && C.holding)) || Date.now() - C.recStart > 60000) { clearInterval(C.silenceT); try { mr.stop(); } catch (e) { /* ignore */ } }
+      }, 100);
+    }, function (err) { C.fail(err && err.name === 'NotAllowedError' ? 'not-allowed' : 'audio-capture'); });
+  };
+
+  /* ---------- hold to talk ---------- */
+  C.release = function () {
+    if (!C.open || !C.hold) return;
+    C.holding = false;
+    if (C.recorder) { try { C.recorder.stop(); } catch (e) { /* ignore */ } return; }
+    if (C.rec) C.stopLive();
+  };
+
+  /* ---------- scripted samples (Demo menu only; never what the mic does) ---------- */
   C.playSample = function (id) {
     var smp = T.SAMPLES.filter(function (s) { return s.id === id; })[0];
     if (!smp) return;
-    if (C.rec) { try { C.stopping = true; C.rec.abort(); } catch (e) { /* ignore */ } C.rec = null; C.stopping = false; }
-    C.mode = 'sample'; C.sampleId = id; C.text = ''; C.interim = '';
-    setStatus('Sample dictation · scripted, no microphone', 'sample');
-    $('cap-hint').textContent = 'This plays a pre-written transcript so you can see the whole loop. With a supported browser, tap the mic to dictate your own.';
-    renderSamples(id);
+    if (C.rec) C.stopLive(true);
+    C.sampleId = id; C.text = ''; C.interim = '';
+    setState('sample', 'Scripted sample', 'Demo · no microphone');
     var words = smp.text.split(' '), i = 0, my = ++C.playId;
     function next() {
       if (my !== C.playId || !C.open) return;
       if (i >= words.length) {
         C.text = smp.text; C.interim = ''; renderText();
-        setStatus('Sample finished. Tap Stop to review the transcript', 'sample-done');
         C.sampleDone = true;
         if (C.autoStop) setTimeout(function () { if (my === C.playId && C.open) C.stop(); }, 500 * T.speed);
         return;
@@ -242,7 +430,7 @@
       C.interim = words.slice(Math.max(0, chunk - 2), chunk).join(' ');
       i = chunk;
       renderText();
-      T.orb.pulse(0.45 + (i % 5) * 0.1);
+      T.orb.pulse(0.45 + (i % 5) * 0.1); levelBars(0.2 + (i % 4) * 0.08);
       setTimeout(next, (T.reduced() ? 40 : 150) * T.speed);
     }
     C.sampleDone = false;
@@ -253,34 +441,56 @@
     C.playId++;
     if (smp) { C.text = smp.text; C.interim = ''; }
   };
+
+  /* ---------- finish: hands-free send ---------- */
+  C.finish = function (via) {
+    if (C.sent) return;
+    C.sent = true;
+    var text = (C.text + ' ' + C.interim).replace(/\s+/g, ' ').trim();
+    var lang = T.store.state.settings.recLang;
+    setState('sending');
+    C.close();
+    if (!text) return T.app.toast('Nothing heard.');
+    T.app.sendVoice(text, via === 'gemini' ? 'gemini' : 'live', lang);
+  };
+  // Done: in live mode it ends listening (and sends); with a sample it reviews the transcript
   C.stop = function () {
     if (!C.open) return;
-    if (C.mode === 'sample' && !C.sampleDone) C.finishSampleNow();
-    var text = (C.text + ' ' + C.interim).trim();
-    var lang = C.mode === 'sample' ? (T.SAMPLES.filter(function (s) { return s.id === C.sampleId; })[0] || {}).lang : T.store.state.settings.recLang;
-    var source = C.mode === 'sample' ? 'sample' : 'live';
-    C.close();
-    if (text) T.app.setDraft(text, 'voice', source, lang);
-    else T.app.toast('Nothing was captured, so there’s nothing to review.');
+    if (C.state === 'sample') {
+      if (!C.sampleDone) C.finishSampleNow();
+      var smp = T.SAMPLES.filter(function (s) { return s.id === C.sampleId; })[0] || {};
+      var t = (C.text + ' ' + C.interim).trim();
+      C.close();
+      return t ? T.app.setDraft(t, 'voice', 'sample', smp.lang) : null;
+    }
+    if (C.recorder) { try { C.recorder.stop(); } catch (e) { /* ignore */ } return; }
+    if (C.rec) { if (C.text || C.interim) return C.stopLive(); C.stopLive(true); }
+    if (C.text || C.interim) return C.finish();
+    C.cancel(true);
   };
-  C.cancel = function () {
+  C.retry = function () { if (!C.open) return; C.error = null; C.sent = false; C.listen(); };
+  C.cancel = function (quiet) {
+    C.discarded = true;
     C.close();
-    T.app.toast('Discarded. Nothing was saved.');
+    C.discarded = false;
+    if (!quiet) T.app.toast('Discarded.');
   };
   C.typeInstead = function () {
-    C.close();
+    C.discarded = true; C.close(); C.discarded = false;
     var ta = document.getElementById('composer-input');
     if (ta) ta.focus();
   };
   C.close = function () {
     C.playId++;
-    if (C.rec) { try { C.stopping = true; C.rec.abort(); } catch (e) { /* ignore */ } C.rec = null; }
-    C.stopping = false;
-    C.open = false; C.autoStop = false;
+    if (C.rec) C.stopLive(true);
+    if (C.recorder && C.discarded) { try { C.recorder.stop(); } catch (e) { /* ignore */ } }
+    clearTimeout(C.silenceT); clearInterval(C.silenceT);
+    L.stop();
+    C.open = false; C.autoStop = false; C.holding = false;
     clearInterval(C.timer);
     T.orb.stop();
     var el = $('capture');
-    el.classList.remove('is-in');
+    el.classList.remove('is-in', 'is-hearing');
     el.hidden = true;
     document.body.classList.remove('capturing');
     if (C.lastFocus && C.lastFocus.focus && document.body.contains(C.lastFocus)) { try { C.lastFocus.focus(); } catch (e) { /* ignore */ } }

@@ -96,7 +96,7 @@
       if (r.name === 'listen') P.paint();
       PN.render(r);
       $('tour-host').innerHTML = PN.mobileCard();
-      $('tour-float').innerHTML = '';
+      $('tour-float').innerHTML = innerWidth >= 760 ? PN.mobileCard('tourcard--float') : ''; // the rail stays closed; the tour floats
       const sb = $('sb-time'); if (sb) sb.textContent = S.fmtTime().replace(/\s?[AP]M$/, '');
     }
     if (LQ.lab.open) LQ.lab.render();
@@ -181,7 +181,25 @@
     U.toast('Demo clock: ' + S.fmtDay(S.today()) + ', ' + S.fmtTime() + '. ' + due + ' due' + (od > overdueBefore ? ', ' + od + ' overdue' : '') + (notes > 0 ? '. ' + notes + ' new in your inbox' : '') + '.');
   };
   ACT['clock-reset'] = () => { LQ.recall.run = null; S.state.clockMin = 0; S.event('demo.clock', 'Demo clock back to the start'); S.save(); APP.render(); };
-  ACT['tour-start'] = () => PN.startTour();
+  ACT['tour-start'] = () => { APP.closeDemoMenu(); PN.startTour(); };
+  ACT['rail'] = (el) => PN.toggle(el.dataset.arg);
+  /* Demo menu (desktop top bar): tour, Test lab, API monitor, reset, the fictional-data marker. */
+  APP.closeDemoMenu = () => { const m = $('demo-menu'), b = $('demo-btn'); if (m && !m.hidden) { m.hidden = true; if (b) b.setAttribute('aria-expanded', 'false'); } };
+  ACT['demo-menu'] = () => {
+    const m = $('demo-menu'), b = $('demo-btn'); if (!m) return;
+    if (!m.hidden) { APP.closeDemoMenu(); return; }
+    m.innerHTML = V.demoItems(); m.hidden = false; b.setAttribute('aria-expanded', 'true');
+    const f = m.querySelector('button, a'); if (f) f.focus();
+  };
+  document.addEventListener('click', (ev) => { const m = $('demo-menu'); if (m && !m.hidden && !ev.target.closest('.demomenu-wrap')) APP.closeDemoMenu(); }, true);
+  document.addEventListener('keydown', (ev) => { const m = $('demo-menu'); if (ev.key === 'Escape' && m && !m.hidden) { APP.closeDemoMenu(); const b = $('demo-btn'); if (b) b.focus(); } });
+  /* Per-course voice picker (behind the speaker icon). */
+  ACT['voice-picker'] = (el) => U.sheet(V.voicePicker(el.dataset.arg || (S.track() || {}).id));
+  ACT['voice-sample'] = (el) => {
+    const [tid, uri] = el.dataset.arg.split('|'), t = LQ.trackById(tid), e = S.enr(tid) || {};
+    const v = U.voiceFor(t, e); const r = LQ.speech.speak(U.speakText(t.hello), Object.assign({}, v, { voiceURI: uri || e.voiceURI, rate: LQ.speech.RATE.normal }));
+    if (!r.ok) U.toast(r.reason === 'blocked' ? 'Browser voices are paused on the API monitor.' : 'No voice for this locale on this device.');
+  };
   ACT['tour-next'] = () => PN.next();
   ACT['tour-back'] = () => PN.back();
   ACT['tour-do'] = () => PN.doStep();
@@ -200,7 +218,7 @@
     else if (k === 'recall') { const R = LQ.recall.run; const f = LQ.expressionById(R.items[R.idx].id); p = f && f.e; }
     const trackOf = k === 'recall' ? LQ.trackById(LQ.recall.run.items[LQ.recall.run.idx].tid) : undefined;
     const go = () => LQ.speech.playTake(t.url);
-    if (p) { const r = U.say(p, { track: trackOf, onend: (w) => setTimeout(go, w === 'no-voice' || w === 'no-tts' ? 0 : 300) }); if (!r.ok) U.toast('No reference voice on this device; playing your take only.'); } else go();
+    if (p) { const r = U.say(p, { track: trackOf, onend: (w) => setTimeout(go, w === 'no-voice' || w === 'no-tts' || w === 'blocked' ? 0 : 300) }); if (!r.ok) U.toast('No reference voice on this device; playing your take only.'); } else go();
   };
   // player
   ACT['p-toggle'] = () => { P.playing ? P.pause() : P.play(); };
@@ -239,6 +257,8 @@
     'profile-save': (form) => { const f = new FormData(form); S.commit(st => { st.learner.name = (f.get('name') || '').trim() || st.learner.name; st.defaultSource = f.get('defaultSource'); }); U.toast('Profile saved. Existing courses keep their own instruction language.'); }
   });
   const CHANGE = Object.assign({}, LQ.studioChange, LQ.notebookChange, LQ.labChange, {
+    'voice-pick': (el) => { const e = S.enr(el.dataset.arg); if (!e) return; e.voiceURI = el.value || null; S.event('voice.picked', LQ.trackById(el.dataset.arg).name + ': ' + (el.value ? 'device voice ' + el.value : 'automatic voice')); S.save(); U.sheet(V.voicePicker(el.dataset.arg)); APP.render(); },
+    'voice-neural': (el) => { const e = S.enr(el.dataset.arg); if (!e) return; e.neural = el.checked; S.event('voice.neural', LQ.trackById(el.dataset.arg).name + ': neural voice ' + (el.checked ? 'allowed' : 'off')); S.save(); U.sheet(V.voicePicker(el.dataset.arg)); APP.render(); },
     'setting': (el) => { const k = el.dataset.arg, st = S.state; if (k === 'streakPaused') st.streakPaused = el.checked; else if (k === 'readingFont') st.settings.readingFont = el.checked ? 'lexend' : 'standard'; else if (k === 'rem-due') st.settings.reminders.due = el.checked; else if (k === 'rem-audio') st.settings.reminders.audio = el.checked; else st.settings[k] = el.checked; S.save(); APP.render(); },
     'textsize': (el) => { S.state.settings.textSize = +el.value; S.save(); APP.render(); },
     'theme': (el) => { S.state.settings.theme = el.value; S.save(); APP.render(); },
@@ -257,6 +277,7 @@
     const fn = ACT[el.dataset.act]; if (!fn) return;
     if (el.tagName === 'BUTTON' || el.dataset.act === 'sheet-close') ev.preventDefault();
     try { fn(el, ev); } catch (e) { console.error(e); U.toast('Something went wrong with that action. The demo state is unchanged.'); }
+    if (el.closest('#demo-menu') && el.dataset.act !== 'demo-menu') APP.closeDemoMenu();
   });
   document.addEventListener('submit', (ev) => { const f = ev.target.closest('[data-submit]'); if (!f) return; ev.preventDefault(); const fn = SUBMIT[f.dataset.submit]; if (fn) fn(f, f.dataset.arg); });
   document.addEventListener('change', (ev) => { const el = ev.target.closest('[data-change]'); if (!el) return; const fn = CHANGE[el.dataset.change]; if (fn) fn(el); });
@@ -274,10 +295,14 @@
     APP.render(true);
   });
   if (window.LiveAI) LiveAI.onChange(() => APP.render());
+  /* Re-render when the hub monitor changes a key or a killswitch (usage records alone don't). */
+  if (window.ApiMeter) { const sig = () => JSON.stringify(ApiMeter.state().kill) + ['anthropic', 'gemini'].map(p => ApiMeter.keys.has(p)).join(); let last = sig();
+    ApiMeter.onChange(() => { const now = sig(); if (now === last && !LQ.lab.open) return; last = now; if (!APP._meterT) APP._meterT = setTimeout(() => { APP._meterT = null; APP.render(); }, 120); }); }
   LQ.speech.onVoices(() => { if (document.readyState !== 'loading') APP.render(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) C.stopAll(); });
 
   /* ── boot ── */
+  document.querySelectorAll('[data-icon]').forEach(el => { el.outerHTML = ic(el.dataset.icon); });
   S.load();
   LQ.applyPublication();
   S.subscribe(() => APP.render());

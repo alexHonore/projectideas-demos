@@ -67,28 +67,26 @@
   V.notebook = () => {
     const courses = activeCourses(), f = NB.filter !== 'all' && courses.includes(NB.filter) ? NB.filter : 'all';
     const items = NB.items().filter(x => f === 'all' || x.tid === f);
-    let h = V.header() + '<main class="notebook" id="main"><div class="pagehead"><h1 class="h2">Notebook</h1><a class="btn btn--sm" href="#/review">' + ic('refresh', 'ic--xs') + 'Review queue</a></div>' +
-      '<p class="muted small">Every phrase a mission scheduled or you saved, in all your courses, plus your own. Each one returns on its own recall schedule.</p>';
-    h += '<div class="chips chips--scroll" role="group" aria-label="Filter by course"><button class="fchip' + (f === 'all' ? ' is-on' : '') + '" aria-pressed="' + (f === 'all') + '" data-act="nb-filter" data-arg="all">All courses <span class="fchip__n">' + NB.items().length + '</span></button>' +
+    let h = V.header() + '<main class="notebook" id="main"><div class="pagehead"><h1 class="h2">Notebook ' + U.info('Every phrase a mission scheduled or you saved, in all your courses, plus your own. Each one returns on its own recall schedule. Phrases are demo-authored and not yet native-reviewed; your own phrases aren’t checked against a reference.', 'About the notebook') + '</h1><a class="btn btn--sm" href="#/review" title="Review queue">' + ic('refresh', 'ic--xs') + 'Review</a></div>';
+    h += '<div class="chips chips--scroll" role="group" aria-label="Filter by course"><button class="fchip' + (f === 'all' ? ' is-on' : '') + '" aria-pressed="' + (f === 'all') + '" data-act="nb-filter" data-arg="all">All <span class="fchip__n">' + NB.items().length + '</span></button>' +
       courses.map(tid => '<button class="fchip' + (f === tid ? ' is-on' : '') + '" aria-pressed="' + (f === tid) + '" data-act="nb-filter" data-arg="' + tid + '">' + esc(LQ.trackById(tid).name) + ' <span class="fchip__n">' + NB.items().filter(x => x.tid === tid).length + '</span></button>').join('') + '</div>';
     h += addForm(f === 'all' ? st().active : f);
-    if (!items.length) h += '<div class="empty">' + U.mascot('curious', 80) + '<p><strong>Nothing saved yet.</strong></p><p class="muted">Tap the bookmark on any line in a mission, or add your own phrase above.</p></div>';
+    if (!items.length) h += '<div class="empty">' + U.mascot('curious', 80) + '<p><strong>Nothing saved yet.</strong></p><p class="muted small" title="Tap the bookmark on any line in a mission, or add your own phrase">' + ic('bookmark', 'ic--xs') + ' · ' + ic('plus', 'ic--xs') + '</p></div>';
     const groups = {}; items.forEach(x => { (groups[x.tid] = groups[x.tid] || []).push(x); });
     Object.entries(groups).forEach(([tid, list]) => {
       const t = LQ.trackById(tid);
-      h += '<section class="nbgroup" aria-labelledby="nb-' + tid + '"><h2 class="h4" id="nb-' + tid + '">' + U.trackBadge(t) + ' ' + esc(t.name) + ' <span class="muted small">from ' + esc(S.srcName(srcOf(tid))) + '</span></h2><ul class="nblist" role="list">' + list.map(x => row(x, t)).join('') + '</ul></section>';
+      h += '<section class="nbgroup" aria-labelledby="nb-' + tid + '"><h2 class="h4" id="nb-' + tid + '">' + U.trackBadge(t) + ' ' + esc(t.name) + '</h2><ul class="nblist" role="list">' + list.map(x => row(x, t)).join('') + '</ul></section>';
     });
-    h += '<p class="fineprint">Phrases are demo-authored and not yet native-reviewed. Your own phrases are yours: LangQuest doesn’t check them against a reference.</p></main>';
-    return h;
+    return h + '</main>';
   };
   function row(x, t) {
     const key = x.tid + '|' + x.id, src = srcOf(x.tid);
     if (NB.edit === key && x.custom) return '<li class="nbrow nbrow--edit">' + phraseForm('phrase-edit', key, x.tid, { t: x.custom.t, r: x.custom.r, m: U.L(x.custom.m, src), note: x.custom.note }, 'Save changes') + '</li>';
     return '<li class="nbrow"><div class="nbrow__p">' + U.phrase(x.e, { track: t }) + '<span class="nbrow__m">' + esc(U.nm(U.L(x.e.m, src))) + '</span>' + (x.custom && x.custom.note ? '<span class="muted small">' + esc(x.custom.note) + '</span>' : '') +
-      '<span class="nbrow__meta">' + (x.r ? stageChip(x.r) + '<span class="small">' + esc(dueText(x.r)) + '</span>' : '<span class="small muted">Not scheduled</span>') + '<span class="small muted">' + esc(originOf(x)) + '</span></span></div>' +
-      '<div class="nbrow__acts"><button class="iconbtn" data-act="nb-play" data-arg="' + esc(key) + '" aria-label="Listen to ' + esc(U.nm(x.e.t)) + '">' + ic('volume', 'ic--sm') + '</button>' +
-      (x.custom ? '<button class="iconbtn" data-act="nb-edit" data-arg="' + esc(key) + '" aria-label="Edit ' + esc(U.nm(x.e.t)) + '">' + ic('edit', 'ic--sm') + '</button>' : '') +
-      '<button class="iconbtn" data-act="nb-delete" data-arg="' + esc(key) + '" aria-label="Remove ' + esc(U.nm(x.e.t)) + ' from your notebook">' + ic('close', 'ic--sm') + '</button></div></li>';
+      '<span class="nbrow__meta" title="' + esc(originOf(x)) + '">' + (x.r ? stageChip(x.r) + '<span class="small">' + esc(dueText(x.r)) + '</span>' : '<span class="small muted">Not scheduled</span>') + (x.custom ? '<span class="small muted">' + ic('edit', 'ic--xs') + '</span>' : '') + '</span></div>' +
+      '<div class="nbrow__acts"><button class="iconbtn" data-act="nb-play" data-arg="' + esc(key) + '" aria-label="Listen to ' + esc(U.nm(x.e.t)) + '" title="Listen">' + ic('volume', 'ic--sm') + '</button>' +
+      (x.custom ? '<button class="iconbtn" data-act="nb-edit" data-arg="' + esc(key) + '" aria-label="Edit ' + esc(U.nm(x.e.t)) + '" title="Edit">' + ic('edit', 'ic--sm') + '</button>' : '') +
+      '<button class="iconbtn" data-act="nb-delete" data-arg="' + esc(key) + '" aria-label="Remove ' + esc(U.nm(x.e.t)) + ' from your notebook" title="Remove">' + ic('close', 'ic--sm') + '</button></div></li>';
   }
   function phraseForm(sub, arg, tid, v, label) {
     const t = LQ.trackById(tid), err = NB.err[sub] || {}, src = srcOf(tid);
@@ -104,7 +102,7 @@
   function addForm(tid) {
     if (!tid) return '';
     NB.addTid = NB.addTid && activeCourses().includes(NB.addTid) ? NB.addTid : tid;
-    return '<details class="nbadd"' + (NB.addOpen ? ' open' : '') + '><summary data-act="nb-add-toggle">' + ic('plus', 'ic--sm') + 'Add your own phrase</summary>' + phraseForm('phrase-add', '', NB.addTid, {}, 'Add to notebook') + '</details>';
+    return '<details class="nbadd"' + (NB.addOpen ? ' open' : '') + '><summary data-act="nb-add-toggle">' + ic('plus', 'ic--sm') + 'Add a phrase</summary>' + phraseForm('phrase-add', '', NB.addTid, {}, 'Add to notebook') + '</details>';
   }
   function validate(f, sub) {
     const t = (f.get('t') || '').trim(), m = (f.get('m') || '').trim(), err = {};
@@ -118,25 +116,22 @@
   /* ───────── Cross-course review queue ───────── */
   V.review = () => {
     const b = NB.buckets(), due = b.overdue.length + b.today.length;
-    let h = V.header() + '<main class="review" id="main"><div class="pagehead"><h1 class="h2">Review queue</h1><a class="btn btn--sm" href="#/notebook">' + ic('bookmark', 'ic--xs') + 'Notebook</a></div>' +
-      '<p class="muted small">Everything you’ve learned, in every course, on one schedule. Intervals grow 1 → 3 → 7 → 16 → 37 days; a hint or a reveal halves the next one; “not yet” brings it back today.</p>' +
-      '<div class="kpis kpis--4"><div class="kpi--warn"><strong>' + b.overdue.length + '</strong><span class="small muted">overdue</span></div><div><strong>' + b.today.length + '</strong><span class="small muted">due today</span></div><div><strong>' + b.week.length + '</strong><span class="small muted">this week</span></div><div><strong>' + b.graduated.length + '</strong><span class="small muted">graduated (16d+)</span></div></div>' +
-      '<div class="stack-sm"><a class="btn btn--primary btn--block' + (due ? '' : ' is-disabled') + '" href="#/recall/all"' + (due ? '' : ' aria-disabled="true" tabindex="-1"') + ' data-act="review-start">' + ic('mic', 'ic--sm') + (due ? 'Recall ' + Math.min(due, 8) + ' now, across courses' : 'Nothing due right now') + '</a>' +
-      '<a class="btn btn--ghost btn--block" href="#/recall/ahead" data-act="review-start">' + ic('refresh', 'ic--sm') + 'Practise ahead (on demand)</a></div>';
-    const sec = (k, title, list, empty) => '<section class="rqsec" aria-labelledby="rq-' + k + '"><h2 class="h4" id="rq-' + k + '">' + esc(title) + ' <span class="muted small">' + list.length + '</span></h2>' + (list.length ? '<ul class="rqlist" role="list">' + list.map(x => { const t = LQ.trackById(x.tid); return '<li class="rqrow rqrow--' + k + '">' + U.trackBadge(t) + '<span class="rqrow__p"><span class="rqrow__t" dir="auto">' + esc(U.nm(x.e.t)) + '</span><span class="muted small">' + esc(t.name) + ' · ' + esc(U.nm(U.L(x.e.m, srcOf(x.tid)))) + '</span></span><span class="rqrow__d">' + stageChip(x.r) + '<span class="small">' + esc(dueText(x.r)) + '</span></span></li>'; }).join('') + '</ul>' : '<p class="muted small">' + esc(empty) + '</p>') + '</section>';
+    let h = V.header() + '<main class="review" id="main"><div class="pagehead"><h1 class="h2">Review queue ' + U.info('Everything you’ve learned, in every course, on one schedule. Intervals grow 1 → 3 → 7 → 16 → 37 days; a hint or a reveal halves the next one; “not yet” brings it back today. Missing days never resets anything.', 'How the schedule works') + '</h1><a class="btn btn--sm" href="#/notebook" aria-label="Notebook" title="Notebook">' + ic('bookmark', 'ic--xs') + '</a></div>' +
+      '<div class="kpis kpis--4"><div class="kpi--warn"><strong>' + b.overdue.length + '</strong><span class="small muted">overdue</span></div><div><strong>' + b.today.length + '</strong><span class="small muted">due today</span></div><div><strong>' + b.week.length + '</strong><span class="small muted">this week</span></div><div><strong>' + b.graduated.length + '</strong><span class="small muted" title="Interval of 16 days or more">graduated</span></div></div>' +
+      '<div class="stack-sm"><a class="btn btn--primary btn--block' + (due ? '' : ' is-disabled') + '" href="#/recall/all"' + (due ? '' : ' aria-disabled="true" tabindex="-1"') + ' data-act="review-start">' + ic('mic', 'ic--sm') + (due ? 'Recall ' + Math.min(due, 8) : 'Nothing due') + '</a>' +
+      '<a class="btn btn--ghost btn--block" href="#/recall/ahead" data-act="review-start">' + ic('refresh', 'ic--sm') + 'Practise ahead</a></div>';
+    const sec = (k, title, list, empty) => '<section class="rqsec" aria-labelledby="rq-' + k + '"><h2 class="h4" id="rq-' + k + '">' + esc(title) + ' <span class="muted small">' + list.length + '</span></h2>' + (list.length ? '<ul class="rqlist" role="list">' + list.map(x => { const t = LQ.trackById(x.tid); return '<li class="rqrow rqrow--' + k + '">' + U.trackBadge(t) + '<span class="rqrow__p"><span class="rqrow__t" dir="auto">' + esc(U.nm(x.e.t)) + '</span><span class="muted small">' + esc(U.nm(U.L(x.e.m, srcOf(x.tid)))) + '</span></span><span class="rqrow__d">' + stageChip(x.r) + '<span class="small">' + esc(dueText(x.r)) + '</span></span></li>'; }).join('') + '</ul>' : '') + '</section>';
     h += sec('overdue', 'Overdue', b.overdue, 'Nothing overdue. Missing days never resets anything here.') + sec('today', 'Due today', b.today, 'Nothing due today.') + sec('week', 'Coming this week', b.week, 'Nothing else this week.') + sec('later', 'Later', b.later, 'Nothing scheduled further out.') + sec('graduated', 'Graduated', b.graduated, 'A phrase graduates when its interval reaches 16 days.');
-    h += '<p class="fineprint">Demo tip: the Test lab’s clock (+1 day, +1 week) makes phrases due and overdue, and the 18:00 reminder lands in your inbox.</p></main>';
-    return h;
+    return h + '</main>';
   };
 
   /* ───────── Inbox ───────── */
   const KIND = { reminder: ['bell', 'Reminder'], system: ['info', 'System'], studio: ['layers', 'From the studio'], character: ['user', 'Message'], ai: ['cpu', 'Live AI'] };
   V.inbox = () => {
     const list = S.inboxFor(), un = list.filter(n => !n.read).length;
-    let h = V.header() + '<main class="inbox" id="main"><div class="pagehead"><h1 class="h2">Inbox</h1>' + (un ? '<button class="btn btn--sm" data-act="inbox-all-read">Mark all read</button>' : '') + '</div>' +
-      '<p class="muted small">Reminders, studio news and messages for ' + esc(st().learner.name || 'this learner') + '. Reminders respect quiet hours (' + esc(st().settings.reminders.quiet) + ') and a paused streak sends none.</p>';
-    if (!list.length) h += '<div class="empty">' + U.mascot('sleep', 80) + '<p><strong>All quiet.</strong></p><p class="muted">Advance the demo clock past 18:00 with phrases due, or inject an event from the Test lab.</p></div>';
-    else h += '<ul class="inlist" role="list">' + list.map(n => { const k = KIND[n.kind] || KIND.system; return '<li class="inrow' + (n.read ? '' : ' is-unread') + '"><span class="inrow__ic">' + ic(k[0], 'ic--sm') + '</span><div class="inrow__b"><p class="small muted">' + esc(k[1]) + ' · ' + esc(S.fmtDay(n.at.slice(0, 10)) + (n.at.length > 10 ? ', ' + fmtHm(n.at.slice(11)) : '')) + (n.read ? '' : ' · <strong>new</strong>') + '</p><strong>' + esc(n.title) + '</strong><p class="small">' + esc(n.body || '') + '</p></div>' + (n.link ? '<button class="btn btn--sm" data-act="inbox-open" data-arg="' + n.id + '">Open</button>' : (n.read ? '' : '<button class="btn btn--sm btn--quiet" data-act="inbox-read" data-arg="' + n.id + '">Mark read</button>')) + '</li>'; }).join('') + '</ul>';
+    let h = V.header() + '<main class="inbox" id="main"><div class="pagehead"><h1 class="h2">Inbox ' + U.info('Reminders, studio news and messages for ' + (st().learner.name || 'this learner') + '. Reminders respect quiet hours (' + st().settings.reminders.quiet + ') and a paused streak sends none.', 'About the inbox') + '</h1>' + (un ? '<button class="btn btn--sm" data-act="inbox-all-read" title="Mark all read">' + ic('check', 'ic--xs') + 'All read</button>' : '') + '</div>';
+    if (!list.length) h += '<div class="empty">' + U.mascot('sleep', 80) + '<p><strong>All quiet.</strong></p>' + U.info('Advance the demo clock past 18:00 with phrases due, or inject an event from the Test lab.', 'Demo tip') + '</div>';
+    else h += '<ul class="inlist" role="list">' + list.map(n => { const k = KIND[n.kind] || KIND.system; return '<li class="inrow' + (n.read ? '' : ' is-unread') + '"><span class="inrow__ic">' + ic(k[0], 'ic--sm') + '</span><div class="inrow__b"><p class="small muted">' + esc(k[1]) + ' · ' + esc(S.fmtDay(n.at.slice(0, 10)) + (n.at.length > 10 ? ', ' + fmtHm(n.at.slice(11)) : '')) + (n.read ? '' : ' · <strong>new</strong>') + '</p><strong>' + esc(n.title) + '</strong><p class="small">' + esc(n.body || '') + '</p></div>' + (n.link ? '<button class="btn btn--sm" data-act="inbox-open" data-arg="' + n.id + '">Open</button>' : (n.read ? '' : '<button class="iconbtn" data-act="inbox-read" data-arg="' + n.id + '" aria-label="Mark read" title="Mark read">' + ic('check', 'ic--sm') + '</button>')) + '</li>'; }).join('') + '</ul>';
     return h + '</main>';
   };
   const fmtHm = hm => { const [H, M] = hm.split(':').map(Number); return ((H % 12) || 12) + ':' + String(M).padStart(2, '0') + ' ' + (H < 12 ? 'AM' : 'PM'); };
@@ -144,14 +139,14 @@
   /* ───────── Profiles (rendered inside Settings) ───────── */
   V.profilesSection = () => {
     const list = S.profiles(), err = NB.err['profile-new'] || {};
-    return '<section class="profiles" aria-labelledby="pf-h"><h2 class="h4" id="pf-h">Learners on this device</h2><p class="muted small">Each learner has their own courses, instruction languages, goals, streak pause and recall schedule. Switching never mixes them.</p>' +
-      '<ul class="pflist" role="list">' + list.map(p => '<li class="pfrow' + (p.current ? ' is-current' : '') + '"><span class="avatar avatar--sm" aria-hidden="true">' + esc((p.name || '?').slice(0, 1).toUpperCase()) + '</span><span class="pfrow__m"><strong>' + esc(p.name) + '</strong><span class="muted small">' + (p.onboarded ? p.courses + ' course' + (p.courses === 1 ? '' : 's') + (p.active ? ' (' + esc(LQ.trackById(p.active).name) + ')' : '') : 'Not set up yet') + ' · ' + p.xp + ' XP · goal ' + ((p.goal && p.goal.xp) || 20) + ' XP/day' + (p.streakPaused ? ' · streak paused' : '') + '</span></span>' +
+    return '<section class="profiles" aria-labelledby="pf-h"><h2 class="h4" id="pf-h">Learners ' + U.info('Each learner on this device has their own courses, instruction languages, goals, streak pause and recall schedule. Switching never mixes them.', 'About learners') + '</h2>' +
+      '<ul class="pflist" role="list">' + list.map(p => '<li class="pfrow' + (p.current ? ' is-current' : '') + '"><span class="avatar avatar--sm" aria-hidden="true">' + esc((p.name || '?').slice(0, 1).toUpperCase()) + '</span><span class="pfrow__m"><strong>' + esc(p.name) + '</strong><span class="muted small">' + (p.onboarded ? p.courses + ' course' + (p.courses === 1 ? '' : 's') + (p.active ? ' (' + esc(LQ.trackById(p.active).name) + ')' : '') : 'Not set up yet') + ' · ' + p.xp + ' XP' + (p.streakPaused ? ' · paused' : '') + '</span></span>' +
         (p.current ? '<span class="tag tag--ok">You</span>' : '<button class="btn btn--sm" data-act="profile-switch" data-arg="' + p.id + '">Switch</button>') + (list.length > 1 ? '<button class="iconbtn" data-act="profile-delete" data-arg="' + p.id + '" aria-label="Remove ' + esc(p.name) + ' from this device">' + ic('close', 'ic--sm') + '</button>' : '') + '</li>').join('') + '</ul>' +
       '<details class="nbadd"' + (NB.pfOpen ? ' open' : '') + '><summary data-act="pf-toggle">' + ic('plus', 'ic--sm') + 'Add a learner</summary><form class="stack-sm" data-submit="profile-new" novalidate><label class="field"><span>Name <span class="req">(required)</span></span><input name="name" maxlength="24" autocomplete="off" aria-invalid="' + !!err.name + '"' + (err.name ? ' aria-describedby="pf-name-err"' : '') + '>' + (err.name ? '<span class="ferr" id="pf-name-err">' + esc(err.name) + '</span>' : '') + '</label>' +
       '<label class="field"><span>Learns from (default for new courses)</span><select name="source">' + LQ.SOURCES.map(x => '<option value="' + x.code + '">' + esc(x.native + ' (' + x.name + ')') + '</option>').join('') + '</select></label>' +
       '<label class="field"><span>Daily goal</span><select name="goal">' + [10, 20, 40].map(g => '<option value="' + g + '"' + (g === 20 ? ' selected' : '') + '>' + g + ' XP a day</option>').join('') + '</select></label>' +
       '<button class="btn btn--primary btn--sm" type="submit">Create and switch</button></form></details>' +
-      '<div class="row2"><button class="btn btn--ghost btn--sm" data-act="profile-export">' + ic('download', 'ic--xs') + 'Export this learner (JSON)</button><label class="btn btn--ghost btn--sm filebtn">' + ic('upload', 'ic--xs') + 'Import a learner<input type="file" accept="application/json,.json" class="sr-only" data-change="profile-import"></label></div></section>';
+      '<div class="row2"><button class="btn btn--ghost btn--sm" data-act="profile-export">' + ic('download', 'ic--xs') + 'Export</button><label class="btn btn--ghost btn--sm filebtn">' + ic('upload', 'ic--xs') + 'Import<input type="file" accept="application/json,.json" class="sr-only" data-change="profile-import"></label></div></section>';
   };
 
   /* ───────── actions ───────── */

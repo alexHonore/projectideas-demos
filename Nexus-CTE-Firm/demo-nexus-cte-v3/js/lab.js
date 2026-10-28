@@ -111,7 +111,7 @@
       '<div class="actions">' + C.btn('Injecter l’événement', 'lab-inject', { ui: true, variant: 'primary', icon: 'flask', key: 'lab-inject' }) + '</div>';
     else if (lab.tab === 'caps') body = '<p class="cell-sub">Bascules pour tester les replis. Elles sont enregistrées dans l’espace de travail.</p><ul class="caps">' + [['speech', 'Synthèse vocale (jeu de rôle)'], ['voices', 'Voix françaises disponibles'], ['recognition', 'Reconnaissance vocale (dictée des notes)'], ['online', 'Réseau en ligne (IA en direct)'], ['liveAI', 'IA en direct permise']].map(function (c) { return '<li><label class="check"><input type="checkbox" data-change="lab-cap" data-cap="' + c[0] + '"' + (st.caps[c[0]] !== false ? ' checked' : '') + ' data-key="cap-' + c[0] + '"><span>' + esc(c[1]) + '</span></label></li>'; }).join('') + '</ul>' +
       '<h3 class="sub-h">Rôle</h3><label class="field field-inline"><span class="sr-only">Voir comme</span><select data-change="role" data-key="lab-role">' + Object.keys(D.ROLE_LABEL).map(function (k) { return '<option value="' + k + '"' + (st.role === k ? ' selected' : '') + '>' + esc(D.ROLE_LABEL[k]) + '</option>'; }).join('') + '</select></label>' +
-      '<h3 class="sub-h">IA en direct (votre clé)</h3><div id="lai-host" class="lai-host"></div><p class="fineprint">Trois usages : extraction des notes d’appel, retraitements à partir d’un grand livre, brouillon du sommaire aveugle. Le résultat suit la même structure que les règles, est validé, porte sa provenance et reste une proposition. Sans clé, ou en cas d’erreur, les règles répondent.</p>';
+      '<h3 class="sub-h">IA en direct</h3>' + aiStatusHtml() + '<p class="fineprint">Clés, budgets et interrupteurs : moniteur d’API du hub. Trois usages, tous mesurés sous « nexus » : extraction des notes d’appel, retraitements à partir d’un grand livre, brouillon du sommaire aveugle. Même structure que les règles, validée, avec sa provenance; toujours une proposition. Sans clé, en pause ou en erreur, les règles répondent.</p>';
     else if (lab.tab === 'log') {
       var kinds = ['', 'stage', 'buyers', 'room', 'loi', 'dd', 'fin', 'teaser', 'radar', 'compliance', 'ai', 'clock', 'lab', 'overdue'];
       var rows = st.audit.filter(function (a) { return (!lab.logKind || a.kind === lab.logKind || (lab.logKind === 'lab' && a.actor === 'Labo de test')) && (!lab.logM || a.m === lab.logM) && (!a.m || S.P.mandates()); }).slice(0, 40);
@@ -124,7 +124,10 @@
   }
   function refresh() { if (UI.drawerKind() === 'lab') UI.refreshDrawer(html()); }
   UI.DRAWERS.lab = html;
-  UI.DRAWER_MOUNT.lab = function (el) { var host = el.querySelector('#lai-host'); if (host && g.LiveAI) { try { g.LiveAI.renderSettings(host, { lang: 'fr' }); } catch (e) { host.textContent = 'Panneau indisponible.'; } } };
+  function aiStatusHtml() {
+    var a = g.AI ? g.AI.status() : { state: 'off', reason: 'indisponible' }, lab = { on: 'activée', off: 'désactivée', paused: 'en pause' }[a.state];
+    return '<a class="ai-status-link ai-status is-' + a.state + '" href="../../index.html#api" data-key="lab-ai-status" title="IA en direct ' + lab + (a.reason ? ' : ' + U.esc(a.reason) : '') + '. Ouvrir le moniteur d’API.">' + C.icon(a.state === 'on' ? 'spark' : a.state === 'paused' ? 'pause' : 'off') + '<span>IA en direct</span><span class="ai-state">' + lab + '</span>' + C.icon('arrow', 'ico ico-sm') + '</a>' + (a.reason ? '<p class="cell-sub">' + U.esc(a.reason) + '</p>' : '');
+  }
   UI.UIA['lab-open'] = function (p) { if (p && p.section) lab.tab = p.section; UI.drawer(html(), 'lab'); };
   UI.UIA['lab-tab'] = function (p) { lab.tab = p.t; refresh(); var b = document.querySelector('[data-key="lab-tab-' + p.t + '"]'); if (b) b.focus(); };
   UI.UIA['lab-cap'] = function (p) { UI.run('caps', { key: p.cap, value: p.value }); };

@@ -8,14 +8,16 @@
   var S = function () { return T.store.state; };
   var AI = (T.ai = {});
 
+  // on / off / paused, with the reason. Keys, budgets and killswitches are set on the hub's API monitor.
   AI.status = function () {
-    var L = window.LiveAI, s = S();
-    if (!L || !L.available()) return { on: false, why: 'The live AI adapter isn’t loaded.' };
-    if (!L.isOn()) return { on: false, why: 'No API key. Add one in Settings or the Test lab to turn live AI on.' };
-    if (!s.caps.ai) return { on: false, why: 'Live AI is switched off in the Test lab.' };
-    if (s.caps.offline) return { on: false, why: 'Offline: live AI needs the network.' };
-    if (!s.settings.useAI) return { on: false, why: 'Reading free text with live AI is turned off in Settings.' };
-    return { on: true, why: 'Live AI reads free text with ' + L.model + '. Results still need your approval.' };
+    var L = window.LiveAI, s = S(), M = window.ApiMeter;
+    if (!L || !L.available()) return { on: false, state: 'off', why: 'Live AI adapter not loaded' };
+    if (!s.caps.ai) return { on: false, state: 'off', why: 'Live AI is off in the Test lab' };
+    if (s.caps.offline) return { on: false, state: 'off', why: 'Offline: live AI needs the network' };
+    if (!s.settings.useAI) return { on: false, state: 'off', why: 'Live AI is off in Settings' };
+    if (M) { var g = M.check('tayoo', 'anthropic'); if (!g.ok) return { on: false, state: /^No /.test(g.reason) ? 'off' : 'paused', why: g.reason + ' (API monitor)' }; }
+    else if (!L.isOn()) return { on: false, state: 'off', why: 'No API key' };
+    return { on: true, state: 'on', why: 'Live AI (' + L.model + ') reads free text; you still approve every plan' };
   };
   AI.on = function () { return AI.status().on; };
 

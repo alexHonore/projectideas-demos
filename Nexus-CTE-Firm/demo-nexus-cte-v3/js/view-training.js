@@ -21,13 +21,14 @@
 
   function speak(text) {
     try {
-      if (!(g.Caps ? g.Caps.speech() : 'speechSynthesis' in g)) return false;
+      if (!(g.Caps ? g.Caps.speech() : 'speechSynthesis' in g)) return false; // inclut la vérification du moniteur d'API (browser-tts)
       var u = new SpeechSynthesisUtterance(text);
       u.lang = 'fr-CA'; u.rate = 1;
       var voices = g.Caps && !g.Caps.voices() ? [] : (speechSynthesis.getVoices() || []);
       var v = voices.filter(function (x) { return /fr-CA/i.test(x.lang); })[0] || voices.filter(function (x) { return /^fr/i.test(x.lang); })[0];
       if (v) u.voice = v;
       speechSynthesis.cancel(); speechSynthesis.speak(u);
+      if (g.Caps && g.Caps.record) g.Caps.record('browser-tts', 'speak', { chars: text.length });
       return true;
     } catch (e) { return false; }
   }
@@ -38,7 +39,7 @@
     if (!done) {
       var t = ROLEPLAY[rp.i];
       html += '<p class="rp-turn">Réplique ' + (rp.i + 1) + ' sur ' + ROLEPLAY.length + ', cédant pressé et attaché à son entreprise</p><blockquote class="rp-line">« ' + esc(t.line) + ' »</blockquote>' +
-        '<div class="actions">' + C.btn('Écouter la réplique', null, { small: true, variant: 'quiet', icon: 'M5 9v6h4l5 4V5L9 9z' }).replace('<button', '<button data-ui="rp-speak"') + (g.Caps && !g.Caps.speech() ? '<span class="cell-sub">Synthèse vocale indisponible : la réplique reste écrite.</span>' : '') + '</div>' +
+        '<div class="actions">' + C.btn('Écouter la réplique', null, { small: true, variant: 'quiet', icon: 'M5 9v6h4l5 4V5L9 9z' }).replace('<button', '<button data-ui="rp-speak"') + (g.Caps && !g.Caps.speech() ? '<span class="state-i state-warn" title="' + U.esc(g.Caps.speechReason()) + '" aria-label="' + U.esc(g.Caps.speechReason()) + '">' + C.icon('pause') + '</span>' : '') + '</div>' +
         '<ol class="rp-opts">' + t.options.map(function (o, i) { return '<li><button type="button" class="rp-opt" data-ui="rp-pick" data-i="' + i + '">' + esc(o.t) + '</button></li>'; }).join('') + '</ol>';
     } else html += '<p class="big-line"><strong>' + rp.score + ' sur ' + ROLEPLAY.length * 2 + '</strong> selon la grille publiée : écoute, question de valeur, aucune valeur inventée, consentement consigné.</p>' + C.btn('Rejouer', null, { small: true, variant: 'quiet' }).replace('<button', '<button data-ui="rp-reset"');
     if (rp.log.length) html += '<ul class="rp-log">' + rp.log.map(function (l) { return '<li class="' + (l.s === 2 ? 'ok' : l.s === 1 ? 'mid' : 'no') + '">' + C.icon(l.s === 2 ? 'check' : 'alert') + '<span>' + esc(l.fb) + '</span></li>'; }).join('') + '</ul>';
@@ -62,8 +63,8 @@
   };
 
   UI.UIA['rp-speak'] = function () {
-    var ok = speak(ROLEPLAY[Math.min(rp.i, ROLEPLAY.length - 1)].line), off = (S.get().caps || {}).speech === false;
-    if (!ok) UI.toast(off ? 'Synthèse vocale désactivée dans le Labo de test : la réplique reste écrite.' : 'Synthèse vocale indisponible dans ce navigateur : la réplique reste écrite.', 'err');
+    var ok = speak(ROLEPLAY[Math.min(rp.i, ROLEPLAY.length - 1)].line);
+    if (!ok) UI.toast(g.Caps ? g.Caps.speechReason() : 'Synthèse vocale indisponible : la réplique reste écrite.', 'err');
     else if (g.Caps && !g.Caps.voices()) UI.toast('Aucune voix française installée (simulation du Labo) : voix par défaut du navigateur.');
   };
   UI.UIA['rp-pick'] = function (p) { var t = ROLEPLAY[rp.i], o = t.options[+p.i]; rp.score += o.s; rp.log.push({ s: o.s, fb: o.fb }); rp.i++; refreshRp(); };

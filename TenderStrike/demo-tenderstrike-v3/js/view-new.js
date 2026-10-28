@@ -21,20 +21,20 @@
 
   const quoteOf = (ex, rid) => { const r = ex.requirements.find((x) => x.id === rid || (x.rule && rid === 'rule:' + x.rule.type)); return r && r.quoteIdx >= 0 ? { i: r.quoteIdx, s: ex.segments[r.quoteIdx] } : r && r.quote ? { i: -1, s: r.quote } : null; };
   const findSeg = (ex, val) => { if (!val) return null; const v = String(val).toLowerCase().slice(0, 30); const i = ex.segments.findIndex((s) => s.toLowerCase().includes(v)); return i >= 0 ? { i, s: ex.segments[i] } : null; };
-  const cite = (q) => (q ? `<button type="button" class="nt-q" data-act="nt-seg" data-i="${q.i}" title="Voir dans le texte source"><span class="nt-q-k">Texte source</span> « ${esc(q.s.length > 170 ? q.s.slice(0, 170) + '…' : q.s)} »</button>` : '<span class="nt-q nt-q-none">Non trouvé dans le texte : à saisir ou à vérifier</span>');
-
-  const field = (key, label, input, q, hint) => `<div class="nt-f" data-field="${key}"><label class="fld"><span>${esc(label)}</span>${input}</label>${q !== undefined ? cite(q) : ''}${hint ? `<small class="muted-note">${esc(hint)}</small>` : ''}</div>`;
+  /* Citation : une puce « Source » (la phrase en infobulle) qui surligne la phrase dans le texte */
+  const cite = (q) => (q ? `<button type="button" class="nt-q" data-act="nt-seg" data-i="${q.i}" title="${esc('« ' + (q.s.length > 220 ? q.s.slice(0, 220) + '…' : q.s) + ' »')}" aria-label="${esc('Voir la citation dans le texte source : ' + q.s.slice(0, 120))}">${ic('doc', 13)}<span>Source</span></button>` : `<span class="nt-q nt-q-none" title="Non trouvé dans le texte : à saisir ou à vérifier">${ic('q', 13)}<span>À vérifier</span></span>`);
+  const hintHtml = (h) => (!h ? '' : /^Hypothèse étiquetée/.test(h) ? UI.chip('clock', 'Hypothèse étiquetée', 'chip-wait') + UI.info(h, 'Hypothèse') : h.split(' ').length <= 4 ? UI.chip('', h, /^Hors/.test(h) ? 'chip-wait' : '') : UI.info(h, 'À savoir'));
+  const field = (key, label, input, q, hint) => `<div class="nt-f" data-field="${key}"><label class="fld"><span>${esc(label)}</span>${input}</label><span class="nt-fm">${q !== undefined ? cite(q) : ''}${hintHtml(hint)}</span></div>`;
 
   const review = (ex) => {
     const n = ex.notice, e = UI.view.nt.edits, as = n.assumed || {}, ed = n.evaluationDetail;
     n.bond = Object.assign({ rate: 0, basis: 'ttc', amount: 0, forms: [] }, n.bond); n.visit = Object.assign({ mandatory: false, at: '', place: '' }, n.visit); n.perfBond = n.perfBond || {}; n.lmBond = n.lmBond || {};
     const val = (k, d) => (e[k] != null ? e[k] : d);
     const inp = (k, v, type, extra) => `<input id="nt-${k}" data-nt="${k}" type="${type || 'text'}" value="${esc(val(k, v))}"${extra || ''}>`;
-    const kinds = { trap: 'Piège éliminatoire', pill: 'Clause de risque', req: 'Exigence', info: 'À savoir' };
+    const kinds = { trap: ['alert', 'Piège éliminatoire'], pill: ['info', 'Clause de risque'], req: ['check', 'Exigence'], info: ['info', 'À savoir'] };
     const prov = ex.provenance.source === 'ai' ? ex.provenance : null;
     return `<section class="nt-review" aria-labelledby="ntr-h">
-      <div class="sec-row"><h2 id="ntr-h" class="sec-h">2. Revoir l’extraction</h2><span class="nt-prov">${UI.prov(prov)}${ex.fallback ? `<span class="st st-wait">${ic('alert', 13)}<span>${esc(ex.fallback)}</span></span>` : ''}</span></div>
-      <p class="muted-note">${prov ? 'Champs et exigences proposés par l’IA en direct; chaque citation a été recherchée mot pour mot dans le texte.' : 'Champs lus par des règles déterministes, sans réseau.'} Corrigez au besoin : rien n’est créé avant votre clic.${ex.unverified ? ` <b class="is-bad">${ex.unverified} citation(s) non retrouvée(s) dans le texte : marquées « à vérifier ».</b>` : ''}</p>
+      <div class="sec-row"><h2 id="ntr-h" class="sec-h">2. Revoir</h2><span class="nt-prov">${UI.prov(prov)}${ex.fallback ? `<span class="st st-wait" title="${esc(ex.fallback)}">${ic('alert', 13)}<span>Repli sur les règles</span></span>` : ''}</span>${ex.unverified ? UI.chip('alert', ex.unverified + ' citation(s) non retrouvée(s)', 'chip-bad', 'Marquées « à vérifier » : elles n’ont pas été retrouvées mot pour mot dans le texte.') : ''}${UI.info((prov ? 'Champs et exigences proposés par l’IA en direct; chaque citation a été recherchée mot pour mot dans le texte.' : 'Champs lus par des règles déterministes, sans réseau.') + ' Corrigez au besoin : rien n’est créé avant votre clic.' + (ex.fallback ? ' ' + ex.fallback : ''), 'Comment revoir')}</div>
       <div class="nt-fields">
         ${field('buyer', 'Donneur d’ouvrage', inp('buyer', n.buyer), findSeg(ex, n.buyer))}
         ${field('title', 'Objet', inp('title', n.title), findSeg(ex, n.title))}
@@ -49,45 +49,43 @@
         ${field('rbq', 'Sous-catégories RBQ exigées', inp('rbq', (n.rbq || []).join(', '), 'text', ' placeholder="aucune"'), quoteOf(ex, 'r-rbq'))}
         ${field('eval', 'Mode d’adjudication', `<input id="nt-eval" type="text" readonly value="${esc(n.evaluation === 'lowest' ? 'Plus bas soumissionnaire conforme' : n.evaluation === 'quality' ? 'Évaluation qualité-prix' + (ed && ed.threshold ? ', pointage minimal ' + ed.threshold : '') : 'Non précisé')}">`, quoteOf(ex, 'r-award'), ed ? [ed.formula && ed.formula !== 'voir l’avis' ? 'Formule : ' + ed.formula : '', (ed.criteria || []).length ? 'Critères : ' + ed.criteria.map((c) => c.label + ' (' + c.pts + ')').join(', ') : ''].filter(Boolean).join(' · ') : '')}
       </div>
-      <h3 class="sec-h3">Exigences extraites <small class="muted-note">${ex.requirements.length} · décochez celles qui ne s’appliquent pas</small></h3>
-      <ul class="nt-reqs">${ex.requirements.map((r, i) => `<li class="nt-r nt-r-${r.kind}"><label class="nt-keep"><input type="checkbox" data-nt-keep="${i}"${e['keep' + i] === false ? '' : ' checked'}><span class="sr">Garder</span></label>
-        <div><p class="nt-r-h"><span class="req-kind req-kind-${r.kind}">${esc(kinds[r.kind] || 'Exigence')}</span><b>${esc(r.title)}</b>${r.rule ? `<span class="st st-muted">${ic('shield', 12)}<span>Vérifiée par le bouclier</span></span>` : ''}${r.unverifiedQuote ? `<span class="st st-wait">${ic('q', 12)}<span>Citation à vérifier</span></span>` : ''}</p>
-        ${r.quoteIdx >= 0 ? `<button type="button" class="verbatim nt-verb" data-act="nt-seg" data-i="${r.quoteIdx}">${esc(ex.segments[r.quoteIdx])}</button>` : r.quote ? `<blockquote class="verbatim">${esc(r.quote)}</blockquote>` : ''}
-        <p class="req-plain"><span class="tag-ai">${prov ? 'Lecture IA' : 'Lecture TenderStrike'}</span> ${esc(r.plain)}</p></div></li>`).join('') || '<li class="kempty">Aucune exigence reconnue : le dossier sera créé avec les champs ci-dessus.</li>'}</ul>
-      <div class="nt-create">${UI.btn('Créer le dossier', 'nt-create', { cls: 'btn-primary btn-lg', icon: 'check', disabled: !S.can('tender') })}<span class="muted-note">${S.can('tender') ? 'Le dossier suit ensuite le même parcours que les autres : Go / No-Go, prix, conformité, formulaires, revue et reçu.' : 'Réservé à l’estimateur ou à la propriétaire.'}</span></div>
+      <div class="sec-row"><h3 class="sec-h3">Exigences <b class="cnt">${ex.requirements.length}</b></h3>${UI.info('Décochez celles qui ne s’appliquent pas. Le bouclier : TenderStrike vérifie l’exigence avec vos pièces du coffre-fort.', 'Comment trier')}</div>
+      <ul class="nt-reqs">${ex.requirements.map((r, i) => { const k = kinds[r.kind] || kinds.req; return `<li class="nt-r nt-r-${r.kind}"><label class="nt-keep"><input type="checkbox" data-nt-keep="${i}"${e['keep' + i] === false ? '' : ' checked'}><span class="sr">Garder</span></label>
+        <span class="req-k" title="${esc(k[1])}">${ic(k[0], 15)}<span class="sr">${esc(k[1])}</span></span>
+        <p class="nt-r-h"><b>${esc(r.title)}</b>${r.rule ? `<span class="st st-muted" title="Vérifiée par le bouclier">${ic('shield', 12)}<span class="sr">Vérifiée par le bouclier</span></span>` : ''}${r.unverifiedQuote ? `<span class="st st-wait">${ic('q', 12)}<span>À vérifier</span></span>` : ''}</p>
+        <span class="nt-r-a">${r.quoteIdx >= 0 ? cite({ i: r.quoteIdx, s: ex.segments[r.quoteIdx] }) : r.quote ? `<span class="nt-q" title="${esc('« ' + r.quote + ' »')}">${ic('doc', 13)}<span>Citation</span></span>` : ''}${UI.info((prov ? 'Lecture IA : ' : 'Lecture TenderStrike : ') + r.plain, 'Lecture de l’exigence')}</span></li>`; }).join('') || '<li class="kempty">Aucune exigence reconnue : le dossier sera créé avec les champs ci-dessus.</li>'}</ul>
+      <div class="nt-create">${UI.btn('Créer le dossier', 'nt-create', { cls: 'btn-primary btn-lg', icon: 'check', disabled: !S.can('tender'), title: S.can('tender') ? 'Créer le dossier' : 'Réservé à l’estimateur ou à la propriétaire' })}${UI.info(S.can('tender') ? 'Le dossier suit ensuite le même parcours que les autres : Go / No-Go, prix, conformité, formulaires, revue et reçu.' : 'Réservé à l’estimateur ou à la propriétaire.', 'Et ensuite')}</div>
     </section>`;
   };
 
   V.nouveau = () => {
-    const nt = UI.view.nt, ex = nt.ex, on = TS.AI && TS.AI.on();
+    const nt = UI.view.nt, ex = nt.ex, on = TS.AI && TS.AI.on(), st = TS.AI.status();
     const segs = ex ? ex.segments : [];
     const quoted = {};
     if (ex) ex.requirements.forEach((r) => { if (r.quoteIdx >= 0) quoted[r.quoteIdx] = r.kind; });
     return `<div class="newt">
-      <div class="pagehead"><div><nav class="crumbs" aria-label="Fil d’Ariane"><a href="#/radar">Radar</a><span aria-hidden="true">/</span><span>Ajouter</span></nav><h1 class="page-h1">Ajouter un appel d’offres</h1>
-        <p class="page-sub">Collez l’avis SEAO ou le texte du devis, ou déposez un fichier .txt, .html ou .pdf. Les règles extraient dates, garantie, visite, RBQ, AMP et mode d’adjudication, chacun avec sa citation. L’IA en direct, si vous l’activez, fait une radiographie complète.</p></div></div>
+      <div class="pagehead"><a class="icon-btn" href="#/radar" aria-label="Retour au radar" title="Retour au radar">${ic('back', 17)}</a><h1 class="page-h1">Ajouter un appel d’offres</h1>${UI.info('Collez l’avis SEAO ou le texte du devis, ou déposez un fichier .txt, .html ou .pdf. Les règles extraient dates, garantie, visite, RBQ, AMP et mode d’adjudication, chacun avec sa citation. L’IA en direct, si elle est active dans le moniteur d’API, fait une radiographie complète.', 'Comment ça marche')}</div>
       <div class="nt-grid">
         <div class="nt-main">
           <section class="nt-src" aria-labelledby="nts-h">
-            <h2 id="nts-h" class="sec-h">1. Le texte de l’avis</h2>
-            <label class="fld fld-wide"><span class="sr">Texte de l’avis</span><textarea id="nt-text" rows="11" placeholder="Collez ici le texte de l’avis d’appel d’offres (SEAO) ou du devis…">${esc(nt.text)}</textarea></label>
-            <div class="drop" data-drop="new">${ic('upload', 20)}<label class="drop-l">Déposez un fichier .txt, .html ou .pdf, ou <span class="link">choisissez-le</span><input type="file" id="nt-file" class="sr" accept=".txt,.html,.htm,.pdf,text/plain,text/html,application/pdf" data-act-change="nt-file"></label><span class="drop-name">${nt.file ? esc(nt.file.name) + ' · ' + U.bytes(nt.file.size) + (nt.pdf ? ' · PDF de ' + nt.pdf.pages + ' page(s)' : '') : 'Le fichier est lu dans votre navigateur'}</span></div>
+            <h2 id="nts-h" class="sec-h">1. L’avis</h2>
+            <label class="fld fld-wide"><span class="sr">Texte de l’avis</span><textarea id="nt-text" rows="8" placeholder="Collez ici le texte de l’avis (SEAO) ou du devis…">${esc(nt.text)}</textarea></label>
+            <div class="drop drop-sm" data-drop="new" title="Le fichier est lu dans votre navigateur">${ic('upload', 18)}<label class="drop-l"><span class="link">Fichier</span> .txt, .html, .pdf<input type="file" id="nt-file" class="sr" accept=".txt,.html,.htm,.pdf,text/plain,text/html,application/pdf" data-act-change="nt-file"></label><span class="drop-name">${nt.file ? esc(nt.file.name) + ' · ' + U.bytes(nt.file.size) + (nt.pdf ? ' · ' + nt.pdf.pages + ' p.' : '') : ''}</span></div>
             ${nt.note ? `<p class="srcnote">${ic('info', 15)}<span>${esc(nt.note)}</span></p>` : ''}
             <div class="nt-acts">
-              ${UI.btn('Analyser avec les règles', 'nt-rules', { cls: 'btn-primary', icon: 'list', disabled: nt.busy })}
-              ${UI.btn('Analyser avec l’IA en direct', 'nt-ai', { cls: 'btn-hl', icon: 'bolt', disabled: nt.busy || !on, title: on ? 'Texte' + (nt.pdf ? ' et PDF' : '') + ' envoyés à l’API Anthropic avec votre clé' : 'Activez l’IA en direct dans le Labo de test' })}
-              ${UI.btn('Coller un exemple', 'nt-sample', { cls: 'btn-ghost', icon: 'doc', disabled: nt.busy })}
-              ${nt.text || nt.ex ? UI.btn('Effacer', 'nt-clear', { cls: 'btn-link', disabled: nt.busy }) : ''}
+              ${UI.btn('Analyser', 'nt-rules', { cls: 'btn-primary', icon: 'list', disabled: nt.busy, title: 'Analyser avec les règles (sans réseau)' })}
+              ${UI.btn('IA', 'nt-ai', { cls: 'btn-hl', icon: 'bolt', disabled: nt.busy || !on, title: on ? 'Analyser avec l’IA en direct : texte' + (nt.pdf ? ' et PDF' : '') + ' envoyés à l’API Anthropic, appels comptés dans le moniteur d’API' : st.label + ' · ' + st.reason })}
+              ${TS.AI.link('', true)}
+              ${UI.btn('Exemple', 'nt-sample', { cls: 'btn-ghost', icon: 'doc', disabled: nt.busy, title: 'Coller un avis d’exemple (fictif)' })}
+              ${nt.text || nt.ex ? UI.iconBtn('trash', 'Effacer', 'nt-clear', {}) : ''}
             </div>
-            ${nt.busy ? `<p class="nt-busy" role="status">${ic('clock', 15)}<span>Analyse par l’IA en direct en cours… Les règles prendront le relais en cas d’erreur.</span></p>` : ''}
-            ${!on ? `<p class="muted-note">${ic('info', 13)} IA en direct désactivée (par défaut) : la démo reste entièrement utilisable avec les règles. Pour l’essayer, ajoutez votre clé dans le Labo de test, onglet Capacités.</p>` : `<p class="muted-note">${ic('alert', 13)} Avec l’IA en direct, le texte${nt.pdf ? ' et le PDF' : ''} sont envoyés à l’API Anthropic et facturés à votre clé.</p>`}
+            ${nt.busy ? `<p class="nt-busy" role="status">${ic('clock', 15)}<span>Analyse par l’IA en direct…</span></p>` : ''}
           </section>
           ${ex ? review(ex) : ''}
         </div>
-        <aside class="nt-side" aria-label="Texte source segmenté">
-          <h2 class="sec-h3">Texte source ${segs.length ? `<small class="muted-note">${segs.length} phrases · ${Object.keys(quoted).length} citées</small>` : ''}</h2>
-          <div class="nt-source" tabindex="0">${segs.length ? segs.map((s, i) => `<p id="nt-seg-${i}" class="nt-s${quoted[i] ? ' is-q nt-s-' + quoted[i] : ''}"><span class="nt-sn">${i + 1}</span>${esc(s)}</p>`).join('') : '<p class="kempty">Lancez une analyse : chaque phrase citée par une exigence sera surlignée ici.</p>'}</div>
-        </aside>
+        <details class="fold nt-side"${segs.length && UI.view.ntSrcOpen ? ' open' : ''}><summary>${ic('doc', 16)}<span>Texte source</span>${segs.length ? `<small>${segs.length} phrases · ${Object.keys(quoted).length} citées</small>` : ''}</summary>
+          <div class="nt-source" tabindex="0">${segs.length ? segs.map((s, i) => `<p id="nt-seg-${i}" class="nt-s${quoted[i] ? ' is-q nt-s-' + quoted[i] : ''}"><span class="nt-sn">${i + 1}</span>${esc(s)}</p>`).join('') : '<p class="kempty">Lancez une analyse : chaque phrase citée sera surlignée ici.</p>'}</div>
+        </details>
       </div>
     </div>`;
   };

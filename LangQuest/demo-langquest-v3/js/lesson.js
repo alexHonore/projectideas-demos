@@ -40,7 +40,7 @@
   const char = () => { const m = mis(); return m.character ? LQ.CHARACTERS[m.character] : null; };
   const who = () => { const c = char(); return c ? c.name.split(' ')[0] : (mis().local ? mis().local.name : 'Local'); };
   const srLang = () => U.srLocale(trk(), enr());
-  const tts = (p, o) => U.say(p, Object.assign({ track: trk(), character: mis().character }, o || {}));
+  const tts = (p, o) => U.say(p, Object.assign({ track: trk(), character: mis().character, speaker: mis().local && mis().local.name }, o || {}));
   function subsDefault() {
     const h = S.state.settings.help;
     if (h === 'visible') return true; if (h === 'ask') return false;
@@ -87,10 +87,9 @@
     if (R.subs === null) R.subs = subsDefault();
     let h = '<main class="lesson lesson--' + R.phase + '" id="main">' +
       '<header class="lhead"><button class="iconbtn" data-act="lesson-exit" aria-label="Pause and leave the mission">' + ic('close') + '</button>' +
-      '<div class="lhead__t"><span class="small muted">' + esc(t.name) + ', from ' + esc(S.srcName(src())) + '</span><strong>' + esc(L(m.title)) + '</strong></div></header>' +
+      '<div class="lhead__t" title="' + esc(t.name + ', from ' + S.srcName(src())) + '"><strong>' + esc(L(m.title)) + '</strong></div>' + U.voiceChip(t, e) + '</header>' +
       '<ol class="stepper" aria-label="Mission steps">' + phases.map((p, i) => '<li class="' + (i < idx ? 'is-done' : i === idx ? 'is-on' : '') + '"' + (i === idx ? ' aria-current="step"' : '') + '><span class="stepper__bar"></span><span class="stepper__l">' + PH[p] + '</span></li>').join('') + '</ol>' +
-      '<div class="lscene">' + A.scene(m.scene, { palette: A.plazaPalette(t) }) + '<div class="lscene__who"><span id="live-port">' + portraitFor('neutral', 64) + '</span><span class="live" id="live-state" role="status">Ready</span></div>' +
-      '<span class="voicechip' + (vs.ok ? '' : ' voicechip--off') + '" title="' + esc(vs.text) + '">' + ic(vs.ok ? 'volume' : 'text', 'ic--xs') + (vs.ok ? 'Device voice' : 'Text only') + '</span></div>' +
+      '<div class="lscene">' + A.scene(m.scene, { palette: A.plazaPalette(t) }) + '<div class="lscene__who"><span id="live-port">' + portraitFor('neutral', 64) + '</span><span class="live" id="live-state" role="status">Ready</span></div></div>' +
       '<section class="lbody">' + PHASE[R.phase]() + '</section></main>';
     return h;
   };
@@ -112,16 +111,16 @@
   const attached = () => (S.state.studio.assets || []).find(a => a.attach && a.attach.kind === 'mission' && a.attach.id === R.mid && a.published);
   const attachedNote = () => { const a = attached(); return LQ.studio.fileUrl(a.id) ? '<p class="muted small">' + ic('audio', 'ic--xs') + ' Scene recording: “' + esc(a.title) + '”, ' + esc(a.speaker || 'studio upload') + '. Original file, unaltered.</p>' : '<p class="muted small">' + ic('info', 'ic--xs') + ' A studio recording is attached (“' + esc(a.title) + '”), but its file stays in the browser session that uploaded it. Re-attach it in the studio library to hear it here.</p>'; };
   const saveTool = (p, i) => { const on = LQ.notebook.hasLine(R.tid, p); return '<button class="ltool" data-act="log-save" data-arg="' + i + '" aria-pressed="' + on + '" aria-label="' + (on ? 'Saved to your notebook' : 'Save this line to your notebook') + '">' + ic(on ? 'check' : 'bookmark', 'ic--xs') + '</button>'; };
-  const saveExprBtn = (ex) => { const on = S.isSaved(R.tid, ex.id); return '<button class="tool" data-act="save-expr" data-arg="' + esc(R.tid + '|' + ex.id) + '" aria-pressed="' + on + '">' + ic(on ? 'check' : 'bookmark', 'ic--sm') + (on ? 'In your notebook' : 'Save') + '</button>'; };
+  const saveExprBtn = (ex) => { const on = S.isSaved(R.tid, ex.id); return U.tool('save-expr', on ? 'check' : 'bookmark', on ? 'In your notebook' : 'Save to notebook', ' data-arg="' + esc(R.tid + '|' + ex.id) + '" aria-pressed="' + on + '"'); };
   const PHASE = {};
   /* 1. Context: situational listening and a visual meaning check */
   PHASE.context = () => {
     const m = mis(), c = m.context;
-    let h = '<p class="setup">' + esc(L(c.setup)) + fbNote(c.setup) + '</p>' +
+    let h = '<details class="scene-d"><summary aria-label="About the scene" title="' + esc(L(c.setup)) + '">' + ic('info', 'ic--xs') + '<span>Scene</span></summary><p class="setup">' + esc(L(c.setup)) + fbNote(c.setup) + '</p></details>' +
       '<div class="bubble-char"><div class="bubble-char__txt">' + (R.subs || R.ctx.text ? U.phrase(c.line, { track: trk() }) : '<span class="muted">' + ic('ear', 'ic--sm') + ' Listen first. Text is hidden.</span>') +
       (R.ctx.translate ? '<span class="gloss">' + esc(L(c.line.m)) + '</span>' : '') + '</div>' +
-      '<div class="tools"><button class="tool" data-act="ctx-play">' + ic('replay', 'ic--sm') + 'Replay</button><button class="tool" data-act="ctx-slow">' + ic('slow', 'ic--sm') + 'Slower</button>' +
-      '<button class="tool" data-act="ctx-text" aria-pressed="' + !!(R.subs || R.ctx.text) + '">' + ic('text', 'ic--sm') + 'Text</button><button class="tool" data-act="ctx-translate" aria-pressed="' + R.ctx.translate + '">' + ic('translate', 'ic--sm') + 'Translate</button>' + '<button class="tool" data-act="ctx-save" aria-pressed="' + LQ.notebook.hasLine(R.tid, c.line) + '">' + ic(LQ.notebook.hasLine(R.tid, c.line) ? 'check' : 'bookmark', 'ic--sm') + (LQ.notebook.hasLine(R.tid, c.line) ? 'Saved' : 'Save line') + '</button>' + (attached() ? '<button class="tool" data-act="ctx-recording">' + ic('audio', 'ic--sm') + 'Scene recording</button>' : '') + '</div></div>' + (attached() ? attachedNote() : '') +
+      '<div class="tools">' + U.tool('ctx-play', 'replay', 'Replay') + U.tool('ctx-slow', 'slow', 'Slower') + U.tool('ctx-text', 'text', 'Show text', ' aria-pressed="' + !!(R.subs || R.ctx.text) + '"') + U.tool('ctx-translate', 'translate', 'Translate', ' aria-pressed="' + R.ctx.translate + '"') +
+      U.tool('ctx-save', LQ.notebook.hasLine(R.tid, c.line) ? 'check' : 'bookmark', LQ.notebook.hasLine(R.tid, c.line) ? 'Saved to your notebook' : 'Save line', ' aria-pressed="' + LQ.notebook.hasLine(R.tid, c.line) + '"') + (attached() ? U.tool('ctx-recording', 'audio', 'Scene recording') : '') + '</div></div>' + (attached() ? attachedNote() : '') +
       '<h2 class="q">' + esc(L(c.question)) + '</h2><div class="opts" role="group" aria-label="Choose the meaning">' +
       c.options.map((o, i) => { const chosen = R.ctx.answer === i; const cls = chosen ? (o.ok ? ' is-right' : ' is-wrong') : ''; return '<button class="opt' + cls + '" data-act="ctx-answer" data-arg="' + i + '"' + (R.ctx.ok ? ' disabled' : '') + ' aria-pressed="' + chosen + '">' + A.optionIcon(o.icon) + '<span>' + esc(L(o.m)) + '</span>' + (chosen ? (o.ok ? ic('check', 'ic--sm') : '') : '') + '</button>'; }).join('') + '</div>';
     if (R.ctx.answer !== null && !R.ctx.ok) h += '<p class="soft-no">' + ic('replay', 'ic--sm') + '<span>Not quite. Replay it, or turn on the translation, and try again.</span></p>';
@@ -133,17 +132,16 @@
   PHASE.model = () => {
     const m = mis(), list = m.expressions, ex = list[R.modelIdx], at = R.model[ex.id];
     C.on('model', a => { R.model[ex.id] = a; if (a.mode !== 'self' || true) S.award('say:' + ex.id + ':' + S.today(), 5, 'Said “' + U.nm(ex.t) + '”', R.tid); S.save(); LQ.app.render(); });
-    let h = '<p class="kicker">Phrase ' + (R.modelIdx + 1) + ' of ' + list.length + '. Listen, then say it out loud.</p>' +
+    let h = '<p class="kicker" aria-label="Phrase ' + (R.modelIdx + 1) + ' of ' + list.length + '">' + (R.modelIdx + 1) + ' / ' + list.length + '</p>' +
       '<div class="pcard"><div class="pcard__phrase">' + U.phrase(ex, { track: trk() }) + '</div><p class="pcard__m">' + esc(U.nm(L(ex.m))) + fbNote(ex.m) + '</p>' +
-      (ex.note ? '<p class="pcard__note">' + ic('bulb', 'ic--xs') + esc(L(ex.note)) + '</p>' : '') +
-      '<div class="tools"><button class="tool tool--main" data-act="ref-play" data-arg="' + ex.id + '">' + ic('volume', 'ic--sm') + 'Listen</button><button class="tool" data-act="ref-slow" data-arg="' + ex.id + '">' + ic('slow', 'ic--sm') + 'Slowly</button>' +
-      (ex.words ? '<button class="tool" data-act="words-toggle" aria-expanded="' + !!R.words + '">' + ic('list', 'ic--sm') + 'Word by word</button>' : '') + saveExprBtn(ex) + '</div>' +
+      '<div class="tools"><button class="tool tool--main" data-act="ref-play" data-arg="' + ex.id + '" title="Listen">' + ic('volume', 'ic--sm') + 'Listen</button>' + U.tool('ref-slow', 'slow', 'Slowly', ' data-arg="' + ex.id + '"') +
+      (ex.words ? U.tool('words-toggle', 'list', 'Word by word', ' aria-expanded="' + !!R.words + '"') : '') + saveExprBtn(ex) + (ex.note ? U.info(L(ex.note), 'Tip', 'bulb') : '') + '</div>' +
       (ex.words && R.words ? '<dl class="words">' + ex.words.map(w => '<div><dt dir="auto">' + esc(w[0]) + '</dt><dd>' + esc(L(w[1])) + '</dd></div>').join('') + '</dl>' : '') + '</div>';
     if (!at) h += C.widget('model', { lang: srLang(), langName: trk().name, label: C.srUsable() ? 'Tap and say it' : 'Tap to record yourself' });
     else h += '<div class="after">' + (at.mode === 'self' ? '<p class="yes">' + ic('check', 'ic--sm') + '<span>Marked as said aloud. Compare with the reference whenever you like.</span></p>' : '') + C.compareHtml(U.nm(ex.t), at) + C.takeHtml('model', true) +
-      '<button class="linkbtn" data-act="model-again">' + ic('replay', 'ic--xs') + 'Try it again</button></div>';
+      '<button class="linkbtn" data-act="model-again" title="Try it again">' + ic('replay', 'ic--xs') + 'Again</button></div>';
     h += '<div class="dots" aria-hidden="true">' + list.map((x, i) => '<span class="' + (i === R.modelIdx ? 'is-on' : R.model[x.id] ? 'is-done' : '') + '"></span>').join('') + '</div>' +
-      '<div class="lfoot"><button class="btn btn--quiet" data-act="model-skip">Skip phrase</button><button class="btn btn--primary" data-act="model-next"' + (at ? '' : ' disabled') + '>' + (R.modelIdx < list.length - 1 ? 'Next phrase' : 'Continue') + '</button></div>';
+      '<div class="lfoot"><button class="btn btn--quiet" data-act="model-skip" aria-label="Skip phrase" title="Skip phrase">' + ic('skip', 'ic--sm') + '</button><button class="btn btn--primary" data-act="model-next"' + (at ? '' : ' disabled') + '>' + (R.modelIdx < list.length - 1 ? 'Next' : 'Continue') + '</button></div>';
     return h;
   };
   /* 3. Anticipation (Pimsleur): attempt before the model answer is revealed */
@@ -159,22 +157,22 @@
     const m = mis(), item = m.anticipate[R.antIdx], model = antModel(item), st = R.ant[R.antIdx] || { state: 'prompt' };
     R.ant[R.antIdx] = st;
     C.on('ant', a => { st.attempt = a; st.state = 'compare'; LQ.app.render(); setTimeout(() => LS.say(model, { ref: true }), 250); });
-    let h = '<p class="kicker">' + (item.graduated ? 'Graduated recall: ' : '') + 'Prompt ' + (R.antIdx + 1) + ' of ' + m.anticipate.length + '</p>' +
+    let h = '<p class="kicker" aria-label="Prompt ' + (R.antIdx + 1) + ' of ' + m.anticipate.length + '">' + (R.antIdx + 1) + ' / ' + m.anticipate.length + '</p>' +
       '<div class="prompt"><p class="prompt__t">' + esc(U.nm(L(item.prompt))) + fbNote(item.prompt) + '</p></div>';
     if (st.state === 'prompt') {
-      h += ring('prompt') + '<p class="center muted small">' + esc(U.mascotLine('anticipate', {}, src())) + ' Take your time: there’s no timer.</p>' +
+      h += ring('prompt') +
         (st.hint ? '<p class="hint">' + ic('bulb', 'ic--sm') + '<span>Starts with: <strong dir="auto">' + esc(U.nm(model.r && enr().script === 'roman' ? model.r : model.t).split(' ').slice(0, 2).join(' ')) + '…</strong></span></p>' : '') +
         C.widget('ant', { lang: srLang(), langName: trk().name, label: C.srUsable() ? 'Say your answer' : 'Record your answer' }) +
-        '<div class="lfoot"><button class="btn btn--quiet" data-act="ant-hint"' + (st.hint ? ' disabled' : '') + '>' + ic('bulb', 'ic--sm') + 'Hint</button><button class="btn btn--ghost" data-act="ant-reveal">Reveal answer</button></div>';
+        '<div class="lfoot"><button class="btn btn--quiet" data-act="ant-hint"' + (st.hint ? ' disabled' : '') + ' title="Hint">' + ic('bulb', 'ic--sm') + 'Hint</button><button class="btn btn--ghost" data-act="ant-reveal" title="Reveal the answer (it returns sooner)">' + ic('eye', 'ic--sm') + 'Reveal</button></div>';
     } else {
       const assisted = st.revealed && !st.attempt ? 'revealed' : st.hint ? 'hint' : false;
-      h += ring('compare') + '<div class="pcard pcard--answer"><p class="small muted">' + (st.attempt ? 'Model answer: compare with yours' : 'Model answer (revealed before an attempt)') + '</p><div class="pcard__phrase">' + U.phrase(model, { track: trk() }) + '</div><p class="pcard__m">' + esc(U.nm(L(model.m))) + '</p>' +
-        '<div class="tools"><button class="tool tool--main" data-act="ant-play">' + ic('volume', 'ic--sm') + 'Listen</button><button class="tool" data-act="ant-slow">' + ic('slow', 'ic--sm') + 'Slowly</button></div></div>' +
+      h += ring('compare') + '<div class="pcard pcard--answer"><p class="small muted">' + (st.attempt ? 'Model' : 'Model (revealed)') + '</p><div class="pcard__phrase">' + U.phrase(model, { track: trk() }) + '</div><p class="pcard__m">' + esc(U.nm(L(model.m))) + '</p>' +
+        '<div class="tools"><button class="tool tool--main" data-act="ant-play">' + ic('volume', 'ic--sm') + 'Listen</button>' + U.tool('ant-slow', 'slow', 'Slowly') + '</div></div>' +
         C.compareHtml(U.nm(model.t), st.attempt) + (st.attempt && st.attempt.mode === 'record' ? C.takeHtml('ant', true) : '') +
-        (st.attempt && st.attempt.mode === 'self' ? '<p class="muted small">You said it aloud. Listen to the model and judge for yourself.</p>' : '');
+        '';
       if (!st.rated) {
-        h += '<h3 class="q q--sm">How close were you?</h3><div class="rate" role="group" aria-label="Rate your attempt"><button class="ratebtn ratebtn--got" data-act="ant-rate" data-arg="got">' + ic('check', 'ic--sm') + 'Got it</button><button class="ratebtn ratebtn--close" data-act="ant-rate" data-arg="close">' + ic('loop', 'ic--sm') + 'Close</button><button class="ratebtn ratebtn--again" data-act="ant-rate" data-arg="again">' + ic('replay', 'ic--sm') + 'Not yet</button></div>' +
-          (assisted ? '<p class="muted small">' + (assisted === 'revealed' ? 'You revealed it first; that’s fine and is noted as help, so it returns sooner.' : 'You used a hint; it’s noted, so it returns sooner.') + '</p>' : '');
+        h += '<h3 class="q q--sm">How close?</h3><div class="rate" role="group" aria-label="Rate your attempt"><button class="ratebtn ratebtn--got" data-act="ant-rate" data-arg="got">' + ic('check', 'ic--sm') + 'Got it</button><button class="ratebtn ratebtn--close" data-act="ant-rate" data-arg="close">' + ic('loop', 'ic--sm') + 'Close</button><button class="ratebtn ratebtn--again" data-act="ant-rate" data-arg="again">' + ic('replay', 'ic--sm') + 'Not yet</button></div>' +
+          (assisted ? '<p class="muted small">' + ic('bulb', 'ic--xs') + ' Helped ' + U.info(assisted === 'revealed' ? 'You revealed it first; that’s fine and is noted as help, so it returns sooner.' : 'You used a hint; it’s noted, so it returns sooner.', 'About help') + '</p>' : '');
       } else {
         h += '<p class="sched">' + ic('calendar', 'ic--sm') + '<span>' + esc(st.why) + '</span></p><div class="lfoot"><span></span><button class="btn btn--primary" data-act="ant-next">' + (R.antIdx < m.anticipate.length - 1 ? 'Next prompt' : (m.roleplay ? 'Talk to ' + who() : 'Finish')) + '</button></div>';
       }
@@ -188,7 +186,7 @@
     const showSug = R.turnHelp === 'suggest' || R.misses >= 2 || S.state.settings.help === 'visible';
     if (!C.srUsable() && C.typing.talk === undefined) C.typing.talk = true;
     const lastChar = R.log.map(e => e.who).lastIndexOf('char');
-    let h = '<p class="kicker">' + esc(U.mascotLine('talk', {}, src())) + '</p><ol class="log" role="log" aria-label="Conversation">' + R.log.map((e, i) => {
+    let h = '<ol class="log" role="log" aria-label="Conversation">' + R.log.map((e, i) => {
       if (e.who === 'char') return '<li class="msg msg--char"><span class="msg__who">' + esc(who()) + (e.fast ? ' (fast)' : e.slow ? ' (slowly)' : '') + '</span><div class="msg__b">' + (R.subs && !e.hide || e.show ? U.phrase(e.p, { track: trk() }) : '<span class="muted">' + ic('ear', 'ic--xs') + ' Text hidden</span>') + (e.tr ? '<span class="gloss">' + esc(U.nm(L(e.p.m))) + '</span>' : '') + '</div>' +
         (i !== lastChar ? '<div class="msg__tools"><button class="ltool" data-act="log-play" data-arg="' + i + '" aria-label="Replay this line">' + ic('replay', 'ic--xs') + '</button>' + saveTool(e.p, i) + '</div></li>' : '') + (i !== lastChar ? '' : '<div class="msg__tools"><button class="ltool" data-act="log-play" data-arg="' + i + '" aria-label="Replay this line">' + ic('replay', 'ic--xs') + '</button><button class="ltool" data-act="log-text" data-arg="' + i + '" aria-label="Show text">' + ic('text', 'ic--xs') + '</button><button class="ltool" data-act="log-tr" data-arg="' + i + '" aria-label="Translate this line">' + ic('translate', 'ic--xs') + '</button>' + saveTool(e.p, i) + '</div></li>');
       if (e.who === 'me') return '<li class="msg msg--me"><div class="msg__b" dir="auto">' + esc(e.text) + '</div><span class="msg__meta">' + esc({ speech: 'spoken', typed: 'typed', suggested: 'suggested reply' }[e.mode] || e.mode) + (e.prov ? ' ' + LQ.ai.badge(e.prov) : '') + '</span>' + (e.pending ? '<span class="eval eval--wait">' + ic('cpu', 'ic--xs') + 'Rules didn’t match. Asking live AI…</span>' : e.ok ? '<span class="eval">' + ic('check', 'ic--xs') + esc(e.ok) + '</span>' : e.miss ? '<span class="eval eval--miss">' + ic('info', 'ic--xs') + esc(e.miss) + '</span>' : '') + '</li>';
@@ -207,19 +205,21 @@
       '<div class="dock__mic cap cap--compact' + (cp.active ? ' is-' + cp.active : '') + '">' + cp.mic + '</div>' +
       '<button class="dock__b" data-act="talk-hint"' + (R.turnHelp ? ' aria-pressed="true"' : '') + '>' + ic('bulb', 'ic--sm') + '<span>Hint</span></button><button class="dock__b" data-act="talk-suggest-show">' + ic('sparkle', 'ic--sm') + '<span>Ideas</span></button>' +
       '<div class="dock__extra cap">' + cp.extra + '</div></div>' +
-      '<div class="lfoot lfoot--talk"><button class="linkbtn" data-act="talk-subs" aria-pressed="' + R.subs + '">' + ic('text', 'ic--xs') + (R.subs ? 'Hide subtitles' : 'Show subtitles') + '</button><button class="linkbtn" data-act="talk-skip">Skip this turn</button></div>';
+      '<div class="lfoot lfoot--talk">' + U.tool('talk-subs', 'text', R.subs ? 'Hide subtitles' : 'Show subtitles', ' aria-pressed="' + R.subs + '"') + U.tool('talk-skip', 'skip', 'Skip this turn') + '</div>';
     return h;
   };
   /* 5. Feedback: objectives with evidence, 1–2 priority notes, recall plan, story memory */
   PHASE.feedback = () => {
     const m = mis(), sm = R.summary || summarize();
-    let h = '<div class="fb-hero">' + U.mascot(sm.met === sm.total ? 'celebrate' : 'encouraging', 96) + '<div><h2 class="h3">' + (m.firstWords ? 'First words done' : sm.met === sm.total ? 'Mission complete' : 'Mission finished') + '</h2><p class="muted">' + sm.met + ' of ' + sm.total + (m.roleplay ? ' goals shown in conversation. ' : ' phrases anticipated and self-checked. ') + (sm.xp ? '+' + sm.xp + ' XP for effort.' : 'XP already earned today for this mission.') + '</p></div></div>';
-    h += '<h3 class="h4">What you showed</h3><ul class="goals" role="list">' + sm.goals.map(g => '<li class="goal' + (g.ok ? ' is-ok' : '') + '">' + (g.ok ? ic('check', 'ic--sm') : '<span class="goal__ring" aria-hidden="true"></span>') + '<span><strong>' + esc(LQ.SKILLS[g.skill].en) + '</strong><span class="muted small">' + esc(g.how) + '</span></span>' + U.stateChip(g.state) + '</li>').join('') + '</ul>';
-    if (sm.notes.length) h += '<h3 class="h4">Two things worth trying</h3><ul class="notes" role="list">' + sm.notes.slice(0, 2).map(n => '<li>' + ic('bulb', 'ic--sm') + '<span>' + esc(n) + '</span></li>').join('') + '</ul>';
-    if (sm.recall.length) h += '<h3 class="h4">Coming back in new scenes</h3><ul class="recallplan" role="list">' + sm.recall.map(r => '<li><span class="rp__p" dir="auto">' + esc(r.text) + '</span><span class="muted small">' + esc(r.when) + (r.where ? ', ' + r.where : '') + '</span></li>').join('') + '</ul>';
-    if (sm.memory) h += '<div class="memory">' + portraitFor('success', 44) + '<p><strong>' + esc(who()) + ' will remember</strong><br>' + esc(sm.memory) + '</p></div>';
-    h += '<p class="fineprint">Goals come from what the meaning matcher accepted in conversation. Typed answers count for meaning, not for speaking. No pronunciation score is given.</p>' +
-      '<div class="stack-sm"><a class="btn btn--primary btn--block" href="#/home" data-act="lesson-done">Back to home</a>' + (S.due(R.tid).length ? '<a class="btn btn--ghost btn--block" href="#/recall" data-act="lesson-done">Recall ' + S.due(R.tid).length + ' due phrases</a>' : '') + '<button class="btn btn--quiet btn--block" data-act="lesson-replay">Replay this mission</button></div>';
+    let h = '<div class="fb-hero">' + U.mascot(sm.met === sm.total ? 'celebrate' : 'encouraging', 80) + '<div><h2 class="h3">' + (m.firstWords ? 'First words done' : sm.met === sm.total ? 'Mission complete' : 'Mission finished') + '</h2><p class="muted small">' + sm.met + '/' + sm.total + ' goals' + (sm.xp ? ' · +' + sm.xp + ' XP' : '') + ' ' + U.info((m.roleplay ? sm.met + ' of ' + sm.total + ' goals shown in conversation. ' : sm.met + ' of ' + sm.total + ' phrases anticipated and self-checked. ') + (sm.xp ? '+' + sm.xp + ' XP for effort. ' : 'XP already earned today for this mission. ') + 'Goals come from what the meaning matcher accepted in conversation. Typed answers count for meaning, not for speaking. No pronunciation score is given.', 'How this was judged') + '</p></div></div>';
+    h += '<ul class="goals" role="list">' + sm.goals.map(g => '<li class="goal' + (g.ok ? ' is-ok' : '') + '" title="' + esc(g.how) + '">' + (g.ok ? ic('check', 'ic--sm') : '<span class="goal__ring" aria-hidden="true"></span>') + '<span><strong>' + esc(LQ.SKILLS[g.skill].en) + '</strong></span>' + U.stateChip(g.state) + '</li>').join('') + '</ul>';
+    h += '<div class="stack-sm"><a class="btn btn--primary btn--block" href="#/home" data-act="lesson-done">Done</a>' + (S.due(R.tid).length ? '<a class="btn btn--ghost btn--block" href="#/recall" data-act="lesson-done">' + ic('refresh', 'ic--sm') + 'Recall ' + S.due(R.tid).length + '</a>' : '') + '</div>';
+    h += '<details class="more"><summary>' + ic('list', 'ic--sm') + 'Details</summary>' +
+      '<ul class="goals goals--how" role="list">' + sm.goals.map(g => '<li><span class="small"><strong>' + esc(LQ.SKILLS[g.skill].en) + ':</strong> ' + esc(g.how) + '</span></li>').join('') + '</ul>';
+    if (sm.notes.length) h += '<h3 class="h4">Worth trying</h3><ul class="notes" role="list">' + sm.notes.slice(0, 2).map(n => '<li>' + ic('bulb', 'ic--sm') + '<span>' + esc(n) + '</span></li>').join('') + '</ul>';
+    if (sm.recall.length) h += '<h3 class="h4">Coming back</h3><ul class="recallplan" role="list">' + sm.recall.map(r => '<li><span class="rp__p" dir="auto">' + esc(r.text) + '</span><span class="muted small">' + esc(r.when) + (r.where ? ', ' + r.where : '') + '</span></li>').join('') + '</ul>';
+    if (sm.memory) h += '<div class="memory">' + portraitFor('success', 40) + '<p><strong>' + esc(who()) + ' will remember</strong><br>' + esc(sm.memory) + '</p></div>';
+    h += '</details><button class="btn btn--quiet btn--block" data-act="lesson-replay">' + ic('replay', 'ic--sm') + 'Replay</button>';
     return h;
   };
 
@@ -276,7 +276,7 @@
     const turn = id ? m.roleplay.turns[id] : null;
     if (opts && opts.silent) return; // already answered in the same breath: skip the question
     if (turn && turn.say) { charLine(turn.say, { fast: turn.fast, slow: turn.slow, hide: turn.hideText }); speakList.push({ p: R.log[R.log.length - 1].p, fast: turn.fast, slow: turn.slow }); }
-    if (turn && turn.unexpected) note('Unexpected question: answer however you like.', 'sparkle');
+    if (turn && turn.unexpected) note('Surprise question', 'sparkle');
   }
   function credit(skill, autonomy, input, said, kind, judged) {
     if (!skill) return;

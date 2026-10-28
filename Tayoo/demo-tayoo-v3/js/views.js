@@ -8,22 +8,22 @@
   T.ui = T.ui || { clientQ: '', clientFilter: 'all', open: {} };
 
   var STATE = {
-    clarify: { label: 'Needs clarification', cls: 'clarify' },
-    ready: { label: 'Ready for review', cls: 'ready' },
+    clarify: { label: 'Needs clarification', short: 'Question', cls: 'clarify' },
+    ready: { label: 'Ready for review', short: 'Ready', cls: 'ready' },
     running: { label: 'Running', cls: 'running' },
-    completed: { label: 'Completed', cls: 'done' },
-    partial: { label: 'Partially completed', cls: 'partial' },
+    completed: { label: 'Completed', short: 'Done', cls: 'done' },
+    partial: { label: 'Partially completed', short: 'Partly done', cls: 'partial' },
     cancelled: { label: 'Cancelled', cls: 'cancelled' },
     resolved: { label: 'Clarified', cls: 'cancelled' },
-    shadow: { label: 'Shadow run: nothing changed', cls: 'shadow' },
+    shadow: { label: 'Shadow run: nothing changed', short: 'Shadow run', cls: 'shadow' },
     info: { label: 'Read-only: no approval needed', cls: 'info' },
-    awaiting: { label: 'Waiting for broker approval', cls: 'awaiting' }
+    awaiting: { label: 'Waiting for broker approval', short: 'Waiting for Alex', cls: 'awaiting' }
   };
   var ST = {
     pending: { label: 'Waiting', icon: 'hollow', cls: 'pending' },
     running: { label: 'Running', icon: 'refresh', cls: 'running' },
-    done: { label: 'Completed', icon: 'check', cls: 'done' },
-    simulated: { label: 'Simulated, not sent', icon: 'hollow', cls: 'sim' },
+    done: { label: 'Completed', short: 'done', icon: 'check', cls: 'done' },
+    simulated: { label: 'Simulated, not sent', short: 'simulated', icon: 'hollow', cls: 'sim' },
     queued: { label: 'Queued offline', icon: 'clock', cls: 'sim' },
     excluded: { label: 'Excluded', icon: 'ban', cls: 'excluded' },
     skipped: { label: 'Skipped', icon: 'ban', cls: 'skipped' },
@@ -38,9 +38,9 @@
       (source ? '<span class="prov-src">' + h(source) + (date ? ', ' + h(T.fmtDate(date, { noDay: true })) : '') + '</span>' : '');
   }
   R.prov = prov;
-  function consentChip(c) {
+  function consentChip(c, iconOnly) {
     var st = T.consentOf(c);
-    return '<span class="consent consent-' + st + '">' + I(st === 'opted-out' ? 'ban' : st === 'unknown' || st === 'expired' ? 'question' : 'shield') + h(T.CONSENT_LABEL[st]) + '</span>';
+    return '<span class="consent consent-' + st + (iconOnly ? ' is-icon" role="img" aria-label="' + h(T.CONSENT_LABEL[st]) : '') + '" title="Email: ' + h(T.CONSENT_LABEL[st]) + '">' + I(st === 'opted-out' ? 'ban' : st === 'unknown' || st === 'expired' ? 'question' : 'shield') + (iconOnly ? '' : h(T.CONSENT_LABEL[st])) + '</span>';
   }
   R.consentChip = consentChip;
   function avatar(c, size) {
@@ -55,25 +55,24 @@
   R.provBadge = provBadge;
 
   /* ======================= header ======================= */
+  // Icons first: search, inbox, the live-AI status and the Demo menu (the demo marker). Everything else lives there.
+  R.aiIcon = function () {
+    var ai = T.ai.status(), st = ai.state || (ai.on ? 'on' : 'off');
+    var label = 'Live AI ' + (st === 'on' ? 'on' : st === 'paused' ? 'paused' : 'off') + ': ' + ai.why + '. Open the API monitor.';
+    return '<a class="icon-btn ai-ic ai-' + st + '" href="../../index.html#api" aria-label="' + h(label) + '" title="' + h(label) + '">' + I(st === 'paused' ? 'pause' : 'spark') + '</a>';
+  };
   R.top = function () {
     var s = S(), shadow = s.settings.mode === 'shadow';
-    return '<a class="back-demos" href="../../index.html">' + I('back') + '<span class="bd-lg">All demos</span><span class="bd-sm">Demos</span></a>' +
-      '<a class="top-brand" href="#/" aria-label="Tayoo, conversation">' + T.logo() + '<span>Tayoo</span></a>' +
-      '<p class="top-clock">' + h(T.fmtDate(T.today(), { long: true })) + ', ' + h(T.clockStr()) + '</p>' +
-      '<div class="mode-switch" role="group" aria-label="Execution mode">' +
-      '<button type="button" data-act="mode" data-mode="active" aria-pressed="' + (!shadow) + '">Approvals</button>' +
-      '<button type="button" data-act="mode" data-mode="shadow" aria-pressed="' + shadow + '">Shadow Mode</button></div>' +
+    return '<a class="top-brand" href="#/" aria-label="Tayoo, conversation">' + T.logo() + '<span>Tayoo</span></a>' +
+      (shadow ? '<button type="button" class="st-chip st-shadow" data-act="demo" title="Shadow Mode: nothing changes when you approve" aria-label="Shadow Mode is on">' + I('eye') + '<span>Shadow</span></button>' : '') +
       '<span class="top-spacer"></span>' +
-      '<span class="speaking" id="speaking" hidden><span class="spk-bars" aria-hidden="true"><i></i><i></i><i></i></span><span>Speaking</span><button type="button" data-act="hush" class="spk-stop">Stop</button></span>' +
-      (s.role === 'coordinator' ? '<button type="button" class="role-chip" data-act="lab" title="Switch roles in the Test lab">' + I('people') + '<span>Maude, coordinator</span></button>' : '') +
-      (s.caps.offline ? '<span class="off-chip">' + I('ban') + 'Offline</span>' : '') +
-      '<button type="button" class="search-btn" data-act="search" aria-label="Search everything (Ctrl or Cmd K)">' + I('search') + '<span class="sb-l">Search</span><kbd>⌘K</kbd></button>' +
-      '<a class="icon-btn bell" href="#/inbox" aria-label="Inbox, ' + T.unread() + ' unread">' + I('mail') + (T.unread() ? '<span class="bell-n">' + Math.min(99, T.unread()) + '</span>' : '') + '</a>' +
-      '<button type="button" class="icon-btn" data-act="toggle-speak" aria-pressed="' + !!s.settings.speak + '" aria-label="Spoken replies" title="Spoken replies">' + I(s.settings.speak ? 'speaker' : 'mute') + '</button>' +
-      '<span class="demo-tag" title="Every person, address, price and message here is invented">Demo · fictional data</span>' +
-      '<button type="button" class="btn btn-quiet btn-sm lab-btn" data-act="lab" aria-label="Test lab" aria-expanded="' + !!(T.app && T.app.labOpen) + '" aria-controls="lab">' + I('flask') + '<span>Test lab</span></button>' +
-      '<button type="button" class="btn btn-quiet btn-sm" data-act="tour">' + I('tour') + '<span class="t-l">Tour</span></button>' +
-      '<button type="button" class="btn btn-quiet btn-sm" data-act="reset">' + I('refresh') + '<span class="t-l">Reset</span></button>';
+      '<span class="speaking" id="speaking" hidden><span class="spk-bars" aria-hidden="true"><i></i><i></i><i></i></span><button type="button" data-act="hush" class="spk-stop" aria-label="Stop speaking" title="Stop speaking">' + I('stop') + '</button></span>' +
+      (s.role === 'coordinator' ? '<button type="button" class="icon-btn role-chip" data-act="lab" title="Signed in as Maude, coordinator" aria-label="Signed in as Maude, coordinator">' + I('people') + '</button>' : '') +
+      (s.caps.offline ? '<span class="icon-btn off-chip" title="Offline: sends are queued" aria-label="Offline">' + I('ban') + '</span>' : '') +
+      '<button type="button" class="icon-btn" data-act="search" aria-label="Search (Ctrl or Cmd K)" title="Search">' + I('search') + '</button>' +
+      '<a class="icon-btn bell" href="#/inbox" aria-label="Inbox, ' + T.unread() + ' unread" title="Inbox">' + I('mail') + (T.unread() ? '<span class="bell-n">' + Math.min(99, T.unread()) + '</span>' : '') + '</a>' +
+      R.aiIcon() +
+      '<button type="button" class="demo-btn" data-act="demo" aria-haspopup="dialog" aria-label="Demo menu: fictional data, tour, Test lab, reset" title="Demo · fictional data">' + I('flask') + '<span>Demo</span></button>';
   };
 
   /* ======================= front door ======================= */
@@ -81,37 +80,35 @@
     var n = S().now.slice(11, 16).split(':'), m = +n[0] * 60 + +n[1];
     return m < 12 * 60 ? 'Good morning' : m < 18 * 60 ? 'Good afternoon' : 'Good evening';
   }
+  // one short line: the next thing that needs you
   function frontContext() {
     var rec = T.pendingRecaps(), pend = T.pendingCards(), cands = T.recoveryCandidates();
-    if (pend.length) return 'A plan is waiting for your approval below.';
-    if (rec.length) {
-      var a = rec[rec.length - 1], c = T.client(a.client);
-      return 'Your ' + T.fmtTime(a.start).replace(':00', '') + ' showing with ' + T.fullName(c) + ' ended at ' + T.fmtTime(a.end) + '. Tell me how it went.';
-    }
+    if (pend.length) return 'A plan is waiting for you.';
+    if (rec.length) { var a = rec[rec.length - 1], c = T.client(a.client); return c.first + '’s ' + T.fmtTime(a.start).replace(':00', '') + ' showing just ended.'; }
     var elig = cands.filter(T.canEmail);
-    if (elig.length) return elig.length + ' follow-up' + (elig.length === 1 ? ' is' : 's are') + ' overdue or missing. Want me to prepare ' + (elig.length === 1 ? 'it' : 'them') + '?';
+    if (elig.length) return elig.length + ' follow-up' + (elig.length === 1 ? '' : 's') + ' overdue.';
     var nxt = T.cal.active().filter(function (a) { return (a.date + 'T' + a.start) >= T.nowISO() && a.client; })[0];
-    if (nxt && T.client(nxt.client)) return 'Next: ' + nxt.title.toLowerCase() + ' with ' + T.fullName(T.client(nxt.client)) + ', ' + T.relDay(nxt.date).toLowerCase() + ' at ' + T.fmtTime(nxt.start) + '.';
-    return 'What would you like to take care of?';
+    if (nxt && T.client(nxt.client)) return 'Next: ' + T.client(nxt.client).first + ', ' + T.fmtTime(nxt.start) + '.';
+    return 'What needs doing?';
   }
-  // Suggestions follow the records: scripted samples where one fits, otherwise prefilled requests
+  // Up to three suggestions from the records; they send a typed request (scripted dictations are in the Demo menu)
   R.suggestions = function () {
     var s = S(), out = [], rec = T.pendingRecaps();
     rec.slice().reverse().forEach(function (a) {
       var c = T.client(a.client), smp = T.SAMPLES.filter(function (x) { return x.id === a.client; })[0];
-      if (smp) out.push({ sample: smp.id, label: smp.label });
-      else out.push({ text: 'Just finished the showing at ' + (a.place || '') + ' with ' + T.fullName(c) + '. ', label: 'Recap ' + T.shortName(c) + '’s showing' });
+      if (smp) out.push({ say: smp.text, label: 'Recap ' + c.first, icon: 'talk' });
+      else out.push({ text: 'Just finished the showing at ' + (a.place || '') + ' with ' + T.fullName(c) + '. ', label: 'Recap ' + c.first });
     });
-    if (T.recoveryCandidates().filter(T.canEmail).length) out.push({ sample: 'recovery', label: T.SAMPLES[1].label });
+    if (T.recoveryCandidates().filter(T.canEmail).length) out.push({ say: T.SAMPLES[1].text, label: 'Follow-ups I owe', icon: 'mail' });
     var tx = s.transactions.filter(function (x) { return T.files.issueCount(x) > 0; })[0];
-    if (tx) out.push(tx.id === 'tx-tremblay' ? { sample: 'tremblay', label: T.SAMPLES[2].label } : { text: 'Summarize the ' + tx.title + ' file', label: 'Check the ' + tx.title + ' file' });
-    if (T.client('olivia') && !T.client('olivia').deleted) out.push({ sample: 'olivia', label: T.SAMPLES[4].label });
-    if (!s.clients.length) out.push({ act: 'new-client', label: 'Add your first client' });
-    out.push({ text: 'Find condos in Saint-Roch under 480k', label: 'Search listings' });
+    if (tx) out.push({ say: 'Summarize the ' + tx.title + ' file', label: 'Check ' + tx.title.split(' ')[0], icon: 'file' });
+    if (!s.clients.length) out.push({ act: 'new-client', label: 'Add a client' });
+    out.push({ say: 'Find condos in Saint-Roch under 480k', label: 'Search listings', icon: 'search' });
     return out.slice(0, 3);
   };
   R.chip = function (x) {
-    if (x.sample) return '<button type="button" class="chip-say" data-act="sample" data-sample="' + x.sample + '">' + I('talk') + '<span>' + h(x.label) + '</span></button>';
+    if (x.say) return '<button type="button" class="chip-say" data-act="suggest" data-text="' + h(x.say) + '" title="' + h(x.say) + '">' + I(x.icon || 'talk') + '<span>' + h(x.label) + '</span></button>';
+    if (x.sample) return '<button type="button" class="chip-say" data-act="sample" data-sample="' + x.sample + '">' + I('play') + '<span>' + h(x.label) + '</span></button>';
     if (x.href) return '<a class="chip-say" href="' + h(x.href) + '">' + I('chevron') + '<span>' + h(x.label) + '</span></a>';
     if (x.act) return '<button type="button" class="chip-say" data-act="' + h(x.act) + '"' + (x.client ? ' data-client="' + h(x.client) + '"' : '') + (x.first ? ' data-first="' + h(x.first) + '" data-last="' + h(x.last || '') + '"' : '') + '>' + I('plus') + '<span>' + h(x.label) + '</span></button>';
     return '<button type="button" class="chip-say" data-act="prefill" data-text="' + h(x.text) + '">' + I('keyboard') + '<span>' + h(x.label) + '</span></button>';
@@ -120,45 +117,39 @@
     var s = S(), compact = s.thread.length > 0;
     var sug = R.suggestions();
     return '<div class="front-in">' +
-      '<p class="front-meta"><span>' + h(T.fmtDate(T.today(), { long: true })) + ', ' + h(T.clockStr()) + '</span><span class="demo-tag only-m">Demo · fictional data</span></p>' +
       '<h1 class="greet">' + greeting() + ', ' + h(T.BROKER.first) + '.</h1>' +
       (compact ? '' :
         '<p class="greet-sub">' + h(frontContext()) + '</p>' +
-        '<button type="button" class="orb-btn" id="talk-orb" data-act="talk" aria-describedby="orb-cap">' +
+        '<button type="button" class="orb-btn" id="talk-orb" data-act="talk" aria-label="Talk to Tayoo: tap, or press and hold" title="Tap, or press and hold">' +
         '<span class="glass" aria-hidden="true"><span class="glass-sheen"></span>' + T.logo() + '</span>' +
-        '<span class="orb-label">Tap to talk</span></button>' +
-        '<p class="front-promise" id="orb-cap">Talk once after a showing or a call. Tayoo updates the right client, schedules what you promised and drafts the follow-up, then waits for your approval.</p>') +
-      '<div class="suggest" role="group" aria-label="Suggestions">' +
-      (compact ? '<span class="suggest-h">Try</span>' : '') +
-      sug.map(R.chip).join('') +
-      '<button type="button" class="chip-more" data-act="samples">More examples</button>' +
-      '</div>' + (!compact && !s.tour.seen ? '<p class="front-tour">New here? <button type="button" class="btn-link" data-act="tour">Take the guided tour</button>, about two minutes, both workflows end to end.</p>' : '') + '</div>';
+        '<span class="orb-label">Tap or hold</span></button>') +
+      '<div class="suggest" role="group" aria-label="Suggestions">' + sug.map(R.chip).join('') + '</div></div>';
   };
 
   /* ======================= composer ======================= */
   R.composer = function () {
-    var s = S(), voice = s.draftKind === 'voice' && s.draft;
+    var s = S(), voice = s.draftKind === 'voice' && s.draft, g = T.meterGate ? T.meterGate('browser-speech') : { ok: true };
     return '<form class="composer' + (voice ? ' has-voice' : '') + '" id="composer" data-form="ask" novalidate>' +
-      (voice ? '<p class="draft-banner">' + I('talk') + '<span><strong>Voice draft</strong>, ' + (s.draftSource === 'sample' ? 'from a scripted sample' : 'from your browser’s transcription') + '. Fix anything first; nothing happens until you send it.</span><button type="button" class="btn-link discard" data-act="discard">Discard</button></p>' : '') +
+      (voice ? '<p class="draft-banner">' + I('talk') + '<span>' + (s.draftSource === 'sample' ? 'Scripted sample' : 'Voice draft') + '</span><button type="button" class="btn-link discard" data-act="discard">Discard</button></p>' : '') +
       '<div class="composer-row">' +
-      '<button type="button" class="mic" data-act="talk" aria-label="Talk to Tayoo">' + I('mic') + '</button>' +
+      '<button type="button" class="mic' + (g.ok ? '' : ' is-paused') + '" data-act="talk" aria-label="' + (g.ok ? 'Talk to Tayoo: tap, or press and hold' : 'Voice paused: ' + h(g.reason)) + '" title="' + (g.ok ? 'Tap, or press and hold' : 'Voice paused: ' + h(g.reason)) + '">' + I(g.ok ? 'mic' : 'pause') + '</button>' +
       '<label class="sr-only" for="composer-input">Message Tayoo</label>' +
-      '<textarea id="composer-input" class="' + (voice ? 'is-voice' : '') + '" rows="1" placeholder="Or type to Tayoo…" autocomplete="off">' + h(s.draft || '') + '</textarea>' +
-      '<button type="submit" class="send" aria-label="Send to Tayoo">' + I('send') + '</button>' +
-      '</div>' + (T.ai.on() ? '<p class="ai-line">' + I('spark') + '<span>Free text is read by live AI (' + h(window.LiveAI.model) + '), then checked against your records. <a href="#/settings">Change</a></span></p>' : '') + '</form>';
+      '<textarea id="composer-input" class="' + (voice ? 'is-voice' : '') + '" rows="1" placeholder="Type to Tayoo…" autocomplete="off">' + h(s.draft || '') + '</textarea>' +
+      '<button type="submit" class="send" aria-label="Send to Tayoo" title="Send">' + I('send') + '</button>' +
+      '</div></form>';
   };
 
   /* ======================= thread messages ======================= */
   R.message = function (m) {
     var s = S();
     if (m.role === 'broker') {
-      var label = m.kind === 'voice' ? (m.source === 'sample' ? 'Voice note, scripted sample' : 'Voice note, live transcript') : 'Typed';
+      var label = m.kind === 'voice' ? (m.source === 'sample' ? 'Scripted sample' : m.source === 'gemini' ? 'Voice, transcribed by Gemini' : 'Voice, live transcript') : m.source === 'suggestion' ? 'Suggestion' : 'Typed';
       return '<li class="msg msg-broker" data-id="' + m.id + '"><div class="said">' +
-        '<p class="said-meta">' + I(m.kind === 'voice' ? 'talk' : 'keyboard') + '<span>' + label + (m.by && m.by !== T.BROKER.name ? ', by ' + h(m.by) : '') + '</span><time>' + h(T.relDay(m.at) === 'Today' ? '' : T.relDay(m.at) + ' ') + h(T.fmtTime(m.at.split('T')[1])) + '</time></p>' +
+        '<p class="said-meta" title="' + h(label) + '">' + I(m.kind === 'voice' ? (m.source === 'sample' ? 'play' : 'mic') : m.source === 'suggestion' ? 'spark' : 'keyboard') + '<span class="sr-only">' + h(label) + '</span>' + (m.by && m.by !== T.BROKER.name ? '<span>' + h(m.by.split(' ')[0]) + '</span>' : '') + '<time>' + h(T.relDay(m.at) === 'Today' ? '' : T.relDay(m.at) + ' ') + h(T.fmtTime(m.at.split('T')[1])) + '</time></p>' +
         '<p class="said-text" lang="' + (m.lang === 'FR' ? 'fr' : 'en') + '">' + h(m.text) + '</p></div></li>';
     }
     var inner = '';
-    if (m.kind === 'text') inner = '<div class="t-body">' + (m.note ? '<p class="t-note">' + I('alert') + '<span>' + h(m.note) + '</span></p>' : '') + '<p>' + h(m.text) + '</p>' + (m.chips ? chips(m.chips) : '') + (m.pv ? '<p class="t-pv">' + provBadge(m.pv) + '</p>' : '') + '</div>';
+    if (m.kind === 'text') inner = '<div class="t-body">' + (m.note ? '<p class="t-note">' + I('alert') + '<span>' + h(m.note) + '</span></p>' : '') + '<p' + (m.full && m.full !== m.text ? ' title="' + h(m.full) + '"' : '') + '>' + h(m.text) + '</p>' + (m.chips ? chips(m.chips) : '') + (m.pv ? '<p class="t-pv">' + provBadge(m.pv) + '</p>' : '') + '</div>';
     else if (m.kind === 'results') inner = '<div class="t-body"><p>' + h(m.text) + '</p>' + R.resultList(m.ids) + '<p class="t-chips"><a class="chip-say" href="#/listings" data-act="open-listings" data-filters="' + h(JSON.stringify(m.filters)) + '">' + I('chevron') + '<span>Open these in Listings</span></a></p></div>';
     else if (m.kind === 'working') inner = '<div class="t-body"><ol class="work">' + m.steps.map(function (x, i) {
       var state = i < m.done ? 'done' : i === m.done ? 'now' : 'wait';
@@ -199,20 +190,69 @@
     else if (card.type === 'cancel') body = cancelBody(card);
     else if (card.type === 'listings') body = listingsBody(card);
     else if (card.type === 'multi') body = multiBody(card);
-    var collapsible = done && card.type !== 'clarify' && card.type !== 'file';
-    var openKey = 'plan-' + card.id;
+    // Summary first (who, one icon row per part, Approve); every field and "How Tayoo read this" open on tap
+    var openKey = 'more-' + card.id, inline = card.type === 'clarify';
+    var fp = 'Plan v' + card.version + ' · fingerprint #' + card.fingerprint;
     return '<article class="card card-' + card.type + ' is-' + st.cls + '" data-card="' + card.id + '" aria-labelledby="ct-' + card.id + '">' +
       '<div class="card-strip" aria-hidden="true"></div>' +
-      '<header class="card-head"><p class="card-state"><span class="state-dot" aria-hidden="true"></span>' + h(st.label) + (card.status === 'awaiting' && card.requestedBy ? ' (from ' + h(card.requestedBy.split(' ')[0]) + ')' : '') + '</p>' +
+      '<header class="card-head"><p class="card-state" title="' + h(st.label) + '"><span class="state-dot" aria-hidden="true"></span>' + h(st.short || st.label) + (card.status === 'awaiting' && card.requestedBy ? ' · ' + h(card.requestedBy.split(' ')[0]) : '') + '</p>' +
       provBadge(card.source && card.source.provenance) +
-      (card.type !== 'file' && card.type !== 'clarify' ? '<p class="card-ver">Plan v' + card.version + ' <span class="fp" title="Fingerprint of the exact payload you would approve">#' + h(card.fingerprint) + '</span></p>' : '') +
+      (card.type !== 'file' && card.type !== 'clarify' ? '<p class="card-ver" title="' + h(fp) + '"><span role="img" aria-label="' + h(fp) + '">v' + card.version + '</span></p>' : '') +
       '</header>' +
       '<h3 class="card-title" id="ct-' + card.id + '">' + h(card.title) + '</h3>' +
-      (card.stale && (card.status === 'ready' || card.status === 'awaiting') ? '<div class="stale">' + I('alert') + '<p>' + h(card.stale) + ' Approval is blocked until you refresh it.</p><button type="button" class="btn btn-ghost btn-sm" data-act="refresh-card">' + I('refresh') + 'Refresh plan</button></div>' : '') +
-      goal(card) + records(card) + parseBlock(card) +
-      (collapsible ? '<details class="plan-done" data-ui="' + openKey + '"' + (T.ui.open[openKey] ? ' open' : '') + '><summary>Show the approved plan (v' + card.approvedVersion + ')</summary>' + body + '</details>' : body) +
+      (card.stale && (card.status === 'ready' || card.status === 'awaiting') ? '<div class="stale">' + I('alert') + '<p title="' + h(card.stale) + '">Needs a refresh</p><button type="button" class="btn btn-ghost btn-sm" data-act="refresh-card">' + I('refresh') + 'Refresh</button></div>' : '') +
+      records(card, true) +
+      (inline ? body : summaryRows(card) +
+        '<details class="card-more" data-ui="' + openKey + '"' + (T.ui.open[openKey] ? ' open' : '') + '><summary>' + I('down') + '<span>Details</span></summary>' +
+        goal(card) + records(card, false) + parseBlock(card) + body + '</details>') +
       notActed(card) + footer(card) + '</article>';
   };
+  // One icon row per part of the plan: what it is, its key value, and whether it's on
+  function sumRow(icon, label, value, on, warn) {
+    return '<li class="sum-row' + (on === false ? ' is-off' : '') + (warn ? ' is-warn' : '') + '"><span class="sum-ic" aria-hidden="true">' + I(icon) + '</span><span class="sum-l">' + h(label) + '</span><span class="sum-v">' + h(value || '') + '</span>' +
+      '<span class="sum-st" aria-label="' + (on === false ? 'excluded' : warn ? 'needs you' : 'included') + '" title="' + (on === false ? 'Excluded' : warn ? 'Needs you' : 'Included') + '">' + I(on === false ? 'ban' : warn ? 'alert' : 'check') + '</span></li>';
+  }
+  function summaryRows(card) {
+    var r = [], c = card.clientId && T.client(card.clientId);
+    var memN = (card.diff || []).filter(function (d) { return d.include; }).length;
+    var mail = function (e, label) { if (e) r.push(sumRow('mail', label || 'Email', e.locked ? 'No consent' : e.include ? 'Simulated' : 'Draft', e.include && !e.locked, e.locked)); };
+    var task = function (t, label) { if (t) r.push(sumRow('task', label || 'Task', T.fmtDT(t.due), t.include)); };
+    var appt = function () {
+      var a = card.appt; if (!a) return;
+      var mv = card.mode === 'reschedule' || card.apptMode === 'reschedule';
+      r.push(sumRow(mv ? 'refresh' : 'calendar', mv ? 'Move' : a.title, T.fmtDT(a.date + 'T' + a.start), true, (card.conflicts || []).length > 0 || (a.choose && !a.listing)));
+    };
+    if (card.type === 'showing') { if (card.diff.length) r.push(sumRow('pen', 'Memory', memN + ' change' + (memN === 1 ? '' : 's'), memN > 0)); task(card.task, 'Commitment'); if (card.alts && card.alts.matches.length) r.push(sumRow('home', 'Alternatives', card.alts.matches.length + ' listings', card.alts.attach)); mail(card.email); }
+    else if (card.type === 'note') r.push(sumRow('pen', 'Memory', memN + ' change' + (memN === 1 ? '' : 's'), memN > 0));
+    else if (card.type === 'recovery') {
+      var el = card.rows.filter(function (x) { return x.bucket === 'eligible'; }), sel = el.filter(function (x) { return x.include; }).length;
+      var rv = card.rows.filter(function (x) { return x.bucket === 'review'; }).length, oo = card.rows.filter(function (x) { return x.bucket === 'optout'; }).length;
+      r.push(sumRow('mail', 'Emails', sel + ' of ' + el.length, sel > 0));
+      if (rv) r.push(sumRow('question', 'Consent review', String(rv), true, true));
+      if (oo) r.push(sumRow('ban', 'Opted out', String(oo), false));
+    } else if (card.type === 'file') {
+      var ck = T.tx(card.txId) && T.files.check(T.tx(card.txId));
+      if (ck) { r.push(sumRow('alert', 'To check', String(ck.issues.length), true, ck.issues.length > 0)); r.push(sumRow('clock', 'Open', String(ck.open.length), true)); r.push(sumRow('check', 'Done', String(ck.done.length), true)); }
+    } else if (card.type === 'schedule') {
+      if (card.mode === 'task') task(card.task); else { appt(); if (card.invite) r.push(sumRow('mail', 'Invitation', card.invite.include ? 'Simulated' : 'Off', card.invite.include)); }
+    } else if (card.type === 'cancel') {
+      var ev = S().appointments.filter(function (x) { return x.id === card.target; })[0];
+      if (ev) r.push(sumRow('ban', 'Cancel', ev.title + ', ' + T.fmtDT(ev.date + 'T' + ev.start), true));
+      mail(card.email, 'Note');
+    } else if (card.type === 'listings') { r.push(sumRow('home', 'Listings', card.rows.filter(function (x) { return x.include; }).length + ' of ' + card.rows.length, true)); mail(card.email); }
+    else if (card.type === 'multi') {
+      if (card.note) r.push(sumRow(card.note.showing ? 'home' : card.isCall ? 'phone' : 'pen', card.note.showing ? 'Showing' : card.isCall ? 'Call note' : 'Note', card.note.showing ? (T.listing(card.note.showing) || {}).address || '' : 'Saved as said', card.note.include));
+      if (card.diff.length) r.push(sumRow('pen', 'Memory', memN + ' change' + (memN === 1 ? '' : 's'), memN > 0));
+      if (card.target && card.cancel) { var ce = S().appointments.filter(function (x) { return x.id === card.target; })[0]; r.push(sumRow('ban', 'Cancel', ce ? ce.title : '', card.cancel.include)); }
+      appt();
+      (card.tasks || []).forEach(function (t) { task(t); });
+      if (card.rows) r.push(sumRow('home', 'Listings', card.rows.filter(function (x) { return x.include; }).length + ' saved', true));
+      if (card.email && card.rows) mail(card.email);
+      (card.msgs || []).forEach(function (mg) { mail(mg, mg.recipient ? mg.recipient.role : 'Message'); });
+      if ((card.questions || []).length) r.push(sumRow('question', 'Needs you', card.questions.length + ' question' + (card.questions.length === 1 ? '' : 's'), true, true));
+    }
+    return r.length ? '<ul class="card-sum" aria-label="Plan parts">' + r.join('') + '</ul>' : '';
+  }
   function goal(card) {
     var c = card.clientId && T.client(card.clientId), g = '';
     if (card.type === 'showing') {
@@ -232,8 +272,13 @@
     else if (card.type === 'multi') g = (card.clauses || []).length > 1 ? 'Everything you asked, as one plan in ' + card.clauses.length + ' parts. Each part can be excluded or edited; only what you approve runs.' : 'Draft what you asked from your own words. Only what you approve runs.';
     return '<p class="card-goal"><span class="sr-only">Tayoo understood: </span>' + h(g) + '</p>';
   }
-  function records(card) {
+  function records(card, compact) {
     var out = [], c = card.clientId && T.client(card.clientId);
+    if (compact) {
+      var L0 = card.listingId && T.listing(card.listingId);
+      if (!c && !L0) return '';
+      return '<div class="records is-compact">' + (c ? '<a class="rec" href="#/clients/' + c.id + '" title="' + h(T.fullName(c) + ', ' + c.role + ', ' + c.area) + '">' + avatar(c, 'sm') + '<span>' + h(T.fullName(c)) + '</span></a>' : '') + (L0 ? '<span class="rec" title="' + h(L0.address + ', ' + L0.area + ', ' + T.money(L0.price)) + '">' + I('home') + '<span>' + h(L0.address.split(',')[0]) + '</span></span>' : '') + '</div>';
+    }
     if (c) out.push('<a class="rec" href="#/clients/' + c.id + '">' + avatar(c, 'sm') + '<span>' + h(T.fullName(c)) + '<small>' + h(c.role) + ', ' + h(c.area) + '</small></span></a>');
     if (card.listingId) { var L = T.listing(card.listingId); out.push('<span class="rec">' + I('home') + '<span>' + h(L.address) + '<small>' + h(L.area) + ', ' + h(L.type) + ', ' + T.money(L.price) + '</small></span></span>'); }
     if (card.type === 'recovery') out.push('<span class="rec">' + I('people') + '<span>' + card.rows.length + ' named contacts<small>listed below, none hidden</small></span></span>');
@@ -525,14 +570,13 @@
     if (card.type === 'file' || card.type === 'clarify') return '';
     if (card.status === 'ready' || card.status === 'awaiting') {
       var shadow = s.settings.mode === 'shadow', coord = s.role === 'coordinator' && T.needsBroker(card);
-      var label = card.stale ? 'Refresh before approving' : coord ? (card.status === 'awaiting' ? 'Waiting for Alex' : 'Send to Alex for approval') : shadow ? 'Run in Shadow Mode' : 'Approve plan v' + card.version;
+      var label = card.stale ? 'Refresh first' : coord ? (card.status === 'awaiting' ? 'Waiting for Alex' : 'Send to Alex') : shadow ? 'Run in Shadow Mode' : 'Approve';
+      var bind = 'Approving binds plan v' + card.version + ' #' + card.fingerprint + ': ' + scopeText(card) + '. Editing anything creates a new version.';
       return '<footer class="bind"><div class="perf" aria-hidden="true"></div>' +
-        '<p class="bind-text">Approving binds <strong>plan v' + card.version + '</strong> <span class="fp">#' + h(card.fingerprint) + '</span>: ' + h(scopeText(card)) + '. Editing anything creates a new version.</p>' +
-        (coord ? '<p class="bind-none is-shadow">' + I('people') + 'You’re signed in as the coordinator: you can prepare this, but sends and memory changes need the broker.</p>' : card.status === 'awaiting' ? '<p class="bind-none is-shadow">' + I('people') + h(card.requestedBy || 'Your coordinator') + ' prepared this plan and asked for your approval.</p>' : '') +
-        (shadow ? '<p class="bind-none is-shadow">' + I('eye') + 'Shadow Mode is on: approving records what Tayoo would do. Nothing changes.</p>' : '<p class="bind-none">Nothing has happened yet.</p>') +
-        '<div class="bind-act"><button type="button" class="btn btn-quiet" data-act="reject">Reject</button><button type="button" class="btn btn-primary" data-act="approve"' + (scopeCount(card) && !card.stale && !(coord && card.status === 'awaiting') ? '' : ' disabled') + '>' + label + '</button></div></footer>';
+        '<p class="bind-none' + (shadow || coord || card.status === 'awaiting' ? ' is-shadow' : '') + '" title="' + h(bind) + '">' + I(shadow ? 'eye' : coord || card.status === 'awaiting' ? 'people' : 'hollow') + '<span>' + (coord ? 'Alex approves sends' : card.status === 'awaiting' ? h((card.requestedBy || 'Coordinator').split(' ')[0]) + ' asked you' : shadow ? 'Shadow: nothing changes' : 'Nothing has run') + '</span></p>' +
+        '<div class="bind-act"><button type="button" class="btn btn-quiet" data-act="reject">Reject</button><button type="button" class="btn btn-primary" data-act="approve"' + (scopeCount(card) && !card.stale && !(coord && card.status === 'awaiting') ? '' : ' disabled') + ' aria-label="' + h(label + ' plan v' + card.version) + '" aria-description="' + h(bind) + '">' + label + '</button></div></footer>';
     }
-    if (card.status === 'cancelled') return '<footer class="bind is-run"><p class="bind-none">' + (card.replaced ? 'Replaced by a refreshed plan below.' : 'Rejected or withdrawn. Nothing changed.') + '</p></footer>';
+    if (card.status === 'cancelled') return '<footer class="bind is-run"><p class="bind-none">' + I('ban') + '<span>' + (card.replaced ? 'Replaced below' : card.withdrawn ? 'Taken back to edit' : 'Rejected. Nothing changed') + '</span></p></footer>';
     if (!card.steps) return '';
     var counts = {};
     card.steps.forEach(function (x) { counts[x.status] = (counts[x.status] || 0) + 1; });
@@ -545,7 +589,7 @@
       if (counts.skipped) parts.push(counts.skipped + ' skipped');
       if (counts.excluded) parts.push(counts.excluded + ' excluded');
       if (counts.shadow) parts.push(counts.shadow + ' step' + (counts.shadow === 1 ? '' : 's') + ' would have run');
-      return '<footer class="bind is-run is-done"><p class="bind-sum">' + I(card.status === 'shadow' ? 'eye' : 'check') + '<span>' + h(parts.join(', ')) + '. The receipt below explains each step.</span></p>' + meta + '</footer>';
+      return '<footer class="bind is-run is-done"><p class="bind-sum" title="' + h(meta.replace(/<[^>]+>/g, '')) + '">' + I(card.status === 'shadow' ? 'eye' : 'check') + '<span>' + h(parts.join(' · ')) + '</span></p></footer>';
     }
     return '<footer class="bind is-run"><ol class="run">' + card.steps.map(function (x) {
       var st = ST[x.status] || ST.pending;
@@ -608,58 +652,59 @@
     var counts = {};
     r.steps.forEach(function (x) { counts[x.status] = (counts[x.status] || 0) + 1; });
     return '<article class="receipt' + (r.shadow ? ' is-shadow' : '') + '" aria-labelledby="rt-' + r.id + '">' +
-      '<header class="rc-h"><p class="rc-tag">' + (r.shadow ? 'Shadow receipt' : 'Receipt') + '</p><h3 id="rt-' + r.id + '">' + h(r.title) + '</h3>' +
-      '<p class="rc-meta">Plan v' + r.version + ' <span class="fp">#' + h(r.fingerprint) + '</span>, approved by ' + h(r.approver) + ' at ' + h(T.fmtTime(r.approvedAt.split('T')[1])) + '</p></header>' +
-      (compact ? '<details class="rc-more" data-ui="rcm-' + r.id + '"' + (T.ui.open['rcm-' + r.id] ? ' open' : '') + '><summary>' + r.steps.length + ' steps: ' + Object.keys(counts).map(function (k) { return counts[k] + ' ' + (ST[k] || ST.pending).label.toLowerCase(); }).join(', ') + '</summary>' : '') +
+      '<header class="rc-h"><p class="rc-tag" title="Plan v' + r.version + ' #' + h(r.fingerprint) + ', approved by ' + h(r.approver) + ' at ' + h(T.fmtTime(r.approvedAt.split('T')[1])) + '">' + I(r.shadow ? 'eye' : 'check') + (r.shadow ? 'Shadow receipt' : 'Receipt') + '</p><h3 id="rt-' + r.id + '">' + h(r.title) + '</h3></header>' +
+      '<p class="rc-counts">' + Object.keys(counts).map(function (k) { var st = ST[k] || ST.pending; return '<span class="rc-n st-' + st.cls + '" title="' + h(st.label) + '">' + I(st.icon) + counts[k] + ' ' + h(st.short || st.label.split(',')[0].toLowerCase()) + '</span>'; }).join('') + '</p>' +
+      '<details class="rc-more" data-ui="rcm-' + r.id + '"' + (T.ui.open['rcm-' + r.id] ? ' open' : '') + '><summary>' + I('down') + '<span>' + r.steps.length + ' steps</span></summary>' +
       '<ol class="rc-steps">' + r.steps.map(function (x) {
         var st = ST[x.status] || ST.pending;
         return '<li class="st-' + st.cls + '"><span class="st-ic">' + I(st.icon) + '</span><div><p class="st-l">' + h(x.label) + '</p>' + (x.detail ? '<p class="st-d">' + h(x.detail) + '</p>' : '') + '</div><span class="st-tag">' + h(st.label) + '</span></li>';
-      }).join('') + '</ol>' + (compact ? '</details>' : '') +
-      '<p class="rc-sum">' + h(r.summary) + '</p>' +
-      (compact ? '' : '<div class="rc-act">' + (c ? '<a class="btn btn-ghost btn-sm" href="#/clients/' + c.id + '">Open ' + h(c.first) + '</a>' : '') +
-        (r.type === 'recovery' ? '<a class="btn btn-ghost btn-sm" href="#/ledger">See the ledger</a>' : '') +
-        (r.undoable && !r.undone ? '<button type="button" class="btn btn-quiet btn-sm" data-act="undo" data-receipt="' + r.id + '">' + I('undo') + 'Undo local changes</button>' : '') +
-        (r.undone ? '<span class="muted">Undone at ' + h(T.fmtTime(r.undone.split('T')[1])) + '</span>' : '') +
-        '<a class="btn-link" href="#/activity">All receipts</a></div>') +
+      }).join('') + '</ol><p class="rc-sum">' + h(r.summary) + '</p></details>' +
+      (compact ? '' : '<div class="rc-act">' + (c ? '<a class="icon-btn" href="#/clients/' + c.id + '" aria-label="Open ' + h(c.first) + '" title="Open ' + h(c.first) + '">' + I('people') + '</a>' : '') +
+        (r.type === 'recovery' ? '<a class="icon-btn" href="#/ledger" aria-label="See the ledger" title="See the ledger">' + I('ledger') + '</a>' : '') +
+        (r.undoable && !r.undone ? '<button type="button" class="btn btn-quiet btn-sm" data-act="undo" data-receipt="' + r.id + '">' + I('undo') + 'Undo</button>' : '') +
+        (r.undone ? '<span class="muted">Undone ' + h(T.fmtTime(r.undone.split('T')[1])) + '</span>' : '') +
+        '<a class="icon-btn" href="#/activity" aria-label="All receipts" title="All receipts">' + I('activity') + '</a></div>') +
       '</article>';
   };
 
   /* ======================= views ======================= */
+  // A screen title, a back arrow on detail screens, and the explanation behind an ⓘ (never a paragraph on the surface)
   function vHead(title, sub, opts) {
     opts = opts || {};
     return '<header class="v-head">' +
-      '<a class="v-back" href="' + (opts.back || '#/') + '">' + I('back') + '<span>' + h(opts.backLabel || 'Conversation') + '</span></a>' +
-      (opts.close ? '<a class="v-close" href="#/" aria-label="Close and show Today">' + I('close') + '</a>' : '') +
-      '<h2 class="v-title" tabindex="-1">' + h(title) + '</h2>' + (sub ? '<p class="v-sub">' + sub + '</p>' : '') + '</header>';
+      (opts.back ? '<a class="v-back" href="' + opts.back + '" aria-label="Back to ' + h(opts.backLabel || 'Conversation') + '" title="' + h(opts.backLabel || 'Conversation') + '">' + I('back') + '</a>' : '') +
+      '<h2 class="v-title" tabindex="-1">' + h(title) + '</h2>' +
+      (sub ? '<details class="v-info"><summary aria-label="About this screen" title="About this screen">' + I('info') + '</summary><p class="v-sub">' + sub + '</p></details>' : '') +
+      (opts.tools || '') + '</header>';
   }
+  R.ib = function (act, icon, label, extra, cls) { return '<button type="button" class="icon-btn' + (cls ? ' ' + cls : '') + '" data-act="' + act + '"' + (extra || '') + ' aria-label="' + h(label) + '" title="' + h(label) + '">' + I(icon) + '</button>'; };
   R.vHead = vHead;
 
   R.today = function () {
-    var s = S(), now = T.nowISO(), today = T.today();
+    var s = S(), today = T.today();
     var needs = [];
+    function need(icon, title, tip, action, warn) { return '<li class="need' + (warn ? ' need-warn' : '') + '"' + (tip ? ' title="' + h(tip) + '"' : '') + '>' + I(icon) + '<p class="need-t">' + title + '</p>' + action + '</li>'; }
     T.pendingRecaps().forEach(function (a) {
-      var c = T.client(a.client), smp = T.SAMPLES.filter(function (x) { return x.id === a.client; })[0];
-      needs.push('<li class="need">' + I('talk') + '<div><p><strong>Recap ' + h(T.fullName(c)) + '’s showing</strong></p><p class="muted">Ended ' + (a.date === today ? 'at ' : T.fmtDate(a.date) + ' ') + T.fmtTime(a.end) + ', ' + h(a.place) + '. No recap yet.</p></div>' +
-        '<span class="need-act">' + (smp ? '<button type="button" class="btn btn-primary btn-sm" data-act="sample" data-sample="' + smp.id + '">Sample</button>' : '') + '<button type="button" class="btn btn-' + (smp ? 'ghost' : 'primary') + ' btn-sm" data-act="recap" data-ev="' + a.id + '">Recap</button></span></li>');
+      var c = T.client(a.client);
+      needs.push(need('talk', '<strong>' + h(c.first) + '</strong> <span class="need-v">' + T.fmtTime(a.end) + '</span>', 'Showing ended ' + T.fmtTime(a.end) + ' at ' + a.place + '. No recap yet.', '<button type="button" class="btn btn-primary btn-sm" data-act="recap" data-ev="' + a.id + '">Recap</button>'));
     });
     T.pendingCards().forEach(function (cd) {
-      needs.push('<li class="need">' + I('task') + '<div><p><strong>' + h(cd.title) + '</strong></p><p class="muted">' + h((STATE[cd.status] || {}).label) + (cd.type === 'clarify' ? '' : ', plan v' + cd.version) + (cd.stale ? ', needs a refresh' : '') + '</p></div><button type="button" class="btn btn-ghost btn-sm" data-act="goto-card" data-card="' + cd.id + '">Review</button></li>');
+      needs.push(need('task', h(cd.title), (STATE[cd.status] || {}).label, '<button type="button" class="btn btn-ghost btn-sm" data-act="goto-card" data-card="' + cd.id + '">Review</button>'));
     });
     var over = T.openTasks().filter(function (t) { return T.isOverdue(t) && !t.internal; });
-    if (over.length) needs.push('<li class="need need-warn">' + I('alert') + '<div><p><strong>' + over.length + ' overdue commitment' + (over.length === 1 ? '' : 's') + '</strong></p><p class="muted">' + over.map(function (t) { var c = T.client(t.client); return c ? h(c.first) : h(t.title); }).join(', ') + '. Ask Tayoo to recover them.</p></div><button type="button" class="btn btn-ghost btn-sm" data-act="sample" data-sample="recovery">Recover</button></li>');
+    if (over.length) needs.push(need('alert', 'Overdue <span class="need-v">' + over.length + '</span>', over.map(function (t) { var c = T.client(t.client); return c ? c.first : t.title; }).join(', '), '<button type="button" class="btn btn-ghost btn-sm" data-act="suggest" data-text="' + h(T.SAMPLES[1].text) + '">Recover</button>', true));
     s.transactions.forEach(function (tx) {
       var n = T.files.issueCount(tx);
-      if (n) needs.push('<li class="need">' + I('file') + '<div><p><strong>' + h(tx.title) + ': ' + n + ' item' + (n === 1 ? '' : 's') + ' to check</strong></p><p class="muted">' + h(T.files.check(tx).issues[0].label) + '</p></div><a class="btn btn-ghost btn-sm" href="#/files/' + tx.id + '">Check</a></li>');
+      if (n) needs.push(need('file', h(tx.title) + ' <span class="need-v need-n" aria-label="' + n + ' to check">' + n + '</span>', T.files.check(tx).issues[0].label, '<a class="btn btn-ghost btn-sm" href="#/files/' + tx.id + '">Check</a>'));
     });
-    var unread = s.inbox.filter(function (n) { return !n.read; }).slice(0, 3);
-    if (unread.length) needs.push('<li class="need">' + I('mail') + '<div><p><strong>' + T.unread() + ' unread in your inbox</strong></p><p class="muted">' + unread.map(function (n) { return h(n.title); }).join('; ') + '</p></div><a class="btn btn-ghost btn-sm" href="#/inbox">Open</a></li>');
+    if (T.unread()) needs.push(need('mail', 'Unread <span class="need-v">' + T.unread() + '</span>', s.inbox.filter(function (n) { return !n.read; }).slice(0, 3).map(function (n) { return n.title; }).join('; '), '<a class="btn btn-ghost btn-sm" href="#/inbox">Open</a>'));
     var tasks = T.openTasks().filter(function (t) { return t.due <= T.addDays(today, 4) + 'T23:59'; });
     var cv = T.coverage();
-    return vHead('Today', h(T.fmtDate(today, { long: true })) + ', ' + h(T.clockStr()) + ' in Québec City', { backLabel: 'Conversation' }) +
-      '<section class="blk"><h3 class="blk-h">Needs you</h3>' + (needs.length ? '<ul class="needs">' + needs.join('') + '</ul>' : '<p class="empty">' + I('check') + 'Nothing is waiting on you right now.</p>') + '</section>' +
-      '<section class="blk"><h3 class="blk-h">Agenda <a class="blk-link" href="#/calendar">Calendar</a></h3>' + R.agendaDays(today, 4, true) + '</section>' +
-      '<section class="blk"><h3 class="blk-h">Commitments, next 4 days <button type="button" class="blk-link" data-act="new-task">New task</button></h3>' + (tasks.length ? '<ul class="tasks">' + tasks.map(R.taskRow).join('') + '</ul>' : '<p class="empty">' + I('check') + 'Nothing due in the next four days.</p>') + '</section>' +
-      '<section class="blk"><h3 class="blk-h">Follow-up coverage</h3><a class="cover" href="#/ledger"><span class="meter" role="img" aria-label="' + cv.pct + ' percent"><span style="width:' + cv.pct + '%"></span></span><span class="cover-t"><strong>' + cv.pct + '%</strong> ' + cv.covered + ' of ' + cv.eligible + ' eligible contacts have a timely next action</span></a></section>';
+    return vHead('Today', h(T.fmtDate(today, { long: true })) + ', ' + h(T.clockStr()) + ' in Québec City. What needs you, the next four days of appointments and commitments, and how many contacts have a timely next action.') +
+      '<section class="blk"><h3 class="blk-h">Needs you</h3>' + (needs.length ? '<ul class="needs">' + needs.join('') + '</ul>' : '<p class="empty">' + I('check') + 'All clear.</p>') + '</section>' +
+      '<section class="blk"><h3 class="blk-h">Agenda <a class="blk-link" href="#/calendar" aria-label="Open the calendar" title="Calendar">' + I('calendar') + '</a></h3>' + R.agendaDays(today, 4, true) + '</section>' +
+      '<section class="blk"><h3 class="blk-h">Next 4 days ' + R.ib('new-task', 'plus', 'New task', '', 'blk-link') + '</h3>' + (tasks.length ? '<ul class="tasks">' + tasks.map(R.taskRow).join('') + '</ul>' : '<p class="empty">' + I('check') + 'Nothing due.</p>') + '</section>' +
+      '<section class="blk"><h3 class="blk-h">Coverage</h3><a class="cover" href="#/ledger" title="' + cv.covered + ' of ' + cv.eligible + ' eligible contacts have a timely next action"><span class="meter" role="img" aria-label="' + cv.pct + ' percent"><span style="width:' + cv.pct + '%"></span></span><span class="cover-t"><strong>' + cv.pct + '%</strong> ' + cv.covered + '/' + cv.eligible + '</span></a></section>';
   };
   // Agenda list used by Today and the Calendar: any day range, generic actions per event
   R.agendaDays = function (from, days, compact) {
@@ -667,15 +712,16 @@
     for (var i = 0; i < days; i++) {
       var date = T.addDays(from, i);
       var items = s.appointments.filter(function (a) { return a.date === date && (!compact || a.status !== 'cancelled'); });
-      if (!items.length) { if (!compact) out += '<h4 class="day-h">' + h(T.relDay(date) === T.fmtDate(date) ? T.fmtDate(date, { long: true }) : T.relDay(date) + ', ' + T.fmtDate(date, { noDay: true })) + '</h4><p class="muted ag-empty">Nothing scheduled.</p>'; continue; }
-      out += '<h4 class="day-h">' + h(T.relDay(date) === T.fmtDate(date) ? T.fmtDate(date, { long: true }) : T.relDay(date) + ', ' + T.fmtDate(date, { noDay: true })) + '</h4><ol class="agenda">' + items.map(function (a, idx) {
+      if (!items.length) { if (!compact) out += '<h4 class="day-h">' + h(T.relDay(date) === T.fmtDate(date) ? T.fmtDate(date) : T.relDay(date)) + '</h4><p class="muted ag-empty">—</p>'; continue; }
+      out += '<h4 class="day-h">' + h(T.relDay(date) === T.fmtDate(date) ? T.fmtDate(date) : T.relDay(date)) + '</h4><ol class="agenda">' + items.map(function (a, idx) {
         var past = (a.date + 'T' + a.end) <= now, c = a.client && T.client(a.client), cancelled = a.status === 'cancelled';
         var conf = cancelled ? [] : T.cal.conflicts(a, a.id);
-        var tag = cancelled ? '<span class="tag tag-warn">Cancelled' + (a.cancelledBy === 'client' ? ' by client' : '') + '</span>' : past ? (a.kind === 'showing' ? (a.recapped ? '<span class="tag tag-ok">' + I('check') + 'Recapped</span>' : '<button type="button" class="btn-link" data-act="recap" data-ev="' + a.id + '">' + I('talk') + 'Recap</button>') : '<span class="tag">Done</span>') :
-          (c && !c.deleted ? '<button type="button" class="btn-link" data-act="brief" data-client="' + c.id + '">' + I('speaker') + 'Brief me</button>' : '');
-        var ctl = compact ? '' : '<span class="ag-ctl">' + (!cancelled ? '<button type="button" class="btn-link" data-act="edit-event" data-ev="' + a.id + '">Edit</button>' : '') + (!cancelled && !past ? '<button type="button" class="btn-link" data-act="cancel-event" data-ev="' + a.id + '">Cancel</button>' : '') + '<button type="button" class="btn-link danger" data-act="delete-event" data-ev="' + a.id + '">Delete</button></span>';
-        return '<li class="ag' + (past ? ' is-past' : '') + (cancelled ? ' is-cancelled' : '') + '"><time>' + T.fmtTime(a.start) + '</time><div><p><strong>' + h(a.title) + '</strong>' + (c ? ' · <a href="#/clients/' + c.id + '">' + h(T.fullName(c)) + '</a>' : a.who ? ' · ' + h(a.who) : '') + '</p><p class="muted">' + h(a.place || '') + (a.area && (a.place || '').indexOf(a.area) < 0 ? ' (' + h(a.area) + ')' : '') + (a.fromCard ? ', booked by Tayoo' : '') + ', until ' + T.fmtTime(a.end) + '</p>' +
-          conf.map(function (x) { return '<p class="ag-warn">' + I('alert') + h(T.cal.describe(x)) + '</p>'; }).join('') + ctl + '</div>' + tag + '</li>';
+        var tag = cancelled ? '<span class="tag tag-warn" title="Cancelled' + (a.cancelledBy === 'client' ? ' by the client' : '') + '">' + I('ban') + '</span>' : past ? (a.kind === 'showing' ? (a.recapped ? '<span class="tag tag-ok" title="Recapped" aria-label="Recapped">' + I('check') + '</span>' : '<button type="button" class="btn-link" data-act="recap" data-ev="' + a.id + '">' + I('talk') + 'Recap</button>') : '<span class="tag" title="Done" aria-label="Done">' + I('check') + '</span>') :
+          (c && !c.deleted ? R.ib('brief', 'speaker', 'Brief me on ' + c.first, ' data-client="' + c.id + '"') : '');
+        var ctl = compact ? '' : '<details class="ag-more"><summary aria-label="Actions for ' + h(a.title) + '" title="Actions">' + I('more') + '</summary><span class="ag-ctl">' + (!cancelled ? R.ib('edit-event', 'pen', 'Edit ' + a.title, ' data-ev="' + a.id + '"') : '') + (!cancelled && !past ? R.ib('cancel-event', 'ban', 'Cancel ' + a.title, ' data-ev="' + a.id + '"') : '') + R.ib('delete-event', 'trash', 'Delete ' + a.title, ' data-ev="' + a.id + '"', 'danger') + '</span></details>';
+        var tip = (a.place || '') + (a.area && (a.place || '').indexOf(a.area) < 0 ? ' (' + a.area + ')' : '') + ', until ' + T.fmtTime(a.end) + (a.fromCard ? ', booked by Tayoo' : '');
+        return '<li class="ag' + (past ? ' is-past' : '') + (cancelled ? ' is-cancelled' : '') + '" title="' + h(tip) + '"><time>' + T.fmtTime(a.start) + '</time><div><p><strong>' + h(a.title.replace(/:.*$/, '')) + '</strong>' + (c ? ' · <a href="#/clients/' + c.id + '">' + h(c.first) + '</a>' : '') + '</p>' +
+          conf.map(function (x) { return '<p class="ag-warn" title="' + h(T.cal.describe(x)) + '">' + I('alert') + (x.type === 'overlap' ? 'Overlap' : 'Tight travel') + '</p>'; }).join('') + '</div><span class="ag-r">' + tag + ctl + '</span></li>';
       }).join('') + '</ol>';
     }
     return out || '<p class="empty">' + I('calendar') + 'Nothing scheduled.</p>';
@@ -684,8 +730,8 @@
     var c = T.client(t.client), od = T.isOverdue(t);
     return '<li class="task' + (od ? ' is-over' : '') + (t.status === 'done' ? ' is-done' : '') + '">' +
       '<button type="button" class="tick" data-act="' + (t.status === 'done' ? 'task-reopen' : 'task-done') + '" data-task="' + t.id + '" aria-label="' + (t.status === 'done' ? 'Reopen: ' : 'Mark done: ') + h(t.title) + '">' + I('check') + '</button>' +
-      '<div><p>' + h(t.title) + '</p><p class="muted">' + (od ? '<span class="od">Overdue</span> ' : '') + (t.status === 'done' ? 'Done ' + h(T.fmtDT(t.doneAt)) : 'Due ' + h(T.fmtDT(t.due))) + (c ? ', <a href="#/clients/' + c.id + '">' + h(T.fullName(c)) + '</a>' : '') + (t.owner !== T.BROKER.name ? ', ' + h(t.owner) : '') + (t.internal ? ', internal' : '') + (t.alts ? ', ' + t.alts.length + ' listings attached' : '') + '</p>' +
-      '<p class="task-ctl"><button type="button" class="btn-link" data-act="edit-task" data-task="' + t.id + '">Edit</button><button type="button" class="btn-link danger" data-act="delete-task" data-task="' + t.id + '">Delete</button></p></div></li>';
+      '<div title="' + h((c ? T.fullName(c) : 'No client') + (t.owner !== T.BROKER.name ? ', ' + t.owner : '') + (t.internal ? ', internal' : '') + (t.alts ? ', ' + t.alts.length + ' listings attached' : '')) + '"><p>' + h(t.title) + '</p><p class="muted">' + (od ? '<span class="od">' + I('alert') + '</span> ' : '') + h(T.fmtDT(t.status === 'done' ? t.doneAt : t.due)) + (t.alts ? ' · ' + I('home') + t.alts.length : '') + '</p></div>' +
+      '<p class="task-ctl">' + R.ib('edit-task', 'pen', 'Edit task: ' + t.title, ' data-task="' + t.id + '"') + R.ib('delete-task', 'trash', 'Delete task: ' + t.title, ' data-task="' + t.id + '"', 'danger') + '</p></li>';
   };
   var taskRow = R.taskRow;
 
@@ -700,16 +746,18 @@
       if (f === 'leads') return c.stage === 'Lead';
       return true;
     }).sort(function (a, b) { return a.last.localeCompare(b.last, 'fr'); });
-    var filters = [['all', 'All'], ['buyers', 'Buyers'], ['sellers', 'Sellers'], ['leads', 'Leads'], ['gap', 'No next action'], ['consent', 'Consent issues']];
-    return vHead('Clients', s.clients.length + ' contacts in this workspace' + (s.clients.some(function (c) { return c.createdBy; }) ? ', including ones you added' : '') + '. Most were imported from your existing CRM (CSV, Oct 5); Tayoo works alongside it.') +
-      '<div class="cl-tools"><div class="cl-row"><label class="search">' + I('search') + '<span class="sr-only">Search clients</span><input type="search" id="client-q" placeholder="Search by name, area, stage or email" value="' + h(T.ui.clientQ || '') + '" data-filter="q"></label><button type="button" class="btn btn-primary btn-sm" data-act="new-client">' + I('plus') + 'New client</button></div>' +
-      '<div class="fchips" role="group" aria-label="Filter">' + filters.map(function (x) { return '<button type="button" data-act="cfilter" data-f="' + x[0] + '" aria-pressed="' + (f === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</div></div>' +
-      '<p class="muted cl-count" role="status">' + list.length + ' shown</p>' +
+    var filters = [['all', 'All'], ['buyers', 'Buyers'], ['sellers', 'Sellers'], ['leads', 'Leads']], extra = [['gap', 'alert', 'No next action'], ['consent', 'ban', 'Can’t email']];
+    return vHead('Clients', s.clients.length + ' contacts. Most were imported from your existing CRM (CSV, Oct 5); Tayoo works alongside it.', { tools: R.ib('new-client', 'plus', 'New client', '', 'v-tool') }) +
+      '<div class="cl-tools"><label class="search">' + I('search') + '<input type="search" id="client-q" placeholder="Search" aria-label="Search clients" value="' + h(T.ui.clientQ || '') + '" data-filter="q"></label>' +
+      '<div class="fchips" role="group" aria-label="Filter">' + filters.map(function (x) { return '<button type="button" data-act="cfilter" data-f="' + x[0] + '" aria-pressed="' + (f === x[0]) + '">' + x[1] + '</button>'; }).join('') +
+        extra.map(function (x) { return '<button type="button" class="fchip-ic" data-act="cfilter" data-f="' + x[0] + '" aria-pressed="' + (f === x[0]) + '" aria-label="' + x[2] + '" title="' + x[2] + '">' + I(x[1]) + '</button>'; }).join('') + '</div></div>' +
+      '<p class="sr-only cl-count" role="status">' + list.length + ' shown</p>' +
       '<ul class="clist">' + list.map(function (c) {
-        var cv = T.coverageOf(c), oo = T.consentOf(c) === 'opted-out';
-        return '<li><a class="cl" href="#/clients/' + c.id + '">' + avatar(c) + '<span class="cl-main"><span class="cl-name">' + h(T.fullName(c)) + '</span><span class="cl-sub">' + h(c.role) + ', ' + h(c.area) + ', ' + c.lang + ' · ' + h(c.stage) + '</span>' +
-          '<span class="cl-next' + (cv.ok ? '' : (oo || c.stage === 'Closed') ? ' is-mute' : ' is-gap') + '">' + (cv.ok ? h(cv.why) : oo ? 'Opted out of commercial email' : c.stage === 'Closed' ? 'File closed' : 'No timely next action') + '</span></span>' + consentChip(c) + '</a></li>';
-      }).join('') + '</ul>' + (list.length ? '' : '<p class="empty">No client matches. Try a first name, a neighbourhood, or add a new client.</p>');
+        var cv = T.coverageOf(c), oo = T.consentOf(c) === 'opted-out', gap = !cv.ok && !oo && c.stage !== 'Closed';
+        var why = cv.ok ? cv.why : oo ? 'Opted out of commercial email' : c.stage === 'Closed' ? 'File closed' : 'No timely next action';
+        return '<li><a class="cl" href="#/clients/' + c.id + '" title="' + h(c.role + ', ' + c.area + ', ' + c.lang + ' · ' + c.stage + '. ' + why) + '">' + avatar(c) + '<span class="cl-main"><span class="cl-name">' + h(T.fullName(c)) + '</span><span class="cl-sub">' + h(c.stage) + '</span></span>' +
+          (gap ? '<span class="cl-gap" aria-label="No timely next action">' + I('alert') + '</span>' : '') + consentChip(c, true) + '</a></li>';
+      }).join('') + '</ul>' + (list.length ? '' : '<p class="empty">No match.</p>');
   };
 
   R.client = function (id) {
@@ -719,24 +767,25 @@
     var appts = s.appointments.filter(function (a) { return a.client === id && a.date >= T.today(); });
     var ce = c.consent.email, txs = T.files.forClient(id), subj = (s.subjects || []).filter(function (x) { return x.client === id; });
     var sig = T.signalOf(c), cv = T.coverageOf(c);
-    return vHead(T.fullName(c), h(c.role) + ', ' + h(c.area) + ', ' + h(c.stage) + '. Writes in ' + (c.lang === 'FR' ? 'French' : 'English') + '.', { back: '#/clients', backLabel: 'Clients', close: true }) +
-      '<div class="cd-consent"><p>' + consentChip(c) + '<span>Email: ' + h(ce.source) + ', ' + h(T.fmtDate(ce.date, { noDay: true })) + (ce.expires ? '. ' + (T.consentOf(c) === 'expired' ? 'Expired ' : 'Valid until ') + h(T.fmtDate(ce.expires, { noDay: true })) + ', ' + ce.expires.slice(0, 4) : '') + '</span></p><p class="muted">' + h(c.email || 'No email') + (c.phone ? ' · ' + h(c.phone) : '') + '. SMS: not configured, so SMS drafts are blocked.</p></div>' +
-      '<div class="cd-act"><button type="button" class="btn btn-ghost btn-sm" data-act="brief" data-client="' + id + '">' + I('speaker') + 'Brief me</button><button type="button" class="btn btn-ghost btn-sm" data-act="prefill" data-text="' + h(c.first + ' ') + '">' + I('talk') + 'Tell Tayoo</button><button type="button" class="btn btn-ghost btn-sm" data-act="memory-form" data-client="' + id + '">' + I('pen') + 'Propose a memory change</button><button type="button" class="btn btn-ghost btn-sm" data-act="edit-client" data-client="' + id + '">Edit contact &amp; consent</button><button type="button" class="btn btn-quiet btn-sm danger" data-act="delete-client" data-client="' + id + '">' + I('trash') + 'Delete</button></div>' +
-      (!cv.ok && sig ? '<p class="cd-sig">' + I('alert') + '<span><strong>No timely next action.</strong> ' + h(sig.reason) + '</span><button type="button" class="btn-link" data-act="prefill" data-text="' + h('Find the clients I haven’t followed up with') + '">Recover</button></p>' : '') +
-      '<section class="blk"><h3 class="blk-h">What Tayoo remembers</h3>' +
+    var det = function (k, title, inner) { return '<details class="blk blk-d" data-ui="' + k + '"' + (T.ui.open[k] ? ' open' : '') + '><summary class="blk-h">' + title + I('down') + '</summary>' + inner + '</details>'; };
+    return vHead(T.fullName(c), h(c.role) + ', ' + h(c.area) + ', ' + h(c.stage) + '. Writes in ' + (c.lang === 'FR' ? 'French' : 'English') + '. ' + h(c.email || 'No email') + (c.phone ? ' · ' + h(c.phone) : '') + '. Email consent: ' + h(ce.source) + ', ' + h(T.fmtDate(ce.date, { noDay: true })) + (ce.expires ? (T.consentOf(c) === 'expired' ? ', expired ' : ', valid until ') + h(T.fmtDate(ce.expires, { noDay: true })) : '') + '. SMS isn’t configured.', { back: '#/clients', backLabel: 'Clients' }) +
+      '<div class="cd-consent"><p>' + consentChip(c) + '<span class="cd-meta">' + h(c.role) + ' · ' + h(c.area) + ' · ' + c.lang + '</span></p></div>' +
+      '<div class="cd-act">' + R.ib('brief', 'speaker', 'Brief me', ' data-client="' + id + '"') + R.ib('prefill', 'talk', 'Tell Tayoo about ' + c.first, ' data-text="' + h(c.first + ' ') + '"') + R.ib('memory-form', 'pen', 'Propose a memory change', ' data-client="' + id + '"') + R.ib('edit-client', 'settings', 'Edit contact and consent', ' data-client="' + id + '"') + R.ib('delete-client', 'trash', 'Delete ' + c.first, ' data-client="' + id + '"', 'danger') + '</div>' +
+      (!cv.ok && sig ? '<p class="cd-sig" title="' + h(sig.reason) + '">' + I('alert') + '<span>No next action</span><button type="button" class="btn-link" data-act="suggest" data-text="' + h('Find the clients I haven’t followed up with') + '">Recover</button></p>' : '') +
+      '<section class="blk"><h3 class="blk-h">Memory</h3>' +
       (c.memory.length ? '<dl class="mem">' + c.memory.map(function (m) {
-        return '<div class="mem-row"><dt>' + h(m.label) + '</dt><dd><span class="mem-v' + (m.prov === 'unknown' ? ' is-unknown' : '') + (m.quote ? ' is-quote' : '') + '">' + h(m.display) + '</span><span class="mem-p">' + prov(m.prov, m.source, m.date) + '</span></dd></div>';
-      }).join('') + '</dl>' : '<p class="empty">Nothing recorded yet. Tell Tayoo something about ' + h(c.first) + ' or propose a memory change.</p>') +
-      '<p class="legend">' + ['verified', 'agent', 'inferred', 'conflicting', 'unknown'].map(function (k) { return prov(k); }).join('') + '</p></section>' +
-      '<section class="blk"><h3 class="blk-h">Notes</h3><form class="note-form" data-form="note" data-client="' + id + '"><label class="sr-only" for="note-' + id + '">New note about ' + h(c.first) + '</label><textarea id="note-' + id + '" rows="2" placeholder="Add a note. It’s saved as is; use “Plan this” to turn it into an Action Card."></textarea><p class="note-act"><button type="submit" class="btn btn-ghost btn-sm">Save note</button></p></form>' +
-      ((c.notes || []).length ? '<ul class="notes">' + c.notes.map(function (n) { return '<li><p class="said-text">' + h(n.text) + '</p><p class="muted">' + h(T.fmtDT(n.at)) + ', ' + h(n.by) + ' <button type="button" class="btn-link" data-act="plan-note" data-client="' + id + '" data-note="' + n.id + '">Plan this</button><button type="button" class="btn-link danger" data-act="delete-note" data-client="' + id + '" data-note="' + n.id + '">Delete</button></p></li>'; }).join('') + '</ul>' : '') + '</section>' +
-      '<section class="blk"><h3 class="blk-h">Next actions <button type="button" class="blk-link" data-act="new-task" data-client="' + id + '">New task</button> <button type="button" class="blk-link" data-act="new-event" data-client="' + id + '">New event</button></h3>' + ((tasks.length || appts.length) ? '<ul class="tasks">' + appts.map(function (a) { return '<li class="task' + (a.status === 'cancelled' ? ' is-done' : '') + '"><span class="tick is-cal" aria-hidden="true">' + I('calendar') + '</span><div><p>' + h(a.title) + (a.status === 'cancelled' ? ' (cancelled)' : '') + '</p><p class="muted">' + h(T.fmtDT(a.date + 'T' + a.start)) + ', ' + h(a.place) + '</p><p class="task-ctl"><button type="button" class="btn-link" data-act="edit-event" data-ev="' + a.id + '">Edit</button></p></div></li>'; }).join('') + tasks.map(taskRow).join('') + '</ul>' : '<p class="empty">No next action. ' + (T.consentOf(c) === 'opted-out' ? 'Opted out, so no commercial follow-up.' : 'This contact counts against your follow-up coverage.') + '</p>') + '</section>' +
-      ((c.saved || []).length ? '<section class="blk"><h3 class="blk-h">Saved listings</h3><ul class="res-list">' + c.saved.map(function (lid) { var L = T.listing(lid); return '<li><a href="#/listings/' + lid + '"><span class="res-a">' + h(L.address) + '</span><span class="res-s">' + h(L.area) + ', ' + T.money(L.price) + ' · ' + h(L.id) + '</span></a><button type="button" class="btn-link" data-act="unsave" data-client="' + id + '" data-listing="' + lid + '">Remove</button></li>'; }).join('') + '</ul><p><button type="button" class="btn btn-ghost btn-sm" data-act="prefill" data-text="' + h('Send ' + c.first + ' the listings saved to the record') + '">' + I('mail') + 'Send these to ' + h(c.first) + '</button></p></section>' : '') +
-      (txs.length || subj.length ? '<section class="blk"><h3 class="blk-h">Files and evaluations</h3><ul class="res-list">' + txs.map(function (tx) { var n = T.files.issueCount(tx); return '<li><a href="#/files/' + tx.id + '"><span class="res-a">' + h(tx.title) + '</span><span class="res-s">' + h(tx.property) + ', ' + h(tx.stage) + (n ? ', ' + n + ' to check' : '') + '</span></a></li>'; }).join('') + subj.map(function (x) { return '<li><a href="#/cma/' + x.id + '"><span class="res-a">CMA: ' + h(x.address) + '</span><span class="res-s">' + h(x.area) + ', ' + h(x.type.toLowerCase()) + '</span></a></li>'; }).join('') + '</ul></section>' : '') +
-      (c.history.length ? '<section class="blk"><h3 class="blk-h">Changes</h3><ol class="hist">' + c.history.map(function (x) {
+        var pv = T.PROV[m.prov] || T.PROV.unknown;
+        return '<div class="mem-row" title="' + h(pv.short + (m.source ? ': ' + m.source : '') + (m.date ? ', ' + T.fmtDate(m.date, { noDay: true }) : '')) + '"><dt>' + h(m.label) + '</dt><dd><span class="mem-v' + (m.prov === 'unknown' ? ' is-unknown' : '') + (m.quote ? ' is-quote' : '') + '">' + h(m.display) + '</span><span class="prov prov-' + m.prov + ' is-icon" role="img" aria-label="' + h(pv.short) + '">' + I(pv.icon) + '</span></dd></div>';
+      }).join('') + '</dl>' : '<p class="empty">Nothing yet.</p>') + '</section>' +
+      '<section class="blk"><h3 class="blk-h">Next ' + R.ib('new-task', 'plus', 'New task', ' data-client="' + id + '"', 'blk-link') + R.ib('new-event', 'calendar', 'New event', ' data-client="' + id + '"', 'blk-link') + '</h3>' + ((tasks.length || appts.length) ? '<ul class="tasks">' + appts.map(function (a) { return '<li class="task' + (a.status === 'cancelled' ? ' is-done' : '') + '"><span class="tick is-cal" aria-hidden="true">' + I('calendar') + '</span><div title="' + h(a.place || '') + '"><p>' + h(a.title.replace(/:.*$/, '')) + (a.status === 'cancelled' ? ' (cancelled)' : '') + '</p><p class="muted">' + h(T.fmtDT(a.date + 'T' + a.start)) + '</p></div><p class="task-ctl">' + R.ib('edit-event', 'pen', 'Edit ' + a.title, ' data-ev="' + a.id + '"') + '</p></li>'; }).join('') + tasks.map(taskRow).join('') + '</ul>' : '<p class="empty" title="' + (T.consentOf(c) === 'opted-out' ? 'Opted out, so no commercial follow-up.' : 'This contact counts against your follow-up coverage.') + '">' + I('alert') + 'No next action</p>') + '</section>' +
+      det('nt-' + id, 'Notes <span class="n">' + (c.notes || []).length + '</span>', '<form class="note-form" data-form="note" data-client="' + id + '"><label class="sr-only" for="note-' + id + '">New note about ' + h(c.first) + '</label><textarea id="note-' + id + '" rows="2" placeholder="New note"></textarea><p class="note-act"><button type="submit" class="btn btn-ghost btn-sm">Save note</button></p></form>' +
+        ((c.notes || []).length ? '<ul class="notes">' + c.notes.map(function (n) { return '<li><p class="said-text">' + h(n.text) + '</p><p class="muted">' + h(T.fmtDT(n.at)) + ' <button type="button" class="btn-link" data-act="plan-note" data-client="' + id + '" data-note="' + n.id + '">Plan this</button>' + R.ib('delete-note', 'trash', 'Delete note', ' data-client="' + id + '" data-note="' + n.id + '"', 'danger') + '</p></li>'; }).join('') + '</ul>' : '')) +
+      ((c.saved || []).length ? det('sv-' + id, 'Saved listings <span class="n">' + c.saved.length + '</span>', '<ul class="res-list">' + c.saved.map(function (lid) { var L = T.listing(lid); return '<li><a href="#/listings/' + lid + '"><span class="res-a">' + h(L.address) + '</span><span class="res-s">' + T.money(L.price) + '</span></a>' + R.ib('unsave', 'close', 'Remove ' + L.address, ' data-client="' + id + '" data-listing="' + lid + '"') + '</li>'; }).join('') + '</ul><p><button type="button" class="btn btn-ghost btn-sm" data-act="prefill" data-text="' + h('Send ' + c.first + ' the listings saved to the record') + '">' + I('mail') + 'Send to ' + h(c.first) + '</button></p>') : '') +
+      (txs.length || subj.length ? det('fx-' + id, 'Files <span class="n">' + (txs.length + subj.length) + '</span>', '<ul class="res-list">' + txs.map(function (tx) { var n = T.files.issueCount(tx); return '<li><a href="#/files/' + tx.id + '"><span class="res-a">' + h(tx.title) + '</span><span class="res-s">' + h(tx.stage) + (n ? ' · ' + n + ' to check' : '') + '</span></a></li>'; }).join('') + subj.map(function (x) { return '<li><a href="#/cma/' + x.id + '"><span class="res-a">CMA: ' + h(x.address) + '</span><span class="res-s">' + h(x.area) + '</span></a></li>'; }).join('') + '</ul>') : '') +
+      (c.history.length ? det('hi-' + id, 'Changes <span class="n">' + c.history.length + '</span>', '<ol class="hist">' + c.history.map(function (x) {
         return '<li><p><strong>' + h(x.field) + '</strong>: <s>' + h(x.from) + '</s> → ' + h(x.to) + '</p><p class="muted">' + h(T.fmtDate(x.date, { noDay: true })) + (x.at ? ' ' + h(T.fmtTime(x.at.split('T')[1])) : '') + ', ' + h(x.by) + '. ' + h(x.source) + '</p></li>';
-      }).join('') + '</ol></section>' : '') +
-      (c.timeline.length ? '<section class="blk"><h3 class="blk-h">Timeline</h3><ol class="tl">' + c.timeline.map(function (x) { return '<li><time>' + h(T.fmtDate(x.date, { noDay: true })) + '</time><span>' + h(x.text) + '</span></li>'; }).join('') + '</ol></section>' : '');
+      }).join('') + '</ol>') : '') +
+      (c.timeline.length ? det('tl-' + id, 'Timeline <span class="n">' + c.timeline.length + '</span>', '<ol class="tl">' + c.timeline.map(function (x) { return '<li><time>' + h(T.fmtDate(x.date, { noDay: true })) + '</time><span>' + h(x.text) + '</span></li>'; }).join('') + '</ol>') : '');
   };
 
   R.ledger = function () {
@@ -756,7 +805,7 @@
       var act = o.status === 'awaiting' ? '<button type="button" class="btn btn-quiet btn-sm" data-act="mark-reply" data-o="' + o.id + '">Mark reply received</button>' : (!o.meeting ? '<button type="button" class="btn btn-quiet btn-sm" data-act="mark-meeting" data-o="' + o.id + '">Mark meeting booked</button>' : '');
       return '<li class="chain"><p class="ch-name"><a href="#/clients/' + o.client + '">' + h(o.name) + '</a></p><p class="ch-track">' + n1 + n2 + n3 + '</p>' + (act ? '<p class="ch-act">' + act + '</p>' : '') + '</li>';
     }).join('');
-    return vHead('Revenue Recovery Ledger', 'Since ' + h(T.fmtDate(L.activeSince, { long: true })) + ', when approvals went live. Each line shows its basis and denominator.') +
+    return vHead('Recovery ledger', 'Since ' + h(T.fmtDate(L.activeSince, { long: true })) + ', when approvals went live. Each line shows its basis and denominator.') +
       '<ol class="ledger">' +
       line('Time returned', 'Estimate', '≈ ' + hrs + ' h', l.recaps + ' recaps, ' + l.outreachApproved + ' follow-ups', '<p>' + l.recaps + ' recaps × ' + (b.recapManual - b.recapReview) + ' min + ' + l.outreachApproved + ' follow-ups × ' + (b.followManual - b.followReview) + ' min = ' + l.minutes + ' min.</p><p class="muted">From your own manual baseline (' + h(b.window) + '): ' + b.recapManual + ' min per recap by hand vs ' + b.recapReview + ' min reviewing a card; ' + b.followManual + ' min per personal follow-up vs ' + b.followReview + ' min. Not a measurement of each action.</p>', 'time') +
       line('Commitments kept on time', 'Observed', l.commitments.onTime + ' of ' + l.commitments.due, l.commitments.overdue + ' overdue now', '<p>Tasks due since Oct 12 and closed by their due time. Overdue right now:</p><ul>' + overdueList.map(function (t) { return '<li>' + h(t.title) + ' (due ' + h(T.fmtDate(t.due, { noDay: true })) + ')</li>'; }).join('') + '</ul>', 'commit') +
@@ -764,51 +813,51 @@
       line('Recovered conversations', 'Observed or confirmed', Object.keys(repliesUnique).length + '', 'from ' + s.outreach.length + ' recovery follow-ups', '<p>A conversation counts only after a reply is observed in the mailbox or you confirm it. A drafted or sent email is never counted as a result. Each contact counts once.</p>', 'conv') +
       line('Appointments from recovery', 'Confirmed by you', Object.keys(meetingsUnique).length + '', 'from ' + Object.keys(repliesUnique).length + ' conversations', '<p>A meeting linked to several messages counts once. Tayoo doesn’t claim it caused a sale because it touched a contact, and commission-weighted pipeline is not shown as revenue.</p>', 'meet') +
       '</ol>' +
-      '<section class="blk"><h3 class="blk-h">Recovery chain</h3><p class="muted">Request, approved action, observed reply, appointment. This demo has no mailbox, so you confirm replies yourself.</p><ul class="chains">' + chainRows + '</ul></section>' +
-      '<section class="blk"><h3 class="blk-h">Shadow Mode, ' + h(L.shadow.window) + '</h3><p>Tayoo watched for two weeks and proposed <strong>' + L.shadow.proposals + '</strong> actions without changing anything. You did <strong>' + L.shadow.didYourself + '</strong> of them yourself; <strong>' + L.shadow.missed + '</strong> would have been missed. ' + L.shadow.stillOpen.length + ' were still open on Oct 23: ' + L.shadow.stillOpen.map(function (id) { var c = T.client(id); return c && !c.deleted ? '<a href="#/clients/' + id + '">' + h(T.fullName(c)) + '</a>' : h(id); }).join(', ') + '.</p>' + (s.counters.shadowRuns ? '<p class="muted">Shadow runs in this session: ' + s.counters.shadowRuns + '.</p>' : '') + '</section>' +
-      '<section class="blk"><h3 class="blk-h">Product health</h3><dl class="health"><div><dt>Cards approved</dt><dd>' + l.health.approved + '</dd></div><div><dt>Edited before approval</dt><dd>' + l.health.edited + '</dd></div><div><dt>Rejected</dt><dd>' + l.health.rejected + '</dd></div><div><dt>Opt-outs</dt><dd>' + l.health.optOuts + '</dd></div></dl><p class="muted">Correction rate so far: ' + Math.round(l.health.edited / Math.max(1, l.health.approved) * 100) + '% of approved cards were edited first.</p></section>';
+      '<details class="blk blk-d" data-ui="lg-chain"' + (T.ui.open['lg-chain'] ? ' open' : '') + '><summary class="blk-h" title="Request, approved action, observed reply, appointment. This demo has no mailbox, so you confirm replies yourself.">Recovery chain <span class="n">' + s.outreach.length + '</span>' + I('down') + '</summary><ul class="chains">' + chainRows + '</ul></details>' +
+      '<details class="blk blk-d" data-ui="lg-shadow"' + (T.ui.open['lg-shadow'] ? ' open' : '') + '><summary class="blk-h">Shadow Mode, ' + h(L.shadow.window) + I('down') + '</summary><dl class="health"><div><dt>Proposed</dt><dd>' + L.shadow.proposals + '</dd></div><div><dt>You did</dt><dd>' + L.shadow.didYourself + '</dd></div><div><dt>Would be missed</dt><dd>' + L.shadow.missed + '</dd></div><div><dt>Still open Oct 23</dt><dd>' + L.shadow.stillOpen.length + '</dd></div></dl><p class="muted">' + L.shadow.stillOpen.map(function (id) { var c = T.client(id); return c && !c.deleted ? '<a href="#/clients/' + id + '">' + h(T.fullName(c)) + '</a>' : h(id); }).join(', ') + (s.counters.shadowRuns ? ' · ' + s.counters.shadowRuns + ' shadow runs this session' : '') + '</p></details>' +
+      '<details class="blk blk-d" data-ui="lg-health"' + (T.ui.open['lg-health'] ? ' open' : '') + '><summary class="blk-h">Product health' + I('down') + '</summary><dl class="health"><div><dt>Approved</dt><dd>' + l.health.approved + '</dd></div><div><dt>Edited first</dt><dd>' + l.health.edited + ' (' + Math.round(l.health.edited / Math.max(1, l.health.approved) * 100) + '%)</dd></div><div><dt>Rejected</dt><dd>' + l.health.rejected + '</dd></div><div><dt>Opt-outs</dt><dd>' + l.health.optOuts + '</dd></div></dl></details>';
   };
 
   R.activity = function () {
     var s = S();
     return vHead('Activity', 'Every receipt Tayoo produced, newest first. Completed, simulated, excluded and skipped steps are labelled separately.') +
-      (s.receipts.length ? '<ul class="rc-list">' + s.receipts.map(function (r) { return '<li>' + R.receipt(r, true) + '</li>'; }).join('') + '</ul>' : '<p class="empty">' + I('activity') + 'No receipts yet. Approve a plan in the conversation and its receipt appears here.</p>') +
-      '<section class="blk"><h3 class="blk-h">Event log</h3>' + (s.events.length ? '<ol class="tl tl-wide">' + s.events.slice(0, 80).map(function (e) { return '<li><time>' + h(T.relDay(e.at) === 'Today' ? '' : T.fmtDate(e.at, { noDay: true }) + ' ') + h(T.fmtTime(e.at.split('T')[1])) + '</time><span>' + h(e.text) + '</span></li>'; }).join('') + '</ol>' : '<p class="muted">Nothing logged in this session yet.</p>') +
-      '<h4 class="day-h">Earlier (demo history)</h4><ol class="tl">' + T.LEDGER_SEED.recaps.slice().reverse().map(function (x) { return '<li><time>' + h(T.fmtDate(x.date, { noDay: true })) + '</time><span>Showing recap approved: ' + h(x.client) + '</span></li>'; }).join('') + '</ol></section>';
+      (s.receipts.length ? '<ul class="rc-list">' + s.receipts.map(function (r) { return '<li>' + R.receipt(r, true) + '</li>'; }).join('') + '</ul>' : '<p class="empty">' + I('activity') + 'No receipts yet.</p>') +
+      '<details class="blk blk-d" data-ui="act-log"' + (T.ui.open['act-log'] ? ' open' : '') + '><summary class="blk-h">Event log <span class="n">' + s.events.length + '</span>' + I('down') + '</summary>' + (s.events.length ? '<ol class="tl tl-wide">' + s.events.slice(0, 80).map(function (e) { return '<li><time>' + h(T.relDay(e.at) === 'Today' ? '' : T.fmtDate(e.at, { noDay: true }) + ' ') + h(T.fmtTime(e.at.split('T')[1])) + '</time><span>' + h(e.text) + '</span></li>'; }).join('') + '</ol>' : '<p class="muted">Nothing logged in this session yet.</p>') +
+      '<h4 class="day-h">Earlier (demo history)</h4><ol class="tl">' + T.LEDGER_SEED.recaps.slice().reverse().map(function (x) { return '<li><time>' + h(T.fmtDate(x.date, { noDay: true })) + '</time><span>Showing recap approved: ' + h(x.client) + '</span></li>'; }).join('') + '</ol></details>';
   };
 
   R.settings = function () {
     var s = S(), st = s.style, set = s.settings, ai = T.ai.status();
     var conns = [
-      ['Mailbox', 'Demo mailbox, simulated', 'Gmail and Microsoft 365 aren’t connected. Sends are simulated, labelled, and listed in the outbox.', 'sim'],
-      ['Calendar', 'Demo calendar, local', 'Appointments live in this browser. Invitations are simulated.', 'sim'],
-      ['Existing CRM', 'CSV import, Oct 5', 'Contact identity stays owned by your CRM; Tayoo owns proposed memory and workflow evidence.', 'ok'],
-      ['Listing data', 'Authorized export (demo CSV), Oct 22', T.LISTINGS.length + ' active listings and ' + T.SOLD.length + ' sales from the last 12 months. The QPAREB/Centris structured feed is not connected; public site scraping is excluded.', 'ok'],
-      ['SMS', 'Not configured', 'No sender or inbound opt-out handling, so SMS drafts are blocked.', 'off']
+      ['mail', 'Mailbox', 'Simulated', 'Gmail and Microsoft 365 aren’t connected. Sends are simulated, labelled, and listed in the outbox.', 'sim'],
+      ['calendar', 'Calendar', 'Local', 'Appointments live in this browser. Invitations are simulated.', 'sim'],
+      ['people', 'Existing CRM', 'CSV, Oct 5', 'Contact identity stays owned by your CRM; Tayoo owns proposed memory and workflow evidence.', 'ok'],
+      ['home', 'Listing data', 'Export, Oct 22', T.LISTINGS.length + ' active listings and ' + T.SOLD.length + ' sales from the last 12 months, from an authorized export. The QPAREB/Centris feed is not connected; public site scraping is excluded.', 'ok'],
+      ['phone', 'SMS', 'Off', 'No sender or inbound opt-out handling, so SMS drafts are blocked.', 'off']
     ];
-    var sr = T.voice.supported, sp = T.voice.canSpeak;
+    var sr = T.voice.supported, sp = T.voice.canSpeak, gs = T.meterGate('browser-speech'), gg = T.meterGate('gemini');
+    var radio = function (name, val, on, label, tip, attr) { return '<label class="radio" title="' + h(tip) + '"><input type="radio" name="' + name + '" value="' + val + '" ' + attr + (on ? ' checked' : '') + '><span><strong>' + h(label) + '</strong></span></label>'; };
     return vHead('Settings', 'Workspace: ' + h(T.BROKER.name) + ', ' + h(T.BROKER.agency) + '. Demo with fictional data.') +
-      '<section class="blk"><h3 class="blk-h">Execution mode</h3><div class="radios">' +
-      '<label class="radio"><input type="radio" name="mode" value="active" data-set="mode"' + (set.mode !== 'shadow' ? ' checked' : '') + '><span><strong>Approvals</strong><small>Plans run after you approve them. Local records change; sends are simulated.</small></span></label>' +
-      '<label class="radio"><input type="radio" name="mode" value="shadow" data-set="mode"' + (set.mode === 'shadow' ? ' checked' : '') + '><span><strong>Shadow Mode</strong><small>Tayoo proposes and records what it would have done. Nothing changes.</small></span></label></div></section>' +
-      '<section class="blk"><h3 class="blk-h">Who is using Tayoo</h3><div class="radios">' +
-      '<label class="radio"><input type="radio" name="role" value="broker" data-role="broker"' + (s.role !== 'coordinator' ? ' checked' : '') + '><span><strong>' + h(T.BROKER.name) + ', broker</strong><small>Approves sends, invitations and memory changes.</small></span></label>' +
-      '<label class="radio"><input type="radio" name="role" value="coordinator" data-role="coordinator"' + (s.role === 'coordinator' ? ' checked' : '') + '><span><strong>' + h(T.BROKER.coordinator) + ', coordinator</strong><small>Prepares plans and tasks. Anything that sends or changes memory goes to Alex for approval.</small></span></label></div></section>' +
+      '<section class="blk"><h3 class="blk-h">Mode</h3><div class="radios seg2">' +
+      radio('mode', 'active', set.mode !== 'shadow', 'Approvals', 'Plans run after you approve them. Local records change; sends are simulated.', 'data-set="mode"') +
+      radio('mode', 'shadow', set.mode === 'shadow', 'Shadow Mode', 'Tayoo proposes and records what it would have done. Nothing changes.', 'data-set="mode"') + '</div></section>' +
+      '<section class="blk"><h3 class="blk-h">Signed in as</h3><div class="radios seg2">' +
+      radio('role', 'broker', s.role !== 'coordinator', T.BROKER.first + ', broker', 'Approves sends, invitations and memory changes.', 'data-role="broker"') +
+      radio('role', 'coordinator', s.role === 'coordinator', T.BROKER.coordinator.split(' ')[0] + ', coordinator', 'Prepares plans and tasks. Anything that sends or changes memory goes to Alex for approval.', 'data-role="coordinator"') + '</div></section>' +
       '<section class="blk"><h3 class="blk-h">Live AI</h3>' +
-      '<p class="ai-state ' + (ai.on ? 'is-on' : '') + '">' + I('spark') + '<span><strong>' + (ai.on ? 'On.' : 'Off.') + '</strong> ' + h(ai.why) + '</span></p>' +
-      '<label class="check"><input type="checkbox" data-set="useAI"' + (set.useAI ? ' checked' : '') + '><span>Use live AI to read free text and redraft emails when a key is set. Scripted samples, the Test lab and every approval still run on rules.</span></label>' +
-      '<div class="lai-host" data-lai-host></div>' +
-      '<p class="muted">Live AI only proposes. Its answer is checked against your records and shown on the same Action Card with a “Live AI” badge; nothing runs until you approve. On any error, the rules take over and the conversation says so.</p></section>' +
+      '<p class="ai-state ai-' + (ai.state || 'off') + '" title="' + h(ai.why) + '">' + I(ai.state === 'paused' ? 'pause' : 'spark') + '<span><strong>' + (ai.on ? 'On' : ai.state === 'paused' ? 'Paused' : 'Off') + '</strong> · ' + h(ai.why) + '</span></p>' +
+      '<label class="check" title="Live AI only proposes. Its answer is checked against your records and shown on the same Action Card with a Live AI badge; nothing runs until you approve. Scripted samples, the Test lab and every approval still run on rules."><input type="checkbox" data-set="useAI"' + (set.useAI ? ' checked' : '') + '><span>Read free text with live AI</span></label>' +
+      '<p><a class="btn btn-ghost btn-sm" href="../../index.html#api">' + I('gauge') + 'API monitor: keys, budgets, killswitch</a></p></section>' +
       '<section class="blk"><h3 class="blk-h">Voice</h3>' +
-      '<p class="muted">' + (sr ? 'Live transcription is available in this browser. The microphone is only on while the capture screen is open.' : 'Speech recognition isn’t available' + (s.caps.sr ? ' in this browser' : ' (switched off in the Test lab)') + ', so capture uses scripted samples or typing.') + '</p>' +
-      '<label class="check"><input type="checkbox" data-set="speak"' + (set.speak ? ' checked' : '') + '><span>Spoken replies after voice requests' + (sp ? '' : ' (no voices available here, so replies stay on screen)') + '</span></label>' +
+      '<p class="v-caps"><span class="tag' + (sr && gs.ok ? ' tag-ok' : '') + '" title="' + h(sr ? (gs.ok ? 'Your browser’s speech recognition; some browsers, Chrome among them, send the audio to their own speech service.' : gs.reason) : 'No speech recognition here. ' + (gg.ok ? 'Recorded audio is transcribed by Gemini (metered).' : 'Type instead, or add a Gemini key on the API monitor.')) + '">' + I(sr ? (gs.ok ? 'mic' : 'pause') : 'micoff') + (sr ? (gs.ok ? 'Live' : 'Paused') : gg.ok ? 'Gemini' : 'Typing') + '</span><span class="tag' + (sp ? ' tag-ok' : '') + '" title="' + (sp ? 'Spoken replies use the most natural voice on this device.' : 'No voices here, so replies stay on screen.') + '">' + I(sp ? 'speaker' : 'mute') + (sp ? 'Voices' : 'No voices') + '</span></p>' +
+      '<label class="check"><input type="checkbox" data-set="speak"' + (set.speak ? ' checked' : '') + '><span>Spoken replies</span></label>' +
+      '<label class="fld"><span>Reply voice</span><select data-set="voiceEngine"><option value="device"' + (set.voiceEngine !== 'gemini' ? ' selected' : '') + '>This device (free)</option><option value="gemini"' + (set.voiceEngine === 'gemini' ? ' selected' : '') + (gg.ok ? '' : ' disabled') + '>Gemini (metered)' + (gg.ok ? '' : ': ' + h(gg.reason)) + '</option></select></label>' +
       '<label class="fld"><span>Dictation language</span><select data-set="recLang"><option value="en-CA"' + (set.recLang === 'en-CA' ? ' selected' : '') + '>English (Canada)</option><option value="fr-CA"' + (set.recLang === 'fr-CA' ? ' selected' : '') + '>Français (Canada)</option></select></label>' +
-      '<label class="fld"><span>Default “morning” time</span><input type="time" value="' + h(set.morning) + '" data-set="morning"></label></section>' +
-      '<section class="blk"><h3 class="blk-h">Style memory</h3><p class="muted">New drafts follow these. Existing drafts keep your edits.</p>' +
+      '<label class="fld"><span>“Morning” means</span><input type="time" value="' + h(set.morning) + '" data-set="morning"></label></section>' +
+      '<details class="blk blk-d" data-ui="set-style"' + (T.ui.open['set-style'] ? ' open' : '') + '><summary class="blk-h" title="New drafts follow these. Existing drafts keep your edits. Emoji: never. Length: short. Preferred channel: email.">Style memory' + I('down') + '</summary>' +
       '<label class="fld"><span>English sign-off</span><textarea rows="2" data-style="signEN">' + h(st.signEN) + '</textarea></label>' +
-      '<label class="fld"><span>French sign-off</span><textarea rows="2" data-style="signFR" lang="fr">' + h(st.signFR) + '</textarea></label>' +
-      '<p class="muted">Emoji: never. Length: short. Preferred channel: email.</p></section>' +
-      '<section class="blk"><h3 class="blk-h">Connections</h3><ul class="conns">' + conns.map(function (x) { return '<li class="conn conn-' + x[3] + '"><div><p><strong>' + h(x[0]) + '</strong>: ' + h(x[1]) + '</p><p class="muted">' + h(x[2]) + '</p></div></li>'; }).join('') + '</ul></section>' +
-      '<section class="blk"><h3 class="blk-h">Demo data</h3><p class="muted">Saved in this browser only (localStorage key “tayoo-v3”)' + (T.store.storageOk ? '' : '. Storage is blocked here, so changes last until you close the tab') + '. The Test lab has presets, the demo clock, event injection and JSON import.</p><div class="cd-act"><button type="button" class="btn btn-ghost btn-sm" data-act="lab">' + I('flask') + 'Open the Test lab</button><button type="button" class="btn btn-ghost btn-sm" data-act="export">' + I('download') + 'Export workspace JSON</button><button type="button" class="btn btn-quiet btn-sm" data-act="reset">' + I('refresh') + 'Reset demo</button></div></section>';
+      '<label class="fld"><span>French sign-off</span><textarea rows="2" data-style="signFR" lang="fr">' + h(st.signFR) + '</textarea></label></details>' +
+      '<details class="blk blk-d" data-ui="set-conn"' + (T.ui.open['set-conn'] ? ' open' : '') + '><summary class="blk-h">Connections' + I('down') + '</summary><ul class="conns">' + conns.map(function (x) { return '<li class="conn conn-' + x[4] + '" title="' + h(x[3]) + '">' + I(x[0]) + '<p><strong>' + h(x[1]) + '</strong></p><span class="tag">' + h(x[2]) + '</span></li>'; }).join('') + '</ul></details>' +
+      '<section class="blk"><h3 class="blk-h">Data</h3><p class="cd-act" title="Saved in this browser only (localStorage key “tayoo-v3”)' + (T.store.storageOk ? '' : '. Storage is blocked here, so changes last until you close the tab') + '.">' + R.ib('export', 'download', 'Export workspace JSON') + R.ib('lab', 'flask', 'Open the Test lab') + R.ib('reset', 'refresh', 'Reset demo') + '</p></section>';
   };
 })();

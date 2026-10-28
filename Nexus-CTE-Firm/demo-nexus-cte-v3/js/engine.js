@@ -487,40 +487,40 @@
     var r = room(m);
     var G = {
       signe: [
-        { id: 'fin', label: 'États financiers de trois exercices saisis et contrôlés', todo: 'Saisir et contrôler les états financiers de trois exercices', ok: statementsValid(m), tab: 'retraitement' },
-        { id: 'req', label: 'Demande de documents envoyée au cédant', todo: 'Envoyer la demande de documents (lien sans compte)', ok: !!m.room.requested, tab: 'salle' }
+        { id: 'fin', short: 'États financiers saisis', label: 'États financiers de trois exercices saisis et contrôlés', todo: 'Saisir et contrôler les états financiers de trois exercices', ok: statementsValid(m), tab: 'retraitement' },
+        { id: 'req', short: 'Documents demandés', label: 'Demande de documents envoyée au cédant', todo: 'Envoyer la demande de documents (lien sans compte)', ok: !!m.room.requested, tab: 'salle' }
       ],
       preparation: [
-        { id: 'norm', label: 'Retraitement du BAIIA approuvé', todo: 'Décider des retraitements et approuver le BAIIA', ok: !!m.normApproved, tab: 'retraitement' },
-        { id: 'val', label: 'Fourchette de valeur validée par la courtière', todo: 'Retenir les modulateurs et valider la fourchette', ok: !!m.valApproved, tab: 'evaluation' },
-        { id: 'teaser', label: 'Sommaire aveugle approuvé, vérification des noms réussie', todo: 'Générer, corriger et approuver le sommaire aveugle', ok: !!m.teaser.approved, tab: 'sommaire' },
-        { id: 'list', label: 'Liste d’acheteurs verrouillée', todo: 'Réviser et verrouiller la liste d’acheteurs', ok: !!m.listLocked, tab: 'acheteurs' },
-        { id: 'script', label: 'Script de divulgation consigné', todo: 'Consigner le script de divulgation', ok: !!m.script, tab: 'acheteurs' },
-        { id: 'room', label: 'Salle de données révisée à 80 % ou plus (' + U.pct(r.pct) + ')', todo: 'Obtenir et réviser les pièces de la salle de données', ok: r.pct >= 80, tab: 'salle' }
-      ].concat(m.kind === 'preparation' ? [{ id: 'convert', label: 'Mandat de vente signé (conversion du mandat de préparation)', todo: 'Convertir le mandat de préparation en mandat de vente', ok: false, tab: 'apercu' }] : []),
+        { id: 'norm', short: 'BAIIA approuvé', label: 'Retraitement du BAIIA approuvé', todo: 'Décider des retraitements et approuver le BAIIA', ok: !!m.normApproved, tab: 'retraitement' },
+        { id: 'val', short: 'Fourchette validée', label: 'Fourchette de valeur validée par la courtière', todo: 'Retenir les modulateurs et valider la fourchette', ok: !!m.valApproved, tab: 'evaluation' },
+        { id: 'teaser', short: 'Sommaire approuvé', label: 'Sommaire aveugle approuvé, vérification des noms réussie', todo: 'Générer, corriger et approuver le sommaire aveugle', ok: !!m.teaser.approved, tab: 'sommaire' },
+        { id: 'list', short: 'Liste verrouillée', label: 'Liste d’acheteurs verrouillée', todo: 'Réviser et verrouiller la liste d’acheteurs', ok: !!m.listLocked, tab: 'acheteurs' },
+        { id: 'script', short: 'Script consigné', label: 'Script de divulgation consigné', todo: 'Consigner le script de divulgation', ok: !!m.script, tab: 'acheteurs' },
+        { id: 'room', short: 'Salle ≥ 80 % (' + U.pct(r.pct) + ')', label: 'Salle de données révisée à 80 % ou plus (' + U.pct(r.pct) + ')', todo: 'Obtenir et réviser les pièces de la salle de données', ok: r.pct >= 80, tab: 'salle' }
+      ].concat(m.kind === 'preparation' ? [{ id: 'convert', short: 'Mandat de vente signé', label: 'Mandat de vente signé (conversion du mandat de préparation)', todo: 'Convertir le mandat de préparation en mandat de vente', ok: false, tab: 'apercu' }] : []),
       marche: [
-        { id: 'sent', label: 'Sommaires transmis aux acheteurs retenus', todo: 'Transmettre les sommaires et les ententes', ok: !!m.teasersSent, tab: 'acheteurs' },
-        { id: 'nda', label: 'Au moins une entente de confidentialité signée', todo: 'Obtenir les ententes de confidentialité signées', ok: ndaSigned(m).length > 0, tab: 'acheteurs' },
-        { id: 'cim', label: 'Cahier de présentation approuvé', todo: 'Générer, sourcer et approuver le cahier', ok: !!m.cim.approved, tab: 'sommaire' },
-        { id: 'grant', label: 'Accès à la salle accordé à au moins un signataire', todo: 'Accorder l’accès à la salle aux signataires', ok: Object.keys(m.grants).some(function (id) { return grantActive(m, id, st); }), tab: 'salle' },
-        { id: 'deadline', label: 'Date limite des lettres d’intention fixée', todo: 'Fixer la date limite des lettres d’intention', ok: !!m.loiDeadline, tab: 'cloture' }
+        { id: 'sent', short: 'Sommaires transmis', label: 'Sommaires transmis aux acheteurs retenus', todo: 'Transmettre les sommaires et les ententes', ok: !!m.teasersSent, tab: 'acheteurs' },
+        { id: 'nda', short: 'Une entente signée', label: 'Au moins une entente de confidentialité signée', todo: 'Obtenir les ententes de confidentialité signées', ok: ndaSigned(m).length > 0, tab: 'acheteurs' },
+        { id: 'cim', short: 'Cahier approuvé', label: 'Cahier de présentation approuvé', todo: 'Générer, sourcer et approuver le cahier', ok: !!m.cim.approved, tab: 'sommaire' },
+        { id: 'grant', short: 'Un accès accordé', label: 'Accès à la salle accordé à au moins un signataire', todo: 'Accorder l’accès à la salle aux signataires', ok: Object.keys(m.grants).some(function (id) { return grantActive(m, id, st); }), tab: 'salle' },
+        { id: 'deadline', short: 'Date limite fixée', label: 'Date limite des lettres d’intention fixée', todo: 'Fixer la date limite des lettres d’intention', ok: !!m.loiDeadline, tab: 'cloture' }
       ],
-      fenetre: [{ id: 'lois', label: 'Au moins une lettre d’intention reçue', todo: m.loiDeadline && U.diffDays(today(st), m.loiDeadline) > 0 ? 'Attendre les lettres d’intention (date limite du ' + U.date(m.loiDeadline) + ')' : 'Recevoir les lettres d’intention', ok: (m.lois || []).length > 0, tab: 'cloture' }],
+      fenetre: [{ id: 'lois', short: 'Une lettre reçue', label: 'Au moins une lettre d’intention reçue', todo: m.loiDeadline && U.diffDays(today(st), m.loiDeadline) > 0 ? 'Attendre les lettres d’intention (date limite du ' + U.date(m.loiDeadline) + ')' : 'Recevoir les lettres d’intention', ok: (m.lois || []).length > 0, tab: 'cloture' }],
       negociation: [
-        { id: 'sel', label: 'Lettre d’intention retenue et signée', todo: 'Retenir une lettre d’intention et la faire signer', ok: !!m.loiSigned, tab: 'cloture' },
-        { id: 'conf', label: 'Divulgations de conflit signées par chaque partie représentée', todo: 'Faire signer les divulgations de conflit', ok: conflictParties(m).every(function (p) { return !!m.conflict[p.id]; }), tab: 'cloture' },
-        { id: 'amf', label: 'Encadrement AMF validé si vente partielle d’actions', todo: 'Consigner la validation juridique AMF', ok: m.structure !== 'actionsPartielle' || !!m.amfValidated, tab: 'apercu' }
+        { id: 'sel', short: 'Lettre signée', label: 'Lettre d’intention retenue et signée', todo: 'Retenir une lettre d’intention et la faire signer', ok: !!m.loiSigned, tab: 'cloture' },
+        { id: 'conf', short: 'Divulgations signées', label: 'Divulgations de conflit signées par chaque partie représentée', todo: 'Faire signer les divulgations de conflit', ok: conflictParties(m).every(function (p) { return !!m.conflict[p.id]; }), tab: 'cloture' },
+        { id: 'amf', short: 'AMF validé', label: 'Encadrement AMF validé si vente partielle d’actions', todo: 'Consigner la validation juridique AMF', ok: m.structure !== 'actionsPartielle' || !!m.amfValidated, tab: 'apercu' }
       ],
       diligence: [
-        { id: 'fin', label: 'Approbation conditionnelle du financement reçue', todo: 'Obtenir l’approbation conditionnelle du prêteur', ok: financingOk(m), tab: 'cloture' },
-        { id: 'dd', label: 'Constats de diligence résolus', todo: !m.dd.indexed ? 'Mener la vérification diligente (indexation des pièces)' : 'Résoudre les constats de diligence', ok: !!m.dd.indexed && ddFindings(m).every(function (d) { return m.dd.status[d.id] === 'resolu'; }), tab: 'cloture' }
+        { id: 'fin', short: 'Financement approuvé', label: 'Approbation conditionnelle du financement reçue', todo: 'Obtenir l’approbation conditionnelle du prêteur', ok: financingOk(m), tab: 'cloture' },
+        { id: 'dd', short: 'Constats résolus', label: 'Constats de diligence résolus', todo: !m.dd.indexed ? 'Mener la vérification diligente (indexation des pièces)' : 'Résoudre les constats de diligence', ok: !!m.dd.indexed && ddFindings(m).every(function (d) { return m.dd.status[d.id] === 'resolu'; }), tab: 'cloture' }
       ],
-      cloture: [{ id: 'run', label: 'Feuille de route de clôture complétée chez le notaire', todo: 'Suivre la feuille de route de clôture chez le notaire', ok: runSheet(m).every(function (k) { return m.run[k.id]; }), tab: 'cloture' }]
+      cloture: [{ id: 'run', short: 'Feuille de route complète', label: 'Feuille de route de clôture complétée chez le notaire', todo: 'Suivre la feuille de route de clôture chez le notaire', ok: runSheet(m).every(function (k) { return m.run[k.id]; }), tab: 'cloture' }]
     };
     var list = G[m.stage] || [];
-    if (m.hold) list = [{ id: 'hold', label: 'Le cédant confirme la poursuite du mandat', todo: 'Rencontrer le cédant et confirmer la poursuite', ok: false, tab: 'apercu' }].concat(list);
-    if (m.sellerConsentWithdrawn) list = [{ id: 'consent', label: 'Consentement du cédant à la communication aux acheteurs', todo: 'Obtenir à nouveau le consentement du cédant (Loi 25)', ok: false, tab: 'apercu' }].concat(list);
-    if (m.leak) list = [{ id: 'leak', label: 'Gel lié au protocole de fuite levé', todo: 'Évaluer la fuite et lever le gel', ok: false, tab: 'salle' }].concat(list);
+    if (m.hold) list = [{ id: 'hold', short: 'Cédant confirmé', label: 'Le cédant confirme la poursuite du mandat', todo: 'Rencontrer le cédant et confirmer la poursuite', ok: false, tab: 'apercu' }].concat(list);
+    if (m.sellerConsentWithdrawn) list = [{ id: 'consent', short: 'Consentement du cédant', label: 'Consentement du cédant à la communication aux acheteurs', todo: 'Obtenir à nouveau le consentement du cédant (Loi 25)', ok: false, tab: 'apercu' }].concat(list);
+    if (m.leak) list = [{ id: 'leak', short: 'Gel levé', label: 'Gel lié au protocole de fuite levé', todo: 'Évaluer la fuite et lever le gel', ok: false, tab: 'salle' }].concat(list);
     return list;
   }
   function nextStage(stage) { var ids = D.MANDATE_STAGES.map(function (s) { return s.id; }); var i = ids.indexOf(stage); return i >= 0 && i < ids.length - 1 ? ids[i + 1] : null; }

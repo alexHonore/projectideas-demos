@@ -16,18 +16,20 @@
     return { review: ['open', 'Needs review'], linked: ['approved', 'Linked'], processed: ['ok', 'Processed'] }[m.status] || ['ok', m.status];
   }
 
+  const MST = { approved: ['check', 'leaf'], open: ['dot', 'amber'], blocked: ['shield', 'brick'], ok: ['check', 'steel'] };
   function list(state, sel) {
     const msgs = state.messages.slice().sort((a, b) => b.at - a.at);
     const items = msgs.map((m) => {
       const s = msgStatus(state, m);
       const unread = !state.read[m.id] && (m.status === 'review' || m.status === 'flagged');
-      return '<li><a class="msg-item' + (sel === m.id ? ' is-sel' : '') + (unread ? ' is-unread' : '') + '" href="#/inbox/' + m.id + '"' + (sel === m.id ? ' aria-current="true"' : '') + '>' +
+      const mi = MST[s[0]] || MST.ok;
+      return '<li><a class="msg-item' + (sel === m.id ? ' is-sel' : '') + (unread ? ' is-unread' : '') + '" href="#/inbox/' + m.id + '"' + (sel === m.id ? ' aria-current="true"' : '') + ' title="' + esc(m.org + ' · ' + m.kind) + '">' +
         '<span class="mi-top"><strong>' + esc(m.from) + '</strong><time>' + esc(V.when(m.at)) + '</time></span>' +
-        '<span class="mi-org">' + esc(m.org) + '</span><span class="mi-subj">' + esc(m.subject) + '</span>' +
-        '<span class="mi-tags"><span class="kind">' + esc(m.kind) + '</span>' + V.chip(s[0], s[1]) + (m.injected ? V.chip('simulated', 'Test lab') : '') + '</span></a></li>';
+        '<span class="mi-subj">' + esc(m.subject) + '</span>' +
+        '<span class="mi-st">' + (m.injected ? V.ico(['flask', 'muted'], 'Simulated: injected from the Test lab') : '') + V.ico(mi, m.kind + ': ' + s[1]) + '</span></a></li>';
     }).join('');
-    return '<div class="inbox-list"><div class="il-head"><h2 id="il-h">Messages</h2>' + V.link('Paste or drop', '#/inbox/new', 'small', 'upload', 'paste-link') + '</div>' +
-      '<p class="il-note">Connected mailbox (simulated). Originals are stored with a checksum; duplicates merge. Inject new emails from the Test lab.</p><ul aria-labelledby="il-h">' + items + '</ul></div>';
+    return '<div class="inbox-list"><div class="il-head"><h2 id="il-h">Messages</h2>' + V.info('Connected mailbox (simulated). Originals are stored with a checksum; duplicates merge. Inject new emails from the Test lab.', 'the mailbox') +
+      '<a class="icon-btn" href="#/inbox/new" id="paste-link" aria-label="Paste or drop a message" title="Paste or drop a message">' + icon('upload', 17) + '</a></div><ul aria-labelledby="il-h">' + items + '</ul></div>';
   }
 
   function letter(m, spans, active) {
@@ -195,15 +197,16 @@
   }
 
   function fieldRow(row, ex, key, done, text) {
-    const s = ST[row.status] || ST.explicit;
     const accepted = !!ex.accepted[row.key];
-    const ev = row.f && row.f.span ? '<button type="button" class="ev" data-act="ev" data-x="' + esc(key) + '" data-key="' + row.key + '" aria-label="Show source for ' + esc(row.label) + '">“' + esc(spanText(text, row.f)) + '”</button>' : row.f && row.f.quote ? '<span class="ev is-unver" title="Not found verbatim in the text">“' + esc(row.f.quote) + '”</span>' : '<span class="muted small">' + (row.status === 'sender' ? 'Sender address' : 'Not in message') + '</span>';
+    const ev = row.f && row.f.span ? '<button type="button" class="ev" data-act="ev" data-x="' + esc(key) + '" data-key="' + row.key + '" aria-label="Show source for ' + esc(row.label) + '">“' + esc(spanText(text, row.f)) + '”</button>' : row.f && row.f.quote ? '<span class="ev is-unver" title="Not found verbatim in the text">“' + esc(row.f.quote) + '”</span>' : '<span class="muted small" title="' + (row.status === 'sender' ? 'From the sender address' : 'Not in the message') + '">—</span>';
+    const lbl = (row.optional ? 'Mark ' : 'Accept ') + row.label + (row.optional ? ' reviewed (optional)' : '');
     let act;
-    if (done) act = accepted ? '<span class="acc">' + icon('check', 14) + 'Reviewed</span>' : '<span class="muted small">—</span>';
-    else if (accepted) act = '<span class="acc">' + icon('check', 14) + 'Reviewed</span>';
-    else if (row.optional) act = '<button type="button" class="btn small ghost" data-act="ex-accept" data-x="' + esc(key) + '" data-key="' + row.key + '" aria-label="Mark ' + esc(row.label) + ' reviewed">' + icon('check', 14) + '<span>OK</span></button>';
-    else act = '<button type="button" class="btn small ghost" data-act="ex-accept" data-x="' + esc(key) + '" data-key="' + row.key + '" aria-label="Accept ' + esc(row.label) + '">' + icon('check', 14) + '<span>Accept</span></button>';
-    return '<tr class="' + (accepted ? 'is-acc' : '') + '" data-field="' + row.key + '"><th scope="row">' + esc(row.label) + (row.optional ? '<small>optional</small>' : '') + '</th><td class="ctlc">' + (done ? '<fieldset disabled class="ctl-fs">' + row.control + '</fieldset>' : row.control) + '<small>' + esc(row.note) + '</small>' + (row.f && row.f.status === 'unverified' && row.f.note && !ex.edited[row.key] ? '<small class="warn-t">' + esc(row.f.note) + '</small>' : '') + '</td><td class="evc">' + ev + '</td><td class="actc"><div class="stack">' + V.chip(s[0], s[1]) + act + '</div></td></tr>';
+    if (accepted) act = '<span class="acc" role="img" aria-label="Reviewed" title="Reviewed">' + icon('check', 15) + '</span>';
+    else if (done) act = '';
+    else act = '<button type="button" class="icon-btn acc-btn' + (row.optional ? ' is-opt' : '') + '" data-act="ex-accept" data-x="' + esc(key) + '" data-key="' + row.key + '" aria-label="' + esc(lbl) + '" title="' + esc(lbl) + '">' + icon('check', 16) + '</button>';
+    const unver = row.f && row.f.status === 'unverified' && row.f.note && !ex.edited[row.key] ? row.f.note : '';
+    const note = [row.note, unver].filter(Boolean).join(' ');
+    return '<tr class="' + (accepted ? 'is-acc' : '') + '" data-field="' + row.key + '"><th scope="row"><span class="fl">' + esc(row.label) + (row.optional ? '<small>optional</small>' : '') + '</span>' + V.info(note, row.label) + '</th><td class="ctlc">' + (done ? '<fieldset disabled class="ctl-fs">' + row.control + '</fieldset>' : row.control) + '</td><td class="evc">' + ev + '</td><td class="actc"><div class="st-row">' + V.ico(row.status === 'unverified' && !ex.edited[row.key] ? 'unverified' : row.status) + act + '</div></td></tr>';
   }
 
   /* Draft reply in the sender's language (rules), greeting the sender by first name and asking only for
@@ -346,9 +349,10 @@
   function aiButtons(state, key, kind) {
     const on = TD.ai && TD.ai.usable();
     const busy = state.ui.aiBusy && state.ui.aiBusy[key + ':' + kind];
-    if (busy) return '<span class="dcard-progress small" role="status"><span class="spinner" aria-hidden="true"></span>' + (kind === 'reply' ? 'Drafting with live AI…' : 'Reading with live AI…') + '</span>';
-    if (!on) return '<button type="button" class="btn small ghost" data-act="lab" data-sec="ai" title="' + esc(TD.ai ? TD.ai.whyOff() : 'Live AI unavailable') + '">' + icon('spark', 15) + '<span>' + (kind === 'reply' ? 'Draft with live AI' : 'Read with live AI') + ' (off)</span></button>';
-    return '<button type="button" class="btn small" data-act="' + (kind === 'reply' ? 'ai-reply' : 'ai-extract') + '" data-x="' + esc(key) + '" id="ai-' + kind + '">' + icon('spark', 15) + '<span>' + (kind === 'reply' ? 'Draft with live AI' : 'Read with live AI') + '</span></button>';
+    const label = kind === 'reply' ? 'Draft with live AI' : 'Read with live AI';
+    if (busy) return '<span class="dcard-progress small" role="status"><span class="spinner" aria-hidden="true"></span>' + (kind === 'reply' ? 'Drafting…' : 'Reading…') + '</span>';
+    if (!on) return V.aiStatus({ id: 'ai-st-' + kind, label: true });
+    return '<button type="button" class="btn small" data-act="' + (kind === 'reply' ? 'ai-reply' : 'ai-extract') + '" data-x="' + esc(key) + '" id="ai-' + kind + '" title="' + label + ': metered on the API monitor">' + icon('spark', 15) + '<span>' + (kind === 'reply' ? 'AI draft' : 'AI read') + '</span></button>';
   }
 
   function review(state, key, msg) {
@@ -369,18 +373,17 @@
     else if (isCm) foot = carrierFoot(state, key, ex);
     else if (done) {
       const cid = ex.created; const href = /^TR-/.test(cid) ? '#/trade/' + cid + '/price' : '#/book/' + cid;
-      foot = '<div class="ex-done">' + icon('check', 18) + '<div><strong>' + (/^TR-/.test(cid) ? 'Lot and opportunity ' + cid + ' created.' : 'Bid ' + cid + ' created.') + '</strong><p>' + (/^TR-/.test(cid) ? (state.trades[cid] && state.trades[cid].certainty === 'tentative' ? 'Tentative until the supplier confirms. ' : '') + 'The original stays attached as evidence.' : 'Visible in the Book and in every matching lot’s price ladder.') + '</p></div>' + V.link(/^TR-/.test(cid) ? 'Compare buyers' : 'Open in Book', href, 'primary', 'arrow', 'ex-open') + '</div>';
+      foot = '<div class="ex-done">' + icon('check', 18) + '<div><strong>' + (/^TR-/.test(cid) ? 'Lot ' + cid + ' created' : 'Bid ' + cid + ' created') + '</strong>' + V.info(/^TR-/.test(cid) ? (state.trades[cid] && state.trades[cid].certainty === 'tentative' ? 'Tentative until the supplier confirms. ' : '') + 'Lot and opportunity created; the original stays attached as evidence.' : 'Visible in the Book and in every matching lot’s price ladder.', 'the new record') + '</div>' + V.link(/^TR-/.test(cid) ? 'Compare buyers' : 'Open in Book', href, 'primary', 'arrow', 'ex-open') + '</div>';
     } else {
       const why = rd.flagged ? 'Flagged content cannot create records.' : rd.missing.length ? 'Missing: ' + rd.missing.join(', ') + '.' : rd.unreviewed.length ? 'Review: ' + rd.unreviewed.join(', ') + '.' : '';
-      foot = '<div class="ex-actions">' + V.btn('Accept all and apply suggestions', 'ex-accept-all', { icon: 'check', id: 'ex-accept-all', data: { x: key }, disabled: rd.flagged }) + V.btn(createLabel, 'create-from', { cls: 'primary', icon: 'arrow', id: 'create-lot', disabled: !rd.ready, data: { x: key } }) + (why ? '<p class="muted small" id="create-why">' + esc(why) + '</p>' : '') + '</div>';
+      foot = '<div class="ex-actions">' + V.btn('Accept all', 'ex-accept-all', { icon: 'check', id: 'ex-accept-all', data: { x: key }, disabled: rd.flagged, title: 'Accept every field and apply the suggestions' }) + V.btn(createLabel, 'create-from', { cls: 'primary', icon: 'arrow', id: 'create-lot', disabled: !rd.ready, data: { x: key } }) + (why ? '<p class="muted small" id="create-why">' + esc(why) + '</p>' : '') + '</div>';
     }
-    return '<section class="extract" aria-labelledby="ex-h-' + esc(key) + '"><div class="ex-head"><h3 id="ex-h-' + esc(key) + '">Extracted fields</h3><span class="ex-meta">' + V.provenance(ex.provenance) + '<span class="muted small">' + accCount + ' of ' + reqRows.length + ' required reviewed · every value linked to its words</span></span></div>' +
-      (ex.notice ? '<p class="callout tone-amber" id="ai-notice">' + icon('alert', 16) + '<span>' + esc(ex.notice) + '</span></p>' : '') +
-      (ex.source === 'live-ai' ? '<p class="callout tone-steel small">' + icon('spark', 16) + '<span>Proposed by live AI and validated: each value must quote words that appear in the text. Nothing is applied until you review it.</span></p>' : '') +
-      (flags.length ? '<div class="callout tone-brick">' + icon('shield', 18) + '<div><strong>Flagged: treated as content only.</strong><p>' + esc(flags[0].text) + '</p></div></div>' : '') +
-      '<div class="table-wrap"><table class="ftable"><caption class="sr-only">Extracted fields with value, evidence and review</caption><thead><tr><th scope="col">Field</th><th scope="col">Value</th><th scope="col">Evidence</th><th scope="col" class="r">Status and review</th></tr></thead><tbody>' +
-      rows.map((r) => fieldRow(r, ex, key, done, text)).join('') + '</tbody></table></div>' +
-      '<div class="ex-ai">' + aiButtons(state, key, 'extract') + '<span class="muted small">Optional: live AI reads the same text into the same fields. Rules stay the default.</span></div>' + foot + '</section>';
+    const aiNote = ex.source === 'live-ai' ? 'Proposed by live AI and validated: each value must quote words that appear in the text. Nothing is applied until you review it.' : 'Rules read the message in this browser. Optional live AI reads the same text into the same fields, metered on the API monitor.';
+    return '<section class="extract" aria-labelledby="ex-h-' + esc(key) + '"><div class="ex-head"><h3 id="ex-h-' + esc(key) + '">Fields</h3><span class="ex-meta">' + V.provenance(ex.provenance) + '<span class="ex-count num" title="Required fields reviewed" aria-label="' + accCount + ' of ' + reqRows.length + ' required fields reviewed">' + icon('check', 13) + accCount + '/' + reqRows.length + '</span>' + V.info(aiNote + ' Every value is linked to the words it came from: tap a quote to see it in the message.', 'the extraction') + '<span class="ex-ai">' + aiButtons(state, key, 'extract') + '</span></span></div>' +
+      (ex.notice ? '<p class="callout tone-amber small" id="ai-notice">' + icon('alert', 16) + '<span>' + esc(ex.notice) + '</span></p>' : '') +
+      (flags.length ? '<div class="callout tone-brick">' + icon('shield', 18) + '<div><strong>Flagged: content only</strong><p>' + esc(flags[0].text) + '</p></div></div>' : '') +
+      '<div class="table-wrap"><table class="ftable"><caption class="sr-only">Extracted fields with value, evidence and review</caption><thead><tr><th scope="col">Field</th><th scope="col">Value</th><th scope="col">Source</th><th scope="col" class="r"><span class="sr-only">Status and review</span></th></tr></thead><tbody>' +
+      rows.map((r) => fieldRow(r, ex, key, done, text)).join('') + '</tbody></table></div>' + foot + '</section>';
   }
 
   /* Where the quote goes: the matching lot or load, else a standing quote on the lane. */
@@ -389,31 +392,31 @@
     if (done) {
       const fq = state.fquotes[ex.created]; const a = fq.attached[fq.attached.length - 1];
       const href = !a ? '#/loads' : a.type === 'load' ? '#/load/' + a.load : '#/trade/' + a.trade + '/' + (a.approved ? 'freight' : 'price');
-      return '<div class="ex-done" id="fq-done">' + icon('check', 18) + '<div><strong>Carrier quote ' + esc(fq.id) + ' ' + esc(S.fqWhere(fq)) + '.</strong><p>' + (fq.validUntil != null ? 'Valid until ' + esc(V.when(fq.validUntil)) + '; it lapses on the clock. ' : 'No validity stated. ') + ((state.parties[fq.carrier] || {}).status !== 'Approved' ? 'The carrier is pending: it cannot be booked until logistics approves it.' : 'The original stays attached as evidence.') + '</p></div>' + V.link(!a ? 'Standing quotes' : a.type === 'load' ? 'Open ' + a.load : 'Open the comparison', href, 'primary', 'arrow', 'fq-open') + '</div>';
+      return '<div class="ex-done" id="fq-done">' + icon('check', 18) + '<div><strong>Carrier quote ' + esc(fq.id) + ' ' + esc(S.fqWhere(fq)) + '</strong>' + V.info((fq.validUntil != null ? 'Valid until ' + V.when(fq.validUntil) + '; it lapses on the clock. ' : 'No validity stated. ') + ((state.parties[fq.carrier] || {}).status !== 'Approved' ? 'The carrier is pending: it cannot be booked until logistics approves it.' : 'The original stays attached as evidence.'), 'the quote') + '</div>' + V.link(!a ? 'Standing quotes' : a.type === 'load' ? 'Open ' + a.load : 'Open the comparison', href, 'primary', 'arrow', 'fq-open') + '</div>';
     }
     const d = draftFq(state, v);
     const cands = E.freightCandidates(state, d);
     const match = cands.filter((c) => c.fit === 'match'); const other = cands.filter((c) => c.fit !== 'match');
     const target = ex.target != null && (ex.target === 'lane' || match.some((c) => c.id === ex.target)) ? ex.target : match[0] ? match[0].id : 'lane';
-    const radio = (val, label, detail) => '<label class="fq-cand' + (target === val ? ' is-sel' : '') + '"><input type="radio" name="fq-target-' + esc(key) + '" value="' + esc(val) + '" data-input="fq-target" data-x="' + esc(key) + '"' + (target === val ? ' checked' : '') + '><span><strong>' + esc(label) + '</strong><small>' + esc(detail) + '</small></span></label>';
+    const radio = (val, label, detail, more) => '<label class="fq-cand' + (target === val ? ' is-sel' : '') + '"><input type="radio" name="fq-target-' + esc(key) + '" value="' + esc(val) + '" data-input="fq-target" data-x="' + esc(key) + '"' + (target === val ? ' checked' : '') + '><span><strong>' + esc(label) + '</strong><small>' + esc(detail) + '</small></span>' + (more ? V.info(more, label) : '') + '</label>';
     const where = v.laneFrom && v.laneTo ? v.laneFrom + ' → ' + v.laneTo : 'this lane';
     const day = v.pickupAt != null ? u.dayShort(v.pickupAt) : 'the pickup day';
     const why = rd.flagged ? 'Flagged content cannot create records.' : rd.missing.length ? 'Missing: ' + rd.missing.join(', ') + '.' : rd.unreviewed.length ? 'Review: ' + rd.unreviewed.join(', ') + '.' : '';
-    return '<fieldset class="fq-cands" id="fq-cands"><legend>Where the quote goes</legend>' +
-      (match.length ? '<p class="small muted">' + match.length + ' lot' + (match.length > 1 ? 's or loads need' : ' or load needs') + ' freight on ' + esc(where) + ' on ' + esc(day) + ':</p>' : '<p class="small" id="fq-none">' + icon('info', 14) + ' No lot or load needs freight on ' + esc(where) + ' on ' + esc(day) + '. It is kept as a standing quote on the lane: lots that later need that lane and day see it in their comparison until it lapses.</p>') +
+    return '<fieldset class="fq-cands" id="fq-cands"><legend>Where it goes</legend>' +
+      (match.length ? '' : '<p class="small" id="fq-none">' + icon('info', 14) + ' No lot or load needs freight on ' + esc(where) + ' on ' + esc(day) + '.' + V.info('It is kept as a standing quote on the lane: lots that later need that lane and day see it in their comparison until it lapses.', 'standing quotes') + '</p>') +
       match.map((c) => radio(c.id, c.label, c.detail)).join('') +
-      radio('lane', 'Keep as a standing quote on ' + where, (v.validUntil != null ? 'Until ' + V.when(v.validUntil) + '. ' : 'No validity stated. ') + 'Shown in Loads and offered to lots on this lane and day.') +
-      (other.length ? '<p class="small muted">Same lane, other days (not offered): ' + other.map((c) => esc(c.label) + ' — ' + esc(c.reason)).join('; ') + '</p>' : '') + '</fieldset>' +
-      '<div class="ex-actions">' + V.btn('Accept all', 'ex-accept-all', { icon: 'check', id: 'ex-accept-all', data: { x: key }, disabled: rd.flagged }) + V.btn('Add to freight comparison', 'create-from', { cls: 'primary', icon: 'arrow', id: 'add-fq', disabled: !rd.ready, data: { x: key } }) + (why ? '<p class="muted small" id="create-why">' + esc(why) + '</p>' : '') + '</div>';
+      radio('lane', 'Standing quote on ' + where, v.validUntil != null ? 'Until ' + V.when(v.validUntil) : 'No validity stated', 'Shown in Loads and offered to lots on this lane and day until it lapses.') +
+      (other.length ? '<details class="fold-mini"><summary>Other days (' + other.length + ')</summary><p class="small muted">Same lane, not offered: ' + other.map((c) => esc(c.label) + ' — ' + esc(c.reason)).join('; ') + '</p></details>' : '') + '</fieldset>' +
+      '<div class="ex-actions">' + V.btn('Accept all', 'ex-accept-all', { icon: 'check', id: 'ex-accept-all', data: { x: key }, disabled: rd.flagged, title: 'Accept every field' }) + V.btn('Add to freight comparison', 'create-from', { cls: 'primary', icon: 'arrow', id: 'add-fq', disabled: !rd.ready, data: { x: key } }) + (why ? '<p class="muted small" id="create-why">' + esc(why) + '</p>' : '') + '</div>';
   }
   function carrierFoot(state, key, ex) {
     const v = ex.values;
     if (v.intent === 'Carrier reschedule') {
       const lr = v.rsLoad ? E.load(state, v.rsLoad) : null;
-      if (ex.created) return '<div class="ex-done" id="rs-done">' + icon('check', 18) + '<div><strong>' + esc(ex.created) + ' pickup moved to ' + esc(V.when(lr ? lr.pickupAt : v.rsTo)) + '.</strong><p>' + esc(v.rsImpact ? v.rsImpact.text : '') + '</p></div>' + V.link('Open ' + ex.created, '#/load/' + ex.created, 'primary', 'arrow') + '</div>';
+      if (ex.created) return '<div class="ex-done" id="rs-done">' + icon('check', 18) + '<div><strong>' + esc(ex.created) + ' pickup moved to ' + esc(V.when(lr ? lr.pickupAt : v.rsTo)) + '</strong>' + V.info(v.rsImpact ? v.rsImpact.text : '', 'the impact') + '</div>' + V.link('Open ' + ex.created, '#/load/' + ex.created, 'primary', 'arrow') + '</div>';
       if (!lr) return '<p class="muted small" id="rs-why">' + ((v.loadMatches || []).length > 1 ? 'Several loads match: choose one, or ask the carrier.' : 'No load matched: ask the carrier for the load number, or choose it.') + ' Nothing moves until a load is confirmed.</p>';
       const needOk = !v.loadRef && !ex.accepted.rsLoad;
-      return '<div class="ex-actions">' + V.btn('Move ' + lr.id + ' pickup to ' + (v.rsTo != null ? V.when(v.rsTo) : '…'), 'msg-resched', { cls: 'primary', icon: 'clock', data: { id: lr.id, at: v.rsTo, x: key }, id: 'msg-resched', disabled: needOk || v.rsTo == null }) + V.link('Open ' + lr.id, '#/load/' + lr.id, 'small', 'arrow') + '<p class="muted small" id="rs-why">' + (needOk ? 'The load was inferred, not stated: accept the Load row first.' : 'Moves the pickup and re-checks receiving, the contract window and detention.') + '</p></div>';
+      return '<div class="ex-actions">' + V.btn('Move ' + lr.id + ' pickup to ' + (v.rsTo != null ? V.when(v.rsTo) : '…'), 'msg-resched', { cls: 'primary', icon: 'clock', data: { id: lr.id, at: v.rsTo, x: key }, id: 'msg-resched', disabled: needOk || v.rsTo == null }) + V.link('Open ' + lr.id, '#/load/' + lr.id, 'small', 'arrow') + (needOk ? '<p class="muted small" id="rs-why">' + icon('alert', 13) + ' Accept the inferred load first.</p>' : V.info('Moves the pickup and re-checks receiving, the contract window and detention.', 'the move')) + '</div>';
     }
     const l = v.loadRef ? E.load(state, v.loadRef) : null;
     if (!l) return '<p class="muted small">Choose the load this message is about. Nothing is created from carrier messages.</p>';
@@ -422,7 +425,7 @@
     if (v.intent === 'Carrier cancellation' && l.carrier && !open && ['booked', 'loading'].includes(l.status)) act = V.btn('Open an incident on ' + l.id, 'msg-cancel-load', { cls: 'primary', icon: 'alert', data: { id: l.id }, id: 'msg-cancel' });
     if (v.intent === 'Carrier update' && v.eta != null && ['booked', 'loading', 'transit'].includes(l.status) && l.etaAt !== v.eta) act = V.btn('Update ' + l.id + ' ETA to ' + u.hhmm(v.eta % 1440), 'msg-eta', { cls: 'primary', icon: 'clock', data: { id: l.id, at: v.eta, x: key }, id: 'msg-eta' });
     else if (v.intent === 'Carrier update' && v.delay && ['booked', 'loading', 'transit'].includes(l.status)) act = V.btn('Log ' + v.delay + ' min delay on ' + l.id, 'msg-delay', { cls: 'primary', icon: 'clock', data: { id: l.id, m: v.delay }, id: 'msg-delay' });
-    return '<div class="ex-actions">' + act + V.link('Open ' + l.id, '#/load/' + l.id, 'small', 'arrow') + '<p class="muted small">' + (open ? l.id + ' already has an open incident (' + l.exception + ').' : 'Carrier messages link to loads; the original stays attached as evidence.') + '</p></div>';
+    return '<div class="ex-actions">' + act + V.link('Open ' + l.id, '#/load/' + l.id, 'small', 'arrow') + (open ? '<p class="muted small">' + icon('alert', 13) + ' Open incident ' + esc(l.exception) + '</p>' : V.info('Carrier messages link to loads; the original stays attached as evidence.', 'carrier messages')) + '</div>';
   }
 
   function replyBlock(state, key, msg) {
@@ -431,10 +434,10 @@
     const text = ai ? ai.text : draftReply(state, ex, msg);
     const lang = (msg && msg.lang) || (ex.parsed && ex.parsed.lang) || ex.values.lang || (state.parties[ex.values.party] || {}).lang || 'en';
     const fm = ex.values.intent === 'Freight quote' && !ai ? freightMode(state, ex) : null;
-    const modes = fm ? '<div class="seg-ctl reply-modes" role="group" aria-label="Reply to the quote">' + [['accept', 'Accept'], ['decline', 'Decline'], ['ask', 'Ask what is missing']].map((m) => '<button type="button" data-act="reply-mode" data-x="' + esc(key) + '" data-mode="' + m[0] + '" aria-pressed="' + (fm === m[0]) + '" id="reply-' + m[0] + '">' + m[1] + '</button>').join('') + '</div>' + (fm === 'accept' ? '<p class="small muted">' + icon('lock', 13) + ' Accepting binds the desk: award it in TradeDesk first (logistics), then send.</p>' : '') : '';
-    return '<div class="reply md-reply"><div class="reply-head"><h3>Draft reply, in ' + (lang === 'en' ? 'English' : 'French') + '</h3><span class="reply-tools">' + V.provenance(ai ? ai.provenance : null) + V.btn('Copy reply', 'copy-reply', { cls: 'small', icon: 'copy', data: { x: key }, id: 'copy-reply' }) + '</span></div>' + modes + '<pre class="reply-body" lang="' + lang + '" id="reply-' + esc(key) + '">' + esc(text) + '</pre>' +
-      '<div class="ex-ai">' + aiButtons(state, key, 'reply') + (ai ? V.btn('Back to the rules draft', 'ai-reply-clear', { cls: 'small ghost', data: { x: key } }) : '') + '</div>' + (ex.replyNotice ? '<p class="callout tone-amber small">' + icon('alert', 15) + '<span>' + esc(ex.replyNotice) + '</span></p>' : '') +
-      '<p class="muted small">TradeDesk drafts; you send from your own email. Nothing leaves this demo.</p></div>';
+    const modes = fm ? '<div class="seg-ctl reply-modes" role="group" aria-label="Reply to the quote">' + [['accept', 'Accept'], ['decline', 'Decline'], ['ask', 'Ask']].map((m) => '<button type="button" data-act="reply-mode" data-x="' + esc(key) + '" data-mode="' + m[0] + '" aria-pressed="' + (fm === m[0]) + '" id="reply-' + m[0] + '"' + (m[0] === 'ask' ? ' title="Ask what is missing"' : '') + '>' + m[1] + '</button>').join('') + (fm === 'accept' ? '<span class="sti tone-amber" role="img" title="Accepting binds the desk: award it in TradeDesk first (logistics), then send." aria-label="Accepting binds the desk: award it in TradeDesk first (logistics), then send.">' + icon('lock', 13) + '</span>' : '') + '</div>' : '';
+    return '<details class="reply md-reply" id="reply-fold-' + esc(key) + '"><summary class="reply-head"><span class="rh-t">' + icon('mail', 16) + '<strong>Reply</strong><span class="lang-tag" title="' + (lang === 'en' ? 'English' : 'French') + ', the sender’s language">' + (lang === 'en' ? 'EN' : 'FR') + '</span></span>' + V.provenance(ai ? ai.provenance : null) + '</summary>' +
+      '<div class="reply-in">' + modes + '<pre class="reply-body" lang="' + lang + '" id="reply-' + esc(key) + '">' + esc(text) + '</pre>' +
+      '<div class="reply-tools">' + V.btn('Copy', 'copy-reply', { cls: 'small', icon: 'copy', data: { x: key }, id: 'copy-reply', title: 'Copy the reply' }) + aiButtons(state, key, 'reply') + (ai ? V.btn('Rules draft', 'ai-reply-clear', { cls: 'small ghost', data: { x: key }, title: 'Back to the rules draft' }) : '') + V.info('TradeDesk drafts; you send from your own email. Nothing leaves this demo.', 'the reply') + '</div>' + (ex.replyNotice ? '<p class="callout tone-amber small">' + icon('alert', 15) + '<span>' + esc(ex.replyNotice) + '</span></p>' : '') + '</div></details>';
   }
 
   function spansOf(ex) {
@@ -462,11 +465,11 @@
   function messageDetail(state, m) {
     const s = msgStatus(state, m);
     const ex = state.extraction[m.id];
-    const head = '<div class="md-head"><div><p class="md-kind">' + V.chip(s[0], m.kind) + '<span class="muted small">' + (m.party ? 'From ' + V.partyLink(m.party) : 'Sender not in your records') + '</span></p><h2>' + esc(m.subject) + '</h2></div></div>';
+    const head = '<div class="md-head"><h2>' + esc(m.subject) + '</h2><p class="md-kind">' + V.chip(s[0], m.kind) + (m.party ? V.partyLink(m.party) : '<span class="muted small" title="Sender not in your records">' + icon('alert', 13) + ' New sender</span>') + (m.duplicate ? '<span class="sti tone-steel" role="img" title="' + esc(m.duplicate) + '" aria-label="' + esc(m.duplicate) + '">' + icon('link', 13) + '</span>' : '') + '</p></div>';
     if (ex && (S.isExtractable(m) || ex.created)) {
       const isRev = m.kind === 'Revision';
-      return '<div class="msg-detail" id="msg-detail">' + head + (m.duplicate ? '<p class="note-line">' + icon('link', 15) + esc(m.duplicate) + '</p>' : '') +
-        '<div class="md-grid"><div class="md-letter">' + letter(m, spansOf(ex), state.ui.evKey) + (m.translation ? '<details class="translation"><summary>Machine translation, for reference</summary><p lang="en">' + esc(m.translation) + '</p></details>' : '') + '</div>' +
+      return '<div class="msg-detail" id="msg-detail">' + head +
+        '<div class="md-grid"><div class="md-letter">' + letter(m, spansOf(ex), state.ui.evKey) + (m.translation ? '<details class="translation"><summary>Translation</summary><p lang="en">' + esc(m.translation) + '</p></details>' : '') + '</div>' +
         replyBlock(state, m.id, m) + (isRev ? revisionBlock(state, m, ex) : review(state, m.id, m)) + '</div></div>';
     }
     let what = '';
@@ -474,7 +477,7 @@
       what = '<div class="callout tone-brick">' + icon('shield', 18) + '<div><strong>Flagged, nothing executed.</strong><p>' + esc(m.flag) + '</p>' + (state.msgState[m.id] ? '<p class="small">' + icon('check', 14) + ' Reviewed. Finance asked to verify by phone using the number on file.</p>' : V.btn('Mark reviewed and alert finance', 'flag-review', { cls: 'small', data: { id: m.id } })) + '</div></div>';
     } else if (m.link) {
       const href = m.link.type === 'exception' ? '#/load/' + (m.link.load || (state.exceptions[m.link.id] || {}).load) : m.link.type === 'recon' ? '#/settle/' + m.link.id : m.link.type === 'load' ? '#/load/' + m.link.id : m.link.type === 'demand' ? '#/book/' + m.link.id : m.link.type === 'trade' ? '#/trade/' + m.link.id : '#/book';
-      what = '<div class="callout tone-leaf">' + icon('link', 18) + '<div><strong>What TradeDesk did</strong><p>' + esc(m.link.label) + '. Related alerts form one record, not duplicate work.</p>' + V.link('Open it', href, 'small', 'arrow') + '</div></div>';
+      what = '<div class="callout tone-leaf">' + icon('link', 18) + '<div><strong>What TradeDesk did</strong><p>' + esc(m.link.label) + '.' + V.info('Related alerts form one record, not duplicate work.', 'linking') + '</p>' + V.link('Open it', href, 'small', 'arrow') + '</div></div>';
     }
     return '<div class="msg-detail" id="msg-detail">' + head + what + letter(m) + '</div>';
   }
@@ -493,15 +496,14 @@
     let res = '';
     if (p && state.extraction[p.key]) {
       const ex = state.extraction[p.key];
-      res = '<div class="paste-res"><div class="letter paste-src"><header class="letter-head"><div><strong>' + esc(p.from) + '</strong><br><span class="muted">' + ex.parsed.length + ' characters · read in your browser</span></div></header><div class="letter-body">' + P.highlight(ex.parsed.text, spansOf(ex), state.ui.evKey) + '</div></div>' +
+      res = '<div class="paste-res"><div class="letter paste-src"><header class="letter-head"><div><strong>' + esc(p.from) + '</strong><br><span class="muted" title="Read in your browser">' + ex.parsed.length + ' chars · local</span></div></header><div class="letter-body">' + P.highlight(ex.parsed.text, spansOf(ex), state.ui.evKey) + '</div></div>' +
         review(state, p.key, null) + replyBlock(state, p.key, null) + '<div class="row-actions">' + V.btn('Clear', 'paste-clear', { cls: 'ghost', icon: 'x' }) + '</div></div>';
     }
     const ai = TD.ai && TD.ai.usable();
-    return '<div class="msg-detail" id="msg-detail"><div class="md-head"><div><p class="md-kind">' + V.chip('simulated', 'Local rules, optional live AI') + '</p><h2>Paste or drop a message</h2></div></div>' +
-      '<p class="muted">Any supplier, buyer or carrier message, in French or English. Rules extract commodity, grade, quantity, moisture, price, window, origin or delivery site, and for carrier quotes the lane, pickup, equipment, payload and rate, keeping the exact words each came from. Nothing is uploaded unless you choose live AI.</p>' +
-      '<div class="drop" id="drop" data-drop="1"><label for="paste-text">Message text</label><textarea id="paste-text" rows="6" placeholder="Salut, j’ai environ 6 voyages de maïs à Saint-Damase…">' + esc(p ? p.text : '') + '</textarea>' +
-      '<div class="drop-row">' + V.btn('Read with rules', 'paste-parse', { cls: 'primary', icon: 'check', id: 'paste-parse' }) + (busy ? '<span class="dcard-progress small" role="status"><span class="spinner" aria-hidden="true"></span>Reading with live AI…</span>' : V.btn('Read with live AI' + (ai ? '' : ' (off)'), ai ? 'paste-ai' : 'lab', { cls: '', icon: 'spark', id: 'paste-ai', data: ai ? {} : { sec: 'ai' } })) + '<label class="btn ghost file-btn">' + icon('upload', 16) + '<span>Open a .txt or .eml file</span><input type="file" accept=".txt,.eml,text/plain,message/rfc822" data-input="paste-file"></label><span class="muted small">or drop a file here</span></div>' +
-      '<div class="samples"><span class="muted small">Try a sample:</span>' + SAMPLES.map((s, i) => '<button type="button" class="chip-btn" data-act="paste-sample" data-i="' + i + '">' + esc(s[0]) + '</button>').join('') + '</div></div>' + res + '</div>';
+    return '<div class="msg-detail" id="msg-detail"><div class="md-head"><h2>Paste a message</h2><p class="md-kind">' + V.provenance(null) + V.info('Any supplier, buyer or carrier message, in French or English. Rules extract commodity, grade, quantity, moisture, price, window, origin or delivery site, and for carrier quotes the lane, pickup, equipment, payload and rate, keeping the exact words each came from. Nothing is uploaded unless you choose live AI.', 'pasting') + '</p></div>' +
+      '<div class="drop" id="drop" data-drop="1"><label for="paste-text" class="sr-only">Message text</label><textarea id="paste-text" rows="6" placeholder="Salut, j’ai environ 6 voyages de maïs à Saint-Damase…">' + esc(p ? p.text : '') + '</textarea>' +
+      '<div class="drop-row">' + V.btn('Read', 'paste-parse', { cls: 'primary', icon: 'check', id: 'paste-parse', title: 'Read with rules, in this browser' }) + (busy ? '<span class="dcard-progress small" role="status"><span class="spinner" aria-hidden="true"></span>Reading…</span>' : ai ? V.btn('AI read', 'paste-ai', { icon: 'spark', id: 'paste-ai', title: 'Read with live AI: metered on the API monitor' }) : V.aiStatus({ id: 'paste-ai', label: true })) + '<label class="btn ghost file-btn" title="Open a .txt or .eml file, or drop it here">' + icon('upload', 16) + '<span>File</span><input type="file" accept=".txt,.eml,text/plain,message/rfc822" data-input="paste-file" aria-label="Open a .txt or .eml file"></label></div>' +
+      '<div class="samples"><span class="muted small">' + icon('file', 13) + ' Samples</span>' + SAMPLES.map((s, i) => '<button type="button" class="chip-btn" data-act="paste-sample" data-i="' + i + '">' + esc(s[0]) + '</button>').join('') + '</div></div>' + res + '</div>';
   }
   V.SAMPLES = SAMPLES;
 
@@ -512,7 +514,7 @@
     if (sel === 'new') detail = pasteDetail(state);
     else { const m = state.messages.find((x) => x.id === sel); detail = m ? messageDetail(state, m) : '<div class="empty">Message not found.</div>'; }
     const waiting = V.navCounts(state).inbox;
-    return V.band('<div class="page-head"><div><h1>Trade inbox</h1><p>' + (waiting ? waiting + ' message' + (waiting > 1 ? 's' : '') + ' need review. ' : 'Everything reviewed. ') + 'Commercial events become records with their source attached; nothing is sent from here.</p></div>' + V.link('Paste a message', '#/inbox/new', 'ghost on-dark', 'upload') + '</div>', 'band-page') +
+    return V.band('<div class="page-head"><div><h1>Inbox' + (waiting ? ' <span class="h-count num" title="' + waiting + ' to review" aria-label="' + waiting + ' to review">' + waiting + '</span>' : '') + '</h1></div>' + V.info('Commercial events become records with their source attached; nothing is sent from here.', 'the inbox') + '</div>', 'band-page band-thin') +
       '<div class="wrap inbox' + (route.id ? ' has-sel' : '') + '">' + list(state, sel === 'new' ? null : sel) + '<div class="inbox-detail">' + (route.id ? '<a class="back-link" href="#/inbox">' + icon('back', 15) + 'All messages</a>' : '') + detail + '</div></div>';
   };
   V.inboxSelected = function (state, route) {

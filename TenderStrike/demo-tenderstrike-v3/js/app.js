@@ -25,18 +25,18 @@
   const routeKey = (r) => r.name + '/' + (r.id || '') + '/' + (r.tab || '');
   const TITLES = { brief: 'Brief du matin', radar: 'Radar', coffre: 'Coffre-fort', journal: 'Journal', calendrier: 'Calendrier', notifications: 'Notifications', nouveau: 'Ajouter un appel d’offres' };
 
+  /* Cinq destinations principales; le reste sous « Plus ». L’outillage de démo est regroupé dans le menu Démo. */
   const nav = () => {
     const did = UI.view.lastDossier && S.exists(UI.view.lastDossier) ? UI.view.lastDossier : S.featured();
-    const short = S.def(did).buyerShort;
     return [
-      ['brief', '#/brief', 'sun', 'Brief du matin', 'Brief'],
-      ['radar', '#/radar', 'radar', 'Radar', 'Radar'],
-      ['dossier', '#/dossier/' + did + '/radiographie', 'folder', short.length > 18 ? short.slice(0, 17) + '…' : short, 'Dossier'],
-      ['calendrier', '#/calendrier', 'cal', 'Calendrier', 'Agenda'],
-      ['coffre', '#/coffre', 'vault', 'Coffre-fort', 'Coffre'],
-      ['journal', '#/journal', 'log', 'Journal', 'Journal']
+      ['brief', '#/brief', 'sun', 'Brief'],
+      ['radar', '#/radar', 'radar', 'Radar'],
+      ['dossier', '#/dossier/' + did + '/radiographie', 'folder', 'Dossier'],
+      ['calendrier', '#/calendrier', 'cal', 'Agenda'],
+      ['coffre', '#/coffre', 'vault', 'Coffre']
     ];
   };
+  const menu = (cls, summary, label, body) => `<details class="menu ${cls}"><summary aria-label="${esc(label)}" title="${esc(label)}">${summary}</summary><div class="menu-p" role="group" aria-label="${esc(label)}">${body}</div></details>`;
 
   const shell = (r, inner) => {
     const p = S.person();
@@ -44,39 +44,37 @@
     const unread = S.unread();
     const lateN = S.allDeadlines().filter((x) => !x.done && Date.parse(x.at) < S.nowTs() && x.tender && S.isOpen(x.tender)).length;
     const N = nav();
-    const badge = (k) => (k === 'radar' ? `<span class="nb">${S.openDossierIds().length}</span>` : k === 'coffre' && vaultAlert ? `<span class="nb nb-bad" aria-label="${vaultAlert} pièce(s) à renouveler">${vaultAlert}</span>` : k === 'calendrier' && lateN ? `<span class="nb nb-bad" aria-label="${lateN} échéance(s) en retard">${lateN}</span>` : '');
-    const blocked = S.openDossierIds().filter((id) => S.D(id).decision && S.D(id).decision.choice === 'proceed' && S.hardBlockers(id).length);
-    const showAlert = blocked.length && r.name !== 'dossier' && r.name !== 'nouveau';
-    return `<div class="demo-strip">
-        <a href="../../index.html" class="ds-back">← Toutes les démos</a>
-        <span class="ds-flag">Démo · données fictives</span>
-        <span class="ds-clock">${ic('clock', 13)}Horloge de démo : ${esc(U.day(S.now()))} ${S.now().getFullYear()}, ${U.time(S.now())}</span>
-        <button type="button" class="ds-lab" data-act="lab" aria-expanded="${!!UI.view.lab}">${ic('flask', 13)}Labo de test</button>
-        <button type="button" class="ds-reset" data-act="reset">${ic('reset', 13)}Réinitialiser</button>
-      </div>
-      <header class="topbar">
-        <a class="brand" href="#/brief" aria-label="TenderStrike QC, accueil">${UI.mark(30)}<span class="brand-n">TenderStrike<small>QC</small></span></a>
+    const dot = (k) => ((k === 'coffre' && vaultAlert) || (k === 'calendrier' && lateN) ? `<i class="nav-dot" aria-label="${k === 'coffre' ? vaultAlert + ' pièce(s) à renouveler' : lateN + ' échéance(s) en retard'}"></i>` : '');
+    const ai = TS.AI.status();
+    const demo = menu('demo-m', `${ic('flask', 18)}<span class="demo-tag">Démo</span><i class="ai-dot is-${ai.state}" aria-hidden="true"></i>`, 'Menu démo · données fictives',
+      `<p class="menu-note">${ic('info', 14)}<span>Démo · données fictives</span></p>
+       <p class="menu-note">${ic('clock', 14)}<span title="Horloge de démo (heure de Montréal)">${esc(U.day(S.now()))}, ${U.time(S.now())}</span></p>
+       <button type="button" class="menu-i" data-act="tour-start">${ic('play', 16)}<span>Visite guidée</span></button>
+       <button type="button" class="menu-i" data-act="lab" aria-expanded="${!!UI.view.lab}">${ic('flask', 16)}<span>Labo de test</span></button>
+       ${TS.AI.link('menu-i')}
+       <button type="button" class="menu-i" data-act="reset">${ic('reset', 16)}<span>Réinitialiser</span></button>
+       <a class="menu-i" href="../../index.html">${ic('back', 16)}<span>Toutes les démos</span></a>`);
+    const more = menu('more-m', ic('menu', 18), 'Plus',
+      `<a class="menu-i" href="#/journal">${ic('log', 16)}<span>Journal</span></a>
+       <a class="menu-i" href="#/notifications">${ic('bell', 16)}<span>Notifications</span>${unread ? `<b class="menu-n">${unread}</b>` : ''}</a>
+       <a class="menu-i" href="#/nouveau">${ic('plus', 16)}<span>Ajouter un appel d’offres</span></a>`);
+    const persona = menu('persona', `${UI.avatar(p.id)}${ic('down', 14)}`, 'Rôle actif : ' + p.name + ', ' + p.short + '. Changer de rôle',
+      `<p class="menu-note">${ic('user', 14)}<span>Rôle actif</span></p>${Object.values(D.people).map((x) => `<button type="button" aria-pressed="${x.id === p.id}" class="pm${x.id === p.id ? ' is-on' : ''}" data-act="persona" data-id="${x.id}" title="${esc(x.role)}">${UI.avatar(x.id)}<span><b>${esc(x.name)}</b><small>${esc(x.short)}</small></span></button>`).join('')}`);
+    return `<header class="topbar">
+        <a class="brand" href="#/brief" aria-label="TenderStrike QC, accueil" title="TenderStrike QC">${UI.mark(30)}<span class="brand-n">TenderStrike</span></a>
         <nav class="mainnav" aria-label="Navigation principale">
-          ${N.map(([k, href, icon, label, short]) => `<a href="${href}" class="mn${r.name === k ? ' is-on' : ''}"${r.name === k ? ' aria-current="page"' : ''}${k === 'dossier' ? ` title="${esc(S.def(href.split('/')[2]).buyerShort)}"` : ''}>${ic(icon, 17)}<span class="lbl-l">${esc(label)}</span><span class="lbl-s" aria-hidden="true">${esc(k === 'coffre' ? 'Coffre-fort' : short)}</span>${badge(k)}</a>`).join('')}
+          ${N.map(([k, href, icon, label]) => `<a href="${href}" class="mn${r.name === k ? ' is-on' : ''}"${r.name === k ? ' aria-current="page"' : ''} title="${esc(k === 'dossier' ? S.def(href.split('/')[2]).buyerShort : label)}">${ic(icon, 17)}<span>${esc(label)}</span>${dot(k)}</a>`).join('')}
         </nav>
         <div class="top-r">
-          <button type="button" class="srch-btn" data-act="search" aria-label="Rechercher (Ctrl K)">${ic('search', 16)}<span class="srch-lbl">Rechercher</span><kbd class="srch-k">Ctrl K</kbd></button>
-          <a class="bell${r.name === 'notifications' ? ' is-on' : ''}" href="#/notifications" aria-label="Notifications${unread ? ', ' + unread + ' non lue' + (unread > 1 ? 's' : '') : ''}">${ic('bell', 18)}${unread ? `<span class="bell-n">${unread > 9 ? '9+' : unread}</span>` : ''}</a>
-          <button type="button" class="btn btn-present" data-act="tour-start">${ic('play', 15)}<span>Visite guidée</span></button>
-          <details class="persona">
-            <summary aria-label="Rôle actif : ${esc(p.name)}, ${esc(p.short)}. Changer de rôle">${UI.avatar(p.id)}<span class="pn"><b>${esc(p.name)}</b><small>${esc(p.short)}</small></span>${ic('down', 14)}</summary>
-            <div class="persona-m" role="group" aria-label="Rôle actif">
-              <p class="muted-note">Changer de rôle pour voir les permissions : seule la propriétaire approuve les prix et signe.</p>
-              ${Object.values(D.people).map((x) => `<button type="button" aria-pressed="${x.id === p.id}" class="pm${x.id === p.id ? ' is-on' : ''}" data-act="persona" data-id="${x.id}">${UI.avatar(x.id)}<span><b>${esc(x.name)}</b><small>${esc(x.role)}</small></span></button>`).join('')}
-            </div>
-          </details>
+          <button type="button" class="tb-i" data-act="search" aria-label="Rechercher (Ctrl K)" title="Rechercher (Ctrl K)">${ic('search', 18)}</button>
+          <a class="tb-i bell${r.name === 'notifications' ? ' is-on' : ''}" href="#/notifications" aria-label="Notifications${unread ? ', ' + unread + ' non lue' + (unread > 1 ? 's' : '') : ''}" title="Notifications">${ic('bell', 18)}${unread ? `<span class="bell-n">${unread > 9 ? '9+' : unread}</span>` : ''}</a>
+          ${more}${demo}${persona}
         </div>
       </header>
-      ${showAlert ? `<div class="alertbar">${ic('lock', 15)}<span>${esc(blocked.map((id) => { const n = S.hardBlockers(id).length; return S.def(id).buyerShort + ' : ' + n + (n > 1 ? ' points bloquent' : ' point bloque'); }).join(' · '))} l’export approuvé.</span><a href="#/dossier/${blocked[0]}/conformite">Voir la conformité</a></div>` : ''}
       <main id="main" class="main main-${r.name}" tabindex="-1">${inner}</main>
-      <footer class="foot"><nav class="foot-links" aria-label="Liens secondaires"><a href="#/journal">Journal</a><a href="#/notifications">Notifications</a><a href="#/nouveau">Ajouter un appel d’offres</a></nav><p>TenderStrike QC · démonstration V3 · toutes les entreprises, municipalités, montants et documents sont fictifs. Sans IA en direct, aucune donnée ne quitte ce navigateur.${S.storageOk ? '' : ' Stockage local indisponible : vos actions dureront le temps de la session.'}</p></footer>
+      <footer class="foot"><p>${ic('info', 13)} TenderStrike QC · démo V3 · données fictives${S.storageOk ? '' : ' · stockage local indisponible'}</p></footer>
       <nav class="bottomnav" aria-label="Navigation principale mobile">
-        ${N.filter((x) => x[0] !== 'journal').map(([k, href, icon, , short]) => `<a href="${href}" class="bn${r.name === k ? ' is-on' : ''}"${r.name === k ? ' aria-current="page"' : ''}>${ic(icon, 20)}<span>${esc(short)}</span>${(k === 'coffre' && vaultAlert) || (k === 'calendrier' && lateN) ? '<i class="bn-dot" aria-hidden="true"></i>' : ''}</a>`).join('')}
+        ${N.map(([k, href, icon, label]) => `<a href="${href}" class="bn${r.name === k ? ' is-on' : ''}"${r.name === k ? ' aria-current="page"' : ''}>${ic(icon, 20)}<span>${esc(label)}</span>${dot(k)}</a>`).join('')}
       </nav>
       ${UI.view.lab ? TS.Lab.html() : ''}`;
   };
@@ -101,7 +99,7 @@
       if (['conformite', 'radiographie'].includes(r.tab) && !same && !UI.viewer(r.id).clause) {
         const first = S.compliance(r.id).find((c) => S.HARD.includes(c.status) && c.req) || S.compliance(r.id).find((c) => c.req && c.status !== 'verified');
         const req = first ? S.reqById(r.id, first.req) : null;
-        if (req) { Object.assign(UI.viewer(r.id), { doc: req.doc, page: req.page, clause: req.clause }); UI.view.scrollPending = r.id; }
+        if (req) Object.assign(UI.viewer(r.id), { doc: req.doc, page: req.page, clause: req.clause });
       }
     }
     let inner;
@@ -114,9 +112,10 @@
     else if (r.name === 'nouveau') inner = V.nouveau();
     else inner = V.brief();
     const app = U.$('#app');
+    App.closeTip();
     app.innerHTML = shell(r, inner);
     U.typo(app);
-    if (UI.view.lab) { TS.Lab.after(); placeLab(); const lb = U.$('.lab-b'); if (lb && same) lb.scrollTop = labScroll; }
+    if (UI.view.lab) { const lb = U.$('.lab-b'); if (lb && same) lb.scrollTop = labScroll; }
     document.title = (r.name === 'dossier' ? S.def(r.id).buyerShort + ' · ' + UI.TABS.find((t) => t[0] === r.tab)[1] : TITLES[r.name]) + ' · TenderStrike QC';
     if (same && !o.top) {
       window.scrollTo(0, scrollY);
@@ -137,8 +136,6 @@
     if (r.name === 'brief' && !UI.view.swept) setTimeout(() => { UI.view.swept = true; }, 50);
     if (TS.Tour) TS.Tour.refresh();
   };
-  /* Le tiroir du Labo commence sous la bande démo, pour laisser « Réinitialiser » et le bouton du Labo accessibles */
-  const placeLab = () => { const l = U.$('#lab'), st = U.$('.demo-strip'); if (l && st) l.style.setProperty('--lab-top', Math.max(0, Math.round(st.getBoundingClientRect().bottom)) + 'px'); };
   App.go = (hash) => { if (location.hash === hash) App.render({ top: true }); else location.hash = hash; };
 
   /* ---------- Utilitaires d’action ---------- */
@@ -152,12 +149,9 @@
     const clause = el.dataset.clause, doc = el.dataset.doc, page = Number(el.dataset.page);
     if (!S.docs(id)[doc]) return UI.toast('Ce document n’est pas encore publié pour ce dossier.', 'warn');
     Object.assign(UI.viewer(id), { doc, page, clause });
-    const r = App.parse();
-    const inline = r.name === 'dossier' && r.id === id && ['radiographie', 'conformite'].includes(r.tab) && !UI.isNarrow();
-    if (inline) { UI.view.scrollPending = id; App.render(); return; }
     const origin = el.closest && el.closest('[data-req]') ? `[data-req="${el.closest('[data-req]').dataset.req}"] .req-open` : null;
-    UI.dialog(`${UI.viewerHtml(id, { dialog: true })}<div class="dlg-actions"><button type="button" class="btn btn-primary" data-act="dlg-close">${ic('back', 16)}<span>Revenir</span></button></div>`, {
-      title: esc(S.docs(id)[doc].label) + ' · page ' + page, cls: 'dlg-viewer', returnFocus: origin ? U.$(origin) : el, modeless: inTour,
+    UI.dialog(`${UI.viewerHtml(id, { dialog: true })}`, {
+      title: esc(S.docs(id)[doc].label) + ' · p. ' + page, cls: 'dlg-viewer dlg-sheet', returnFocus: origin ? U.$(origin) : el, modeless: inTour,
       after: () => UI.scrollViewer(id, false)
     });
   };
@@ -267,6 +261,35 @@
     nt.busy = false; App.render();
   };
 
+  /* ---------- Déclaration (dialogue « Lire et signer ») ---------- */
+  App.declDialog = (id, el) => UI.dialog(`<div class="decl-b" data-t="${esc(id)}">${V.declBody(id)}</div>`, { title: 'Déclarations obligatoires', cls: 'dlg-decl dlg-wide', returnFocus: el });
+  App.declRefresh = (id) => { const b = U.$('.dlg-decl .decl-b'); if (!b) return; const f = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.k : null; b.innerHTML = V.declBody(id); U.typo(b); if (f) { const x = b.querySelector(`[data-k="${f}"]`); if (x) x.focus(); } };
+
+  /* ---------- Bulle ⓘ : une seule à la fois, fermée au clic extérieur, à Échap et au rendu ---------- */
+  let tipFor = null;
+  App.closeTip = () => { const t = document.getElementById('tip'); if (t) t.remove(); if (tipFor) { tipFor.setAttribute('aria-expanded', 'false'); tipFor = null; } };
+  App.toggleTip = (el) => {
+    if (tipFor === el) return App.closeTip();
+    App.closeTip();
+    const t = document.createElement('div');
+    t.id = 'tip'; t.className = 'tip'; t.setAttribute('role', 'status');
+    t.textContent = U.typoText(el.dataset.tip || el.title || '');
+    (el.closest('dialog') || document.body).appendChild(t);
+    const host = t.parentElement === document.body ? null : t.parentElement;
+    const b = el.getBoundingClientRect(), hb = host ? host.getBoundingClientRect() : { left: 0, top: 0 };
+    const sx = host ? host.scrollLeft : window.scrollX, sy = host ? host.scrollTop : window.scrollY;
+    const vw = document.documentElement.clientWidth, w = Math.min(320, vw - 32);
+    t.style.width = w + 'px';
+    const left = Math.max(16, Math.min(b.left + b.width / 2 - w / 2, vw - 16 - w));
+    t.style.left = (left - hb.left + sx) + 'px';
+    const below = b.bottom + 8, h = t.offsetHeight;
+    const top = below + h > window.innerHeight - 8 && b.top - 8 - h > 8 ? b.top - 8 - h : below;
+    t.style.top = (top - hb.top + sy) + 'px';
+    el.setAttribute('aria-expanded', 'true');
+    el.setAttribute('aria-controls', 'tip');
+    tipFor = el;
+  };
+
   /* ---------- Fichiers ---------- */
   const b64 = (buf) => { const bytes = new Uint8Array(buf); let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); };
   const htmlText = (html) => { const doc = new DOMParser().parseFromString(String(html).replace(/<(br|\/p|\/div|\/li|\/h[1-6]|\/tr|\/section|\/article)[^>]*>/gi, '$&\n'), 'text/html'); doc.querySelectorAll('script,style,noscript').forEach((n) => n.remove()); return (doc.body ? doc.body.textContent : '').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim(); };
@@ -343,11 +366,18 @@
       Object.assign(v, { page: pages[i], clause: null }); UI.view.scrollPending = id; refreshViewer(id);
     },
     'req-filter': (el) => { UI.view.reqFilter[tid(el)] = el.dataset.f; App.render(); },
+    'decide-open': (el) => UI.dialog(V.decisionDialog(tid(el)), { title: 'Décision : ' + esc(S.def(tid(el)).buyerShort), cls: 'dlg-decide' }),
     decide: (el) => {
       const choice = (U.$('input[name="dec"]:checked') || {}).value || 'proceed';
       const reason = (U.$('#dec-reason') || {}).value || '';
-      after(A.decide(tid(el), choice, reason.trim(), (U.$('#dec-owner') || {}).value || 'marc', (U.$('#dec-review') || {}).value || U.isoDay(S.now())));
+      const owner = (U.$('#dec-owner') || {}).value || 'marc', review = (U.$('#dec-review') || {}).value || U.isoDay(S.now());
+      const r = A.decide(tid(el), choice, reason.trim(), owner, review);
+      if (r.ok && U.$('.dlg-decide')) UI.closeDialog();
+      after(r);
     },
+    info: (el) => App.toggleTip(el),
+    book: (el) => { const id = tid(el), v = UI.viewer(id); if (!S.docs(id)[v.doc]) return UI.toast('Le devis n’est pas encore obtenu pour ce dossier.', 'warn'); UI.dialog(UI.viewerHtml(id, { dialog: true }), { title: esc(S.docs(id)[v.doc].label) + ' · p. ' + v.page, cls: 'dlg-viewer dlg-sheet', returnFocus: el, after: () => UI.scrollViewer(id, false) }); },
+    'decl-open': (el) => App.declDialog(tid(el), el),
     reopen: (el) => after(A.reopen(tid(el))),
     archive: (el) => after(A.archive(tid(el), el.dataset.on !== '')),
     confirm: (el) => after(A.confirm(tid(el), el.dataset.key)),
@@ -386,7 +416,7 @@
     'project-remove-confirm': (el) => { UI.closeDialog(); after(A.projectRemove(el.dataset.p)); },
     bond: (el) => after(A.bond(tid(el), el.dataset.step)),
     ack: (el) => after(A.ack(tid(el), el.dataset.k)),
-    'sign-decl': (el) => after(A.signDecl(tid(el))),
+    'sign-decl': (el) => { const r = A.signDecl(tid(el)); if (r.ok && U.$('.dlg-decl')) UI.closeDialog(); after(r); },
     'approve-package': (el) => after(A.approvePackage(tid(el))),
     export: (el) => App.doExport(tid(el)),
     'manual-check': (el) => after(A.manualCheck(tid(el))),
@@ -403,7 +433,6 @@
     'results-event': (el) => after(A.publishResults(tid(el))),
     outcome: (el) => after(A.outcome(tid(el), el.dataset.k)),
     'radar-view': (el) => { A.radarView(el.dataset.v); App.render(); },
-    'radar-filter': (el) => { S.state.radar.filter = el.dataset.f; S.save(); App.render(); },
     feedback: (el) => after(A.feedback(el.dataset.id, el.dataset.code)),
     'tender-del': (el) => UI.confirm('Supprimer ce dossier ?', 'Le dossier ajouté par vous, ses prix et ses notifications seront retirés. Le journal garde la trace de la suppression. Vous pourrez annuler juste après.', 'tender-del-confirm', { t: tid(el) }, 'Supprimer le dossier'),
     'tender-del-confirm': (el) => { UI.closeDialog(); const r = A.deleteTender(tid(el)); UI.result(r); if (App.parse().name === 'dossier') App.go('#/radar'); else App.render(); },
@@ -421,7 +450,7 @@
     'nt-clear': () => { V.ntReset(); App.render(); },
     'nt-rules': () => App.ntAnalyze(false),
     'nt-ai': () => App.ntAnalyze(true),
-    'nt-seg': (el) => { const p = U.$('#nt-seg-' + el.dataset.i); if (!p) return; U.$$('.nt-s.is-flash').forEach((x) => x.classList.remove('is-flash')); p.classList.add('is-flash'); const box = U.$('.nt-source'); if (box && getComputedStyle(box).overflowY !== 'visible' && box.scrollHeight > box.clientHeight) box.scrollTo({ top: p.offsetTop - box.offsetTop - 40, behavior: U.reducedMotion() ? 'auto' : 'smooth' }); else p.scrollIntoView({ block: 'center' }); },
+    'nt-seg': (el) => { const p = U.$('#nt-seg-' + el.dataset.i); if (!p) return; const det = p.closest('details'); if (det && !det.open) { det.open = true; UI.view.ntSrcOpen = true; } U.$$('.nt-s.is-flash').forEach((x) => x.classList.remove('is-flash')); p.classList.add('is-flash'); const box = U.$('.nt-source'); if (box && getComputedStyle(box).overflowY !== 'visible' && box.scrollHeight > box.clientHeight) box.scrollTo({ top: p.offsetTop - box.offsetTop - 40, behavior: U.reducedMotion() ? 'auto' : 'smooth' }); else p.scrollIntoView({ block: 'center' }); },
     'nt-create': () => {
       if (!UI.view.nt.ex) return;
       const def = V.ntBuild();
@@ -452,7 +481,8 @@
     inflation: (el) => after(A.setInflation(tid(el), el.value)),
     'manual-rate': (el) => after(A.setInflation(tid(el), 'manual', el.value)),
     project: (el) => after(A.toggleProject(tid(el), el.dataset.id)),
-    decl: (el) => after(A.toggleDecl(tid(el), el.dataset.k)),
+    decl: (el) => { after(A.toggleDecl(tid(el), el.dataset.k)); App.declRefresh(tid(el)); },
+    'radar-filter': (el) => { S.state.radar.filter = el.value; S.save(); App.render(); },
     radius: (el) => { A.radius(Number(el.value)); App.render(); UI.toast('Rayon de ' + el.value + ' km : classement et exclusions recalculés.'); },
     acquire: async (el) => { const files = await Promise.all(Array.from(el.files || []).map(U.readFile)); if (files.length) after(A.acquire(tid(el), files)); },
     'log-tender': (el) => { UI.view.logTender = el.value; App.render(); },
@@ -511,6 +541,10 @@
 
   App.bind = () => {
     document.addEventListener('click', (ev) => {
+      const inMenu = ev.target.closest && ev.target.closest('details.menu');
+      U.$$('details.menu[open]').forEach((d) => { if (d !== inMenu) d.open = false; });
+      if (inMenu && ev.target.closest('.menu-p a, .menu-p button')) inMenu.open = false;
+      if (tipFor && !(ev.target.closest && (ev.target.closest('#tip') || ev.target.closest('[data-act="info"]') === tipFor))) App.closeTip();
       const opt = ev.target.closest && ev.target.closest('.srch-o');
       if (opt) { TS.Search.go(Number(opt.dataset.i)); return; }
       const el = ev.target.closest('[data-act]');
@@ -553,7 +587,8 @@
       if (ev.key === 'Enter' && ev.target.dataset && (ev.target.dataset.price || ev.target.dataset.cost)) { ev.preventDefault(); ev.target.blur(); }
       if (ev.key === 'Enter' && ev.target.dataset && ev.target.dataset.ref) { ev.preventDefault(); H['ref-save']({ dataset: { t: ev.target.dataset.t, p: ev.target.dataset.ref } }); }
       if (ev.key === 'Escape') {
-        const p = U.$('details.persona[open]'); if (p) { p.open = false; p.querySelector('summary').focus(); return; }
+        if (tipFor) { const b = tipFor; App.closeTip(); b.focus(); ev.preventDefault(); return; }
+        const p = U.$('details.menu[open]'); if (p) { p.open = false; p.querySelector('summary').focus(); return; }
         if (UI.view.lab && !U.$('#dlg').open && !(TS.Tour && TS.Tour.active)) H['lab-close']();
       }
     });
@@ -574,13 +609,28 @@
     const dlg = U.$('#dlg');
     dlg.addEventListener('close', () => { dlg.innerHTML = ''; });
     dlg.addEventListener('click', (ev) => { if (ev.target === dlg) UI.closeDialog(); });
-    document.addEventListener('toggle', (ev) => { if (ev.target.classList && ev.target.classList.contains('persona') && ev.target.open) { const b = ev.target.querySelector('.pm.is-on') || ev.target.querySelector('.pm'); if (b) b.focus(); } }, true);
+    document.addEventListener('toggle', (ev) => { if (ev.target.classList && ev.target.classList.contains('nt-side')) UI.view.ntSrcOpen = ev.target.open; if (ev.target.classList && ev.target.classList.contains('persona') && ev.target.open) { const b = ev.target.querySelector('.pm.is-on') || ev.target.querySelector('.pm'); if (b) b.focus(); } }, true);
+    window.addEventListener('scroll', () => { if (tipFor && !tipFor.closest('dialog')) App.closeTip(); }, { passive: true });
     window.addEventListener('hashchange', () => { if (U.$('#dlg').open && !U.$('.dlg-viewer')) UI.closeDialog(); if (UI.view.lab && UI.isNarrow()) UI.view.lab = false; App.render(); });
-    window.addEventListener('scroll', () => { if (UI.view.lab) placeLab(); }, { passive: true });
     let wide = window.innerWidth;
     window.addEventListener('resize', () => { const w = window.innerWidth; const cross = (b) => (wide <= b) !== (w <= b); if (cross(640) || cross(1023)) App.render(); wide = w; });
     window.addEventListener('storage', (ev) => { if (ev.key === 'tenderstrike-v3') { S.load(); App.render(); } });
-    if (window.LiveAI) window.LiveAI.onChange((on) => { App.render(); UI.toast(on ? 'IA en direct activée : elle propose, vous décidez. Toute erreur retombe sur les règles.' : 'IA en direct désactivée : la démo utilise les règles.'); });
+    /* Le moniteur d’API du hub peut changer l’état (clé, budget, coupe-circuit) : un rendu, et une bulle seulement si l’état change */
+    const aiKey = (st) => st.state + '|' + st.reason;
+    let aiNow = TS.AI.status(), pend = 0;
+    const onMeter = () => {
+      if (pend) return;
+      pend = setTimeout(() => {
+        pend = 0;
+        const st = TS.AI.status();
+        if (aiKey(st) === aiKey(aiNow)) return;
+        const was = aiNow.state; aiNow = st;
+        App.render();
+        if (was !== st.state) UI.toast(st.state === 'on' ? 'IA en direct active : elle propose, vous décidez. Les appels sont comptés dans le moniteur d’API.' : st.label + ' : la démo utilise les règles.', st.state === 'on' ? '' : 'warn');
+      }, 60);
+    };
+    if (window.ApiMeter) window.ApiMeter.onChange(onMeter);
+    else if (window.LiveAI) window.LiveAI.onChange(onMeter);
   };
 
   App.start = () => {

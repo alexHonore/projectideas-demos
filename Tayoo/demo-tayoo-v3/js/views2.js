@@ -28,19 +28,18 @@
     var week = T.cal.active().filter(function (a) { return a.date >= from && a.date <= to; });
     var nConf = week.filter(function (a) { return T.cal.conflicts(a, a.id).length; }).length;
     var counts = { open: s.tasks.filter(function (t) { return t.status === 'open'; }).length, overdue: s.tasks.filter(T.isOverdue).length, done: s.tasks.filter(function (t) { return t.status === 'done'; }).length, all: s.tasks.length };
-    return vHead('Calendar', h(T.fmtDate(from)) + ' to ' + h(T.fmtDate(to)) + '. ' + h(T.tzLabel(from)) + '. Travel times between neighbourhoods are estimates.', { close: true }) +
-      '<div class="tools"><div class="seg" role="group" aria-label="Seven days"><a class="btn btn-ghost btn-sm" href="#/calendar/' + T.addDays(from, -7) + '" aria-label="Previous seven days">' + I('back') + '</a><a class="btn btn-ghost btn-sm" href="#/calendar"' + (from === today ? ' aria-current="date"' : '') + '>From today</a><a class="btn btn-ghost btn-sm" href="#/calendar/' + T.addDays(from, 7) + '" aria-label="Next seven days">' + I('chevron') + '</a></div>' +
-      '<span class="tools-sp"></span><button type="button" class="btn btn-primary btn-sm" data-act="new-event">' + I('plus') + 'New event</button><button type="button" class="btn btn-ghost btn-sm" data-act="new-task">' + I('plus') + 'New task</button></div>' +
-      (nConf ? '<p class="warn">' + I('alert') + '<span>' + nConf + ' event' + (nConf === 1 ? '' : 's') + ' this week overlap or leave too little travel time. Each one says why below.</span></p>' : '') +
+    return vHead('Calendar', h(T.fmtDate(from)) + ' to ' + h(T.fmtDate(to)) + '. ' + h(T.tzLabel(from)) + '. Travel times between neighbourhoods are estimates.', { tools: R.ib('new-event', 'plus', 'New event', '', 'v-tool') }) +
+      '<div class="tools"><div class="seg" role="group" aria-label="Seven days"><a class="btn btn-ghost btn-sm" href="#/calendar/' + T.addDays(from, -7) + '" aria-label="Previous seven days" title="Previous week">' + I('back') + '</a><a class="btn btn-ghost btn-sm" href="#/calendar"' + (from === today ? ' aria-current="date"' : '') + '>' + h(T.fmtDate(from, { noDay: true })) + '</a><a class="btn btn-ghost btn-sm" href="#/calendar/' + T.addDays(from, 7) + '" aria-label="Next seven days" title="Next week">' + I('chevron') + '</a></div>' +
+      (nConf ? '<span class="tag tag-warn" title="' + nConf + ' event' + (nConf === 1 ? '' : 's') + ' this week overlap or leave too little travel time. Each one is flagged below.">' + I('alert') + nConf + '</span>' : '') + '</div>' +
       '<div class="cal-cols"><section class="blk"><h3 class="blk-h">Agenda</h3>' + R.agendaDays(from, 7, false) + '</section>' +
-      '<section class="blk"><h3 class="blk-h">Tasks</h3><div class="fchips" role="group" aria-label="Show tasks">' + [['open', 'Open'], ['overdue', 'Overdue'], ['done', 'Done'], ['all', 'All']].map(function (x) { return '<button type="button" data-act="tfilter" data-f="' + x[0] + '" aria-pressed="' + (tf === x[0]) + '">' + x[1] + ' <span class="n">' + counts[x[0]] + '</span></button>'; }).join('') + '</div>' +
+      '<section class="blk"><h3 class="blk-h">Tasks ' + R.ib('new-task', 'plus', 'New task', '', 'blk-link') + '</h3><div class="fchips" role="group" aria-label="Show tasks">' + [['open', 'Open'], ['overdue', 'Overdue'], ['done', 'Done'], ['all', 'All']].map(function (x) { return '<button type="button" data-act="tfilter" data-f="' + x[0] + '" aria-pressed="' + (tf === x[0]) + '">' + x[1] + ' <span class="n">' + counts[x[0]] + '</span></button>'; }).join('') + '</div>' +
       (tasks.length ? '<ul class="tasks">' + tasks.map(R.taskRow).join('') + '</ul>' : '<p class="empty">' + I('check') + 'No ' + (tf === 'all' ? '' : tf + ' ') + 'tasks.</p>') + '</section></div>';
   };
 
   /* ======================= listings ======================= */
   function listingRow(L, extra) {
-    return '<li><a class="lst" href="#/listings/' + L.id + '"><span class="lst-main"><span class="lst-a">' + h(L.address) + '</span><span class="lst-s">' + h(L.area) + ' · ' + h(L.type) + ' · ' + L.beds + ' bd' + (L.size ? ' · ' + L.size.toLocaleString('en-CA') + ' sq ft' : '') + ' · built ' + L.built + '</span>' + (extra ? '<span class="lst-x">' + extra + '</span>' : '') + '</span>' +
-      '<span class="lst-n"><span class="lst-p">' + (L.price ? T.money(L.price) : 'Not listed') + '</span><span class="lst-s">' + (L.fees ? 'fees ' + T.money(L.fees) + '/mo · ' : '') + 'garage ' + h(L.garage) + '</span></span></a></li>';
+    return '<li><a class="lst" href="#/listings/' + L.id + '" title="' + h(L.type + ', ' + L.beds + ' bd' + (L.size ? ', ' + L.size.toLocaleString('en-CA') + ' sq ft' : '') + ', built ' + L.built + (L.fees ? ', fees ' + T.money(L.fees) + '/mo' : '') + ', garage ' + L.garage + (extra ? '. ' + extra : '')) + '"><span class="lst-main"><span class="lst-a">' + h(L.address.split(',')[0]) + '</span><span class="lst-s">' + h(L.area) + ' · ' + L.beds + ' bd</span></span>' +
+      (extra ? '<span class="lst-x" aria-label="' + h(extra) + '">' + I('people') + '</span>' : '') + '<span class="lst-n"><span class="lst-p">' + (L.price ? T.money(L.price) : '—') + '</span></span></a></li>';
   }
   R.listingFilters = function () {
     var f = T.ui.lf;
@@ -50,16 +49,18 @@
     if (id) return R.listingDetail(id);
     var f = T.ui.lf, ff = R.listingFilters(), list = T.filterListings(ff);
     var src = T.LISTINGS_SOURCE;
-    return vHead('Listings', T.LISTINGS.length + ' active listings from the ' + h(src.label.charAt(0).toLowerCase() + src.label.slice(1)) + ', imported ' + h(T.fmtDate(src.imported, { noDay: true })) + '. The Centris/QPAREB feed isn’t connected.', { close: true }) +
+    var nf = (f.area !== 'any') + (f.type !== 'any') + !!f.max + (f.beds !== 'any') + !!f.garage;
+    return vHead('Listings', T.LISTINGS.length + ' active listings from the ' + h(src.label.charAt(0).toLowerCase() + src.label.slice(1)) + ', imported ' + h(T.fmtDate(src.imported, { noDay: true })) + '. The Centris/QPAREB feed isn’t connected.') +
       '<form class="lf" data-form="lfilter" role="search" aria-label="Filter listings">' +
-      '<label class="search lf-q">' + I('search') + '<span class="sr-only">Address or listing number</span><input type="search" placeholder="Address or listing number" value="' + h(f.q) + '" data-lf="q"></label>' +
+      '<label class="search lf-q">' + I('search') + '<span class="sr-only">Address or listing number</span><input type="search" placeholder="Address or number" value="' + h(f.q) + '" data-lf="q"></label>' +
+      '<details class="lf-more" data-ui="lf-more"' + (T.ui.open['lf-more'] || nf ? ' open' : '') + '><summary aria-label="Filters" title="Filters">' + I('filter') + (nf ? '<span class="n">' + nf + '</span>' : '') + '</summary><div class="lf-grid">' +
       '<label class="fld"><span>Area</span><select data-lf="area">' + opt([['any', 'Any area']].concat(AREAS()), f.area) + '</select></label>' +
       '<label class="fld"><span>Type</span><select data-lf="type">' + opt([['any', 'Any type']].concat(TYPES), f.type) + '</select></label>' +
       '<label class="fld"><span>Max price</span><input type="text" inputmode="numeric" placeholder="e.g. 600,000" value="' + h(f.max) + '" data-lf="max"></label>' +
       '<label class="fld"><span>Bedrooms</span><select data-lf="beds">' + opt([['any', 'Any'], ['1', '1+'], ['2', '2+'], ['3', '3+'], ['4', '4+']], f.beds) + '</select></label>' +
-      '<label class="check lf-g"><input type="checkbox" data-lf="garage"' + (f.garage ? ' checked' : '') + '><span>Garage or indoor parking (unknown excluded)</span></label>' +
-      '</form>' +
-      '<p class="muted cl-count" role="status">' + list.length + ' of ' + T.LISTINGS.length + ' listings: ' + h(T.filterText(ff)) + '. <button type="button" class="btn-link" data-act="lf-reset">Clear filters</button></p>' +
+      '<label class="check lf-g" title="Unknown garages are excluded"><input type="checkbox" data-lf="garage"' + (f.garage ? ' checked' : '') + '><span>Garage</span></label>' +
+      '</div></details></form>' +
+      '<p class="muted cl-count" role="status" title="' + h(T.filterText(ff)) + '">' + list.length + ' of ' + T.LISTINGS.length + (nf || f.q ? ' <button type="button" class="btn-link" data-act="lf-reset">Clear</button>' : '') + '</p>' +
       (list.length ? '<ul class="lsts">' + list.map(function (L) { var sv = S().clients.filter(function (c) { return (c.saved || []).indexOf(L.id) > -1; }); return listingRow(L, sv.length ? 'Saved for ' + sv.map(function (c) { return h(c.first); }).join(', ') : ''); }).join('') + '</ul>' : '<p class="empty">' + I('search') + 'No listing matches. Widen a filter.</p>');
   };
   // A sensible default client for a listing: a buyer who looks in that area, else any active buyer
@@ -75,16 +76,16 @@
     var r = T.cma.compute(id);
     var facts = [['Price', T.money(L.price)], ['Type', L.type], ['Bedrooms', L.beds], ['Living area', L.size ? L.size.toLocaleString('en-CA') + ' sq ft' : 'Unknown'], ['Built', L.built], ['Condo fees', L.fees ? T.money(L.fees) + '/month' : 'None'], ['Garage', L.garage === 'unknown' ? 'Unknown in the data' : L.garage], ['Listing number', L.id]];
     var tomorrow = T.addDays(T.today(), 1);
-    return vHead(L.address, h(L.area) + ', ' + h(L.type.toLowerCase()) + ', ' + T.money(L.price) + '. From the authorized export of ' + h(T.fmtDate(T.LISTINGS_SOURCE.imported, { noDay: true })) + '.', { back: '#/listings', backLabel: 'Listings', close: true }) +
+    return vHead(L.address, h(L.area) + ', ' + h(L.type.toLowerCase()) + ', ' + T.money(L.price) + '. From the authorized export of ' + h(T.fmtDate(T.LISTINGS_SOURCE.imported, { noDay: true })) + '. Saving changes the client record right away; an email or a visit becomes an Action Card, with consent, conflicts and travel checked there.', { back: '#/listings', backLabel: 'Listings' }) +
       '<dl class="facts">' + facts.map(function (x) { return '<div><dt>' + h(x[0]) + '</dt><dd>' + h(String(x[1])) + '</dd></div>'; }).join('') + '</dl>' +
-      '<section class="blk"><h3 class="blk-h">Save, send or plan a visit</h3>' +
+      '<section class="blk"><h3 class="blk-h">For a client</h3>' +
       '<form class="lact" data-form="listing-act" data-listing="' + id + '">' +
       '<label class="fld fld-wide"><span>Client</span><select name="client" id="la-client">' + opt(clientOpts(), (savers[0] || bestBuyer(L) || {}).id) + '</select></label>' +
       '<div class="lact-row"><button type="submit" name="do" value="save" class="btn btn-ghost btn-sm">' + I('plus') + 'Save to client</button><button type="submit" name="do" value="send" class="btn btn-ghost btn-sm">' + I('mail') + 'Draft an email</button></div>' +
       '<div class="lact-row"><label class="fld"><span>Visit date</span><input type="date" name="date" value="' + tomorrow + '" min="' + T.today() + '"></label><label class="fld"><span>Time</span><input type="time" name="time" value="10:00" step="900"></label><button type="submit" name="do" value="visit" class="btn btn-primary btn-sm">' + I('calendar') + 'Plan a visit</button></div>' +
-      '</form><p class="muted">Saving changes the client record right away (you can remove it). An email or a visit becomes an Action Card in the conversation: consent, conflicts and travel time are checked there, and nothing happens until you approve.</p></section>' +
-      '<section class="blk"><h3 class="blk-h">Market check</h3>' + (r && r.n ? '<p>' + r.n + ' comparable sales give an indicated range of <strong>' + T.money(r.low) + ' to ' + T.money(r.high) + '</strong> (' + h(r.quality.toLowerCase()) + '). List price is ' + Math.abs(Math.round((L.price - r.point) / r.point * 100)) + '% ' + (L.price >= r.point ? 'above' : 'below') + ' the point estimate.</p>' : '<p class="muted">Not enough comparable sales in the export.</p>') + '<p><a class="btn btn-ghost btn-sm" href="#/cma/' + id + '">' + I('ledger') + 'Open in the CMA studio</a></p></section>' +
-      '<section class="blk"><h3 class="blk-h">In your records</h3>' + (savers.length || visits.length ? '<ul class="res-list">' + savers.map(function (c) { return '<li><a href="#/clients/' + c.id + '"><span class="res-a">Saved for ' + h(T.fullName(c)) + '</span><span class="res-s">' + h(c.role) + ', ' + h(c.stage) + '</span></a><button type="button" class="btn-link" data-act="unsave" data-client="' + c.id + '" data-listing="' + id + '">Remove</button></li>'; }).join('') + visits.map(function (a) { var c = T.client(a.client); return '<li><a href="#/calendar/' + a.date + '"><span class="res-a">' + h(a.title) + (c ? ' with ' + h(T.fullName(c)) : '') + (a.status === 'cancelled' ? ' (cancelled)' : '') + '</span><span class="res-s">' + h(T.fmtDT(a.date + 'T' + a.start)) + '</span></a></li>'; }).join('') + '</ul>' : '<p class="muted">No client has this listing saved, and no visit is booked.</p>') + '</section>';
+      '</form></section>' +
+      '<section class="blk"><h3 class="blk-h">Market <a class="blk-link" href="#/cma/' + id + '" aria-label="Open in the CMA studio" title="CMA studio">' + I('ledger') + '</a></h3>' + (r && r.n ? '<p class="mk" title="' + r.n + ' comparable sales, ' + h(r.quality.toLowerCase()) + '"><strong>' + T.money(r.low) + ' – ' + T.money(r.high) + '</strong> <span class="tag">' + (L.price >= r.point ? '+' : '−') + Math.abs(Math.round((L.price - r.point) / r.point * 100)) + '%</span></p>' : '<p class="muted">Not enough sales.</p>') + '</section>' +
+      '<section class="blk"><h3 class="blk-h">In your records</h3>' + (savers.length || visits.length ? '<ul class="res-list">' + savers.map(function (c) { return '<li><a href="#/clients/' + c.id + '"><span class="res-a">Saved for ' + h(T.fullName(c)) + '</span><span class="res-s">' + h(c.role) + ', ' + h(c.stage) + '</span></a><button type="button" class="btn-link" data-act="unsave" data-client="' + c.id + '" data-listing="' + id + '">Remove</button></li>'; }).join('') + visits.map(function (a) { var c = T.client(a.client); return '<li><a href="#/calendar/' + a.date + '"><span class="res-a">' + h(a.title) + (c ? ' with ' + h(T.fullName(c)) : '') + (a.status === 'cancelled' ? ' (cancelled)' : '') + '</span><span class="res-s">' + h(T.fmtDT(a.date + 'T' + a.start)) + '</span></a></li>'; }).join('') + '</ul>' : '<p class="muted">—</p>') + '</section>';
   };
 
   /* ======================= CMA studio ======================= */
@@ -95,9 +96,8 @@
     var s = S();
     if (!id) {
       var evaluated = Object.keys(s.cmaRuns).filter(function (k) { return !/^SUBJ-/.test(k) && T.listing(k); });
-      return vHead('CMA studio', 'Comparative market analysis from ' + T.SOLD.length + ' sales in the ' + h(T.SOLD_SOURCE.label.charAt(0).toLowerCase() + T.SOLD_SOURCE.label.slice(1)) + '. Deterministic: the same inputs always give the same range. Not an appraisal.', { close: true }) +
-        '<div class="tools"><button type="button" class="btn btn-primary btn-sm" data-act="new-subject">' + I('plus') + 'New subject property</button><a class="btn btn-ghost btn-sm" href="#/listings">' + I('home') + 'Check an active listing</a></div>' +
-        '<section class="blk"><h3 class="blk-h">Subject properties</h3>' + (s.subjects.length ? '<ul class="res-list">' + s.subjects.map(function (x) { var c = x.client && T.client(x.client); return '<li><a href="#/cma/' + x.id + '"><span class="res-a">' + h(x.address) + '</span><span class="res-s">' + h(x.area) + ', ' + h(x.type.toLowerCase()) + ', ' + x.size + ' sq ft' + (c ? ' · ' + h(T.fullName(c)) : '') + '</span></a></li>'; }).join('') + '</ul>' : '<p class="empty">No subject yet. Add the property you’re pricing (address, size, bedrooms, year built), or ask Tayoo: “Prepare a market evaluation for Antoine”.</p>') + '</section>' +
+      return vHead('CMA studio', 'Comparative market analysis from ' + T.SOLD.length + ' sales in the ' + h(T.SOLD_SOURCE.label.charAt(0).toLowerCase() + T.SOLD_SOURCE.label.slice(1)) + '. Deterministic: the same inputs always give the same range. Not an appraisal.', { tools: R.ib('new-subject', 'plus', 'New subject property', '', 'v-tool') }) +
+        '<section class="blk"><h3 class="blk-h">Subjects <a class="blk-link" href="#/listings" aria-label="Check an active listing" title="Check an active listing">' + I('home') + '</a></h3>' + (s.subjects.length ? '<ul class="res-list">' + s.subjects.map(function (x) { var c = x.client && T.client(x.client); return '<li><a href="#/cma/' + x.id + '" title="' + h(x.type + ', ' + x.size + ' sq ft' + (c ? ', ' + T.fullName(c) : '')) + '"><span class="res-a">' + h(x.address) + '</span><span class="res-s">' + h(x.area) + '</span></a></li>'; }).join('') + '</ul>' : '<p class="empty">None yet.</p>') + '</section>' +
         (evaluated.length ? '<section class="blk"><h3 class="blk-h">Listings you checked</h3><ul class="lsts">' + evaluated.map(function (k) { return listingRow(T.listing(k)); }).join('') + '</ul></section>' : '') +
         (s.cmaReports.length ? '<section class="blk"><h3 class="blk-h">Saved versions</h3><ul class="res-list">' + s.cmaReports.map(function (rp) { return '<li><a href="#/cma/' + rp.subjectId + '"><span class="res-a">' + h(rp.address) + ' · v' + rp.version + '</span><span class="res-s">' + T.money(rp.low) + ' to ' + T.money(rp.high) + ', ' + h(rp.quality.toLowerCase()) + ', ' + rp.n + ' comparables, condition ' + h(rp.condition) + ' · ' + h(T.fmtDT(rp.at)) + ' · #' + h(rp.fp) + '</span></a></li>'; }).join('') + '</ul></section>' : '');
     }
@@ -105,15 +105,15 @@
     if (!r) return vHead('Subject not found', 'This property isn’t in the listings or your CMA subjects.', { back: '#/cma', backLabel: 'CMA studio' });
     var subj = r.subject, run = r.run, c = subj.client && T.client(subj.client), reps = s.cmaReports.filter(function (x) { return x.subjectId === id; });
     var inc = r.rows.filter(function (x) { return x.include; }).length;
-    return vHead('CMA: ' + subj.address, h(subj.area) + ', ' + h(subj.type.toLowerCase()) + ', ' + subj.size.toLocaleString('en-CA') + ' sq ft, ' + subj.beds + ' bedrooms, built ' + subj.built + ', garage ' + h(subj.garage) + (subj.price ? '. Listed at ' + T.money(subj.price) : '') + (c ? '. For <a href="#/clients/' + c.id + '">' + h(T.fullName(c)) + '</a>' : '') + '.', { back: '#/cma', backLabel: 'CMA studio', close: true }) +
+    return vHead(subj.address, 'Comparative market analysis. ' + h(subj.area) + ', ' + h(subj.type.toLowerCase()) + ', ' + subj.size.toLocaleString('en-CA') + ' sq ft, ' + subj.beds + ' bedrooms, built ' + subj.built + ', garage ' + h(subj.garage) + (subj.price ? '. Listed at ' + T.money(subj.price) : '') + (c ? '. For <a href="#/clients/' + c.id + '">' + h(T.fullName(c)) + '</a>' : '') + '. Deterministic, not an appraisal.', { back: '#/cma', backLabel: 'CMA studio' }) +
       '<div class="cma-res' + (r.n ? '' : ' is-empty') + '">' +
       (r.n ? '<p class="cma-k">Indicated range</p><p class="cma-range">' + T.money(r.low) + ' <span aria-hidden="true">–</span><span class="sr-only">to</span> ' + T.money(r.high) + '</p><p class="cma-pt">Point estimate <strong>' + T.money(r.point) + '</strong> · median of ' + r.n + ' adjusted sales' + (r.n >= 4 ? ', range = middle half' : ', range = lowest to highest') + '</p>' +
         '<p class="cma-q"><span class="tag ' + (/Strong/.test(r.quality) ? 'tag-ok' : /Moderate/.test(r.quality) ? '' : 'tag-warn') + '">' + h(r.quality) + '</span><span class="muted">Spread ' + r.dispersion + '% across included sales</span></p>' +
         (subj.price ? '<p class="cma-pt">List price ' + T.money(subj.price) + ' is ' + Math.abs(Math.round((subj.price - r.point) / r.point * 1000) / 10) + '% ' + (subj.price >= r.point ? 'above' : 'below') + ' the point estimate.</p>' : '') : '<p class="cma-k">No range yet</p>') +
       (r.note ? '<p class="caution">' + I('alert') + '<span>' + h(r.note) + '</span></p>' : '') +
-      '<p class="cma-fp">Inputs #' + h(r.fp || '—') + ' · ' + h(T.cma.version) + ' · as of ' + h(T.fmtDate(T.today(), { noDay: true })) + '</p></div>' +
-      '<div class="tools"><button type="button" class="btn btn-primary btn-sm" data-act="cma-save" data-id="' + id + '"' + (r.n ? '' : ' disabled') + '>' + I('check') + 'Save version ' + (reps.length + 1) + '</button><button type="button" class="btn btn-ghost btn-sm" data-act="cma-print" data-id="' + id + '"' + (r.n ? '' : ' disabled') + '>' + I('print') + 'Printable report</button></div>' +
-      '<section class="blk"><h3 class="blk-h">Subject condition</h3><label class="fld"><span>What you observed</span><select data-cma="condition" data-id="' + id + '">' + opt(CONDITIONS, run.condition) + '</select></label><p class="muted">Applied as a percentage of each comparable’s price against its recorded condition. Unknown on either side means no condition adjustment, and the report says so.</p></section>' +
+      '<p class="cma-fp" title="Inputs fingerprint · method · date">#' + h(r.fp || '—') + ' · ' + h(T.cma.version) + ' · ' + h(T.fmtDate(T.today(), { noDay: true })) + '</p></div>' +
+      '<div class="tools"><button type="button" class="btn btn-primary btn-sm" data-act="cma-save" data-id="' + id + '"' + (r.n ? '' : ' disabled') + '>' + I('check') + 'Save v' + (reps.length + 1) + '</button>' + (r.n ? R.ib('cma-print', 'print', 'Printable report', ' data-id="' + id + '"') : '') + '</div>' +
+      '<section class="blk"><h3 class="blk-h">Condition</h3><label class="fld" title="Applied as a percentage of each comparable’s price against its recorded condition. Unknown on either side means no condition adjustment, and the report says so."><span class="sr-only">What you observed</span><select data-cma="condition" data-id="' + id + '">' + opt(CONDITIONS, run.condition) + '</select></label></section>' +
       '<section class="blk"><h3 class="blk-h">Comparables <span class="sec-sub">' + inc + ' of ' + r.rows.length + ' included</span></h3>' +
       (r.rows.length ? '<ol class="comps">' + r.rows.map(function (x) {
         var k = 'cma-' + id + '-' + x.comp.id;
@@ -123,9 +123,9 @@
           '<div class="comp-n"><p class="comp-p">' + T.money(x.adjusted) + '</p><p class="comp-s">sold ' + T.money(x.comp.price) + '</p></div></li>';
       }).join('') + '</ol>' : '<p class="empty">No comparable sale fits this subject.</p>') +
       (r.excluded.length ? '<details class="alt-ex" data-ui="cmaex-' + id + '"' + (T.ui.open['cmaex-' + id] ? ' open' : '') + '><summary>' + r.excluded.length + ' sales not comparable</summary><ul>' + r.excluded.map(function (p) { return '<li><span>' + h(p.comp.address) + ' (' + h(p.comp.area) + ')</span><span class="muted">' + h(p.why) + '</span></li>'; }).join('') + '</ul></details>' : '') + '</section>' +
-      '<section class="blk"><h3 class="blk-h">Adjustment rates <button type="button" class="blk-link" data-act="cma-defaults" data-id="' + id + '">Reset to defaults</button></h3><div class="rates">' + RATES.map(function (x) {
+      '<details class="blk blk-d" data-ui="cma-rates-' + id + '"' + (T.ui.open['cma-rates-' + id] ? ' open' : '') + '><summary class="blk-h" title="Defaults depend on the property type. Every change re-runs the same rules and changes the inputs fingerprint.">Rates' + I('down') + '</summary><p>' + R.ib('cma-defaults', 'refresh', 'Reset the rates to defaults', ' data-id="' + id + '"') + '</p><div class="rates">' + RATES.map(function (x) {
         return '<label class="fld"><span>' + h(x[1]) + ' <em class="unit">' + h(x[2]) + '</em></span><input type="number" step="any" min="0" value="' + run.rates[x[0]] + '" data-cma="rate" data-k="' + x[0] + '" data-id="' + id + '"></label>';
-      }).join('') + '</div><p class="muted">Defaults depend on the property type. Every change re-runs the same rules and changes the inputs fingerprint.</p></section>' +
+      }).join('') + '</div></details>' +
       (reps.length ? '<section class="blk"><h3 class="blk-h">Saved versions</h3><ol class="tl">' + reps.map(function (rp) { return '<li><time>v' + rp.version + '</time><span>' + T.money(rp.low) + ' to ' + T.money(rp.high) + ' (' + h(rp.quality.toLowerCase()) + ', ' + rp.n + ' comparables, condition ' + h(rp.condition) + '), ' + h(T.fmtDT(rp.at)) + ' by ' + h(rp.by) + ' · #' + h(rp.fp) + '</span></li>'; }).join('') + '</ol></section>' : '');
   };
   // The printable report: same numbers, plain layout, fictional-data footer
@@ -142,33 +142,32 @@
   R.files = function (id) {
     if (id) return R.fileDetail(id);
     var s = S();
-    return vHead('Files', s.transactions.length + ' transactions. Tayoo compares every condition deadline and key date with the documents and your calendar.', { close: true }) +
-      '<div class="tools"><button type="button" class="btn btn-primary btn-sm" data-act="new-tx">' + I('plus') + 'New transaction</button></div>' +
+    return vHead('Files', s.transactions.length + ' transactions. Tayoo compares every condition deadline and key date with the documents and your calendar.', { tools: R.ib('new-tx', 'plus', 'New transaction', '', 'v-tool') }) +
       (s.transactions.length ? '<ul class="files">' + s.transactions.map(function (tx) {
         var chk = T.files.check(tx), c = T.client(tx.client), n = chk.issues.length, nxt = chk.open.filter(function (o) { return o.date && o.date >= T.today(); }).sort(function (a, b) { return a.date < b.date ? -1 : 1; })[0];
-        return '<li><a class="fl" href="#/files/' + tx.id + '"><span class="fl-main"><span class="fl-t">' + h(tx.title) + '</span><span class="fl-s">' + h(tx.property) + (c ? ' · ' + h(T.fullName(c)) : '') + '</span><span class="fl-s">' + (nxt ? 'Next: ' + h(nxt.item.toLowerCase()) + ', ' + h(T.fmtDate(nxt.date, { noDay: true })) : 'Nothing open') + '</span></span><span class="fl-n">' + chip(h(tx.stage), tx.stage === 'Closed' ? '' : tx.stage === 'Firm' ? 'tag-ok' : '') + (n ? chip(I('alert') + n + ' to check', 'tag-warn') : chip(I('check') + 'In order', 'tag-ok')) + '</span></a></li>';
-      }).join('') + '</ul>' : '<p class="empty">No transaction yet. Add one when a promise to purchase is accepted.</p>');
+        return '<li><a class="fl" href="#/files/' + tx.id + '" title="' + h(tx.property + (c ? ' · ' + T.fullName(c) : '') + '. ' + (nxt ? 'Next: ' + nxt.item.toLowerCase() + ', ' + T.fmtDate(nxt.date, { noDay: true }) : 'Nothing open')) + '"><span class="fl-main"><span class="fl-t">' + h(tx.title) + '</span><span class="fl-s">' + h(tx.stage) + '</span></span><span class="fl-n">' + (n ? chip(I('alert') + n, 'tag-warn') : chip(I('check'), 'tag-ok')) + '</span></a></li>';
+      }).join('') + '</ul>' : '<p class="empty">None yet.</p>');
   };
   var COND_ST = { open: 'Open', satisfied: 'Satisfied', waived: 'Waived' };
   R.fileDetail = function (id) {
     var tx = T.tx(id), s = S();
     if (!tx) return vHead('File not found', 'This transaction doesn’t exist, or it was deleted.', { back: '#/files', backLabel: 'Files' });
     var c = T.client(tx.client), chk = T.files.check(tx), issues = R.fileIssues(tx, false);
-    return vHead(tx.title, h(tx.property) + '. ' + h(tx.side) + ' side, ' + h(tx.stage.toLowerCase()) + (tx.price ? ', ' + T.money(tx.price) : '') + (tx.accepted ? ', accepted ' + h(T.fmtDate(tx.accepted, { long: true })) : '') + '. ' + h(tx.counterpart) + '.', { back: '#/files', backLabel: 'Files', close: true }) +
-      '<div class="tools">' + (c ? '<a class="btn btn-ghost btn-sm" href="#/clients/' + c.id + '">' + R.avatar(c, 'sm') + h(T.fullName(c)) + '</a>' : '') + '<button type="button" class="btn btn-ghost btn-sm" data-act="ask" data-text="' + h('Summarize the ' + tx.title + ' file') + '">' + I('talk') + 'Ask Tayoo about this file</button><button type="button" class="btn btn-ghost btn-sm" data-act="new-doc" data-tx="' + tx.id + '">' + I('upload') + 'Add a document</button></div>' +
-      '<section class="blk"><h3 class="blk-h">Needs attention</h3>' + (issues || '<p class="empty">' + I('check') + 'Every date on file matches the documents and your calendar.</p>') + (chk.notes.length ? chk.notes.map(function (x) { return '<p class="muted">' + h(x.label) + '</p>'; }).join('') : '') + '</section>' +
+    return vHead(tx.title, h(tx.property) + '. ' + h(tx.side) + ' side, ' + h(tx.stage.toLowerCase()) + (tx.price ? ', ' + T.money(tx.price) : '') + (tx.accepted ? ', accepted ' + h(T.fmtDate(tx.accepted, { long: true })) : '') + '. ' + h(tx.counterpart) + '. You record each condition’s outcome; Tayoo doesn’t decide whether a legal condition is met.', { back: '#/files', backLabel: 'Files' }) +
+      '<div class="tools">' + (c ? '<a class="btn btn-ghost btn-sm" href="#/clients/' + c.id + '">' + R.avatar(c, 'sm') + h(c.first) + '</a>' : '') + R.ib('ask', 'talk', 'Ask Tayoo about this file', ' data-text="' + h('Summarize the ' + tx.title + ' file') + '"') + R.ib('new-doc', 'upload', 'Add a document', ' data-tx="' + tx.id + '"') + '</div>' +
+      '<section class="blk"><h3 class="blk-h">To check</h3>' + (issues || '<p class="empty">' + I('check') + 'All in order.</p>') + (chk.notes.length ? chk.notes.map(function (x) { return '<p class="muted">' + h(x.label) + '</p>'; }).join('') : '') + '</section>' +
       (tx.conditions.length ? '<section class="blk"><h3 class="blk-h">Conditions</h3><ul class="conds">' + tx.conditions.map(function (cd) {
         var late = cd.status === 'open' && cd.deadline < T.today();
-        return '<li class="cond cond-' + cd.status + '"><div><p><strong>' + h(cd.label) + '</strong> ' + chip(h(COND_ST[cd.status] || cd.status), cd.status === 'open' ? (late ? 'tag-warn' : '') : 'tag-ok') + '</p><p class="muted">Deadline ' + h(T.fmtDate(cd.deadline, { long: true })) + (late ? ' (passed)' : cd.status === 'open' ? ' (' + T.daysBetween(T.today(), cd.deadline) + ' days)' : cd.closedOn ? ', closed ' + h(T.fmtDate(cd.closedOn, { noDay: true })) : '') + '. Source: ' + h(cd.source) + '</p></div>' +
+        return '<li class="cond cond-' + cd.status + '" title="Source: ' + h(cd.source) + '"><div><p><strong>' + h(cd.label) + '</strong> ' + chip(h(COND_ST[cd.status] || cd.status), cd.status === 'open' ? (late ? 'tag-warn' : '') : 'tag-ok') + '</p><p class="muted">' + h(T.fmtDate(cd.deadline)) + (late ? ' (passed)' : cd.status === 'open' ? ' · ' + T.daysBetween(T.today(), cd.deadline) + ' d' : '') + '</p></div>' +
           '<p class="cond-act">' + (cd.status === 'open' ? '<button type="button" class="btn btn-ghost btn-sm" data-act="cond" data-tx="' + tx.id + '" data-cond="' + cd.id + '" data-status="satisfied">Mark satisfied</button><button type="button" class="btn btn-quiet btn-sm" data-act="cond" data-tx="' + tx.id + '" data-cond="' + cd.id + '" data-status="waived">Waived</button>' : '<button type="button" class="btn btn-quiet btn-sm" data-act="cond" data-tx="' + tx.id + '" data-cond="' + cd.id + '" data-status="open">Reopen</button>') + '</p></li>';
-      }).join('') + '</ul><p class="muted">You record the outcome; Tayoo doesn’t decide whether a legal condition is met. Every change is kept in the file history.</p></section>' : '') +
+      }).join('') + '</ul></section>' : '') +
       '<section class="blk"><h3 class="blk-h">Key dates</h3>' + ((tx.keyDates || []).length ? '<ul class="conds">' + tx.keyDates.map(function (kd) {
         var ev = s.appointments.filter(function (a) { return a.tx === tx.id && a.ref === kd.id && a.status !== 'cancelled'; })[0];
-        return '<li class="cond"><div><p><strong>' + h(kd.label) + '</strong> ' + (kd.done ? chip('Done', 'tag-ok') : '') + '</p><p class="muted">' + h(T.fmtDate(kd.date, { long: true })) + ', ' + kd.date.slice(0, 4) + '. Source: ' + h(kd.source) + (ev ? '. Calendar: ' + h(T.fmtDT(ev.date + 'T' + ev.start)) : '') + '</p></div></li>';
-      }).join('') + '</ul>' : '<p class="muted">No key dates.</p>') + '</section>' +
-      '<section class="blk"><h3 class="blk-h">Documents</h3><ul class="flist">' + tx.docs.map(function (d) { return '<li>' + I('file', 'ok') + '<div><p>' + h(d.type) + (d.addedBy ? ' <span class="muted">(added by ' + h(d.addedBy) + ')</span>' : '') + '</p><p class="muted">' + h(T.fmtDate(d.date, { noDay: true })) + (d.fields.length ? ' · states: ' + d.fields.map(function (f) { return h(f.label) + ' ' + h(T.fmtDate(f.value, { noDay: true })); }).join('; ') : '') + '</p>' + d.fields.filter(function (f) { return f.quote; }).map(function (f) { return '<blockquote class="said-text">“' + h(f.quote) + '”</blockquote>'; }).join('') + '</div></li>'; }).join('') + '</ul></section>' +
-      (tx.history.length ? '<section class="blk"><h3 class="blk-h">File history</h3><ol class="tl tl-wide">' + tx.history.map(function (x) { return '<li><time>' + h(T.fmtDate(x.at, { noDay: true })) + '</time><span>' + h(x.text) + '</span></li>'; }).join('') + '</ol></section>' : '') +
-      '<p class="danger-zone"><button type="button" class="btn btn-quiet btn-sm danger" data-act="delete-tx" data-tx="' + tx.id + '">' + I('trash') + 'Delete this transaction</button></p>';
+        return '<li class="cond" title="Source: ' + h(kd.source) + (ev ? '. Calendar: ' + h(T.fmtDT(ev.date + 'T' + ev.start)) : '') + '"><div><p><strong>' + h(kd.label) + '</strong> ' + (kd.done ? chip('Done', 'tag-ok') : '') + '</p><p class="muted">' + h(T.fmtDate(kd.date)) + (ev ? ' · ' + I('calendar') : '') + '</p></div></li>';
+      }).join('') + '</ul>' : '<p class="muted">—</p>') + '</section>' +
+      '<details class="blk blk-d" data-ui="fd-docs-' + tx.id + '"' + (T.ui.open['fd-docs-' + tx.id] ? ' open' : '') + '><summary class="blk-h">Documents <span class="n">' + tx.docs.length + '</span>' + I('down') + '</summary><ul class="flist">' + tx.docs.map(function (d) { return '<li>' + I('file', 'ok') + '<div><p>' + h(d.type) + (d.addedBy ? ' <span class="muted">(added by ' + h(d.addedBy) + ')</span>' : '') + '</p><p class="muted">' + h(T.fmtDate(d.date, { noDay: true })) + (d.fields.length ? ' · states: ' + d.fields.map(function (f) { return h(f.label) + ' ' + h(T.fmtDate(f.value, { noDay: true })); }).join('; ') : '') + '</p>' + d.fields.filter(function (f) { return f.quote; }).map(function (f) { return '<blockquote class="said-text">“' + h(f.quote) + '”</blockquote>'; }).join('') + '</div></li>'; }).join('') + '</ul></details>' +
+      (tx.history.length ? '<details class="blk blk-d" data-ui="fd-hist-' + tx.id + '"' + (T.ui.open['fd-hist-' + tx.id] ? ' open' : '') + '><summary class="blk-h">History <span class="n">' + tx.history.length + '</span>' + I('down') + '</summary><ol class="tl tl-wide">' + tx.history.map(function (x) { return '<li><time>' + h(T.fmtDate(x.at, { noDay: true })) + '</time><span>' + h(x.text) + '</span></li>'; }).join('') + '</ol></details>' : '') +
+      '<p class="danger-zone">' + R.ib('delete-tx', 'trash', 'Delete this transaction', ' data-tx="' + tx.id + '"', 'danger') + '</p>';
   };
 
   /* ======================= inbox & outbox ======================= */
@@ -178,35 +177,33 @@
     var tabs = '<div class="tabs-in" role="group" aria-label="Inbox sections"><a href="#/inbox"' + (tab === 'notes' ? ' aria-current="page"' : '') + '>Notifications' + (unread ? ' <span class="n">' + unread + '</span>' : '') + '</a><a href="#/inbox/outbox"' + (tab === 'outbox' ? ' aria-current="page"' : '') + '>Outbox <span class="n">' + s.outbox.length + '</span></a></div>';
     if (tab === 'outbox') {
       var q = s.outbox.filter(function (m) { return m.status === 'queued'; }).length;
-      return vHead('Outbox', 'Every message Tayoo would have sent, newest first. Nothing here left this browser.', { close: true }) + tabs +
+      return vHead('Outbox', 'Every message Tayoo would have sent, newest first. Nothing here left this browser.') + tabs +
         (q ? '<p class="warn">' + I('clock') + '<span>' + q + ' queued while offline. Switch “Offline” off in the Test lab to flush them (still simulated).</span></p>' : '') +
         (s.outbox.length ? '<ul class="outbox">' + s.outbox.map(function (m) {
           var k = 'ob-' + m.id;
-          return '<li><details data-ui="' + k + '"' + (T.ui.open[k] ? ' open' : '') + '><summary><span class="ob-main"><span class="ob-s">' + h(m.subject) + '</span><span class="ob-t">To ' + h(m.name) + ' &lt;' + h(m.to) + '&gt; · ' + h(m.kind) + ' · ' + h(T.fmtDT(m.at)) + '</span></span>' + chip(m.status === 'queued' ? 'Queued offline' : 'Simulated, not sent', m.status === 'queued' ? 'tag-warn' : '') + (m.reply ? chip('Replied', 'tag-ok') : '') + '</summary>' +
+          return '<li><details data-ui="' + k + '"' + (T.ui.open[k] ? ' open' : '') + '><summary title="To ' + h(m.name) + ' <' + h(m.to) + '> · ' + h(m.kind) + ' · ' + h(T.fmtDT(m.at)) + '"><span class="ob-main"><span class="ob-s">' + h(m.subject) + '</span><span class="ob-t">' + h(m.name) + '</span></span>' + chip(m.status === 'queued' ? I('clock') + 'Queued' : I('hollow') + 'Simulated', m.status === 'queued' ? 'tag-warn' : '') + (m.reply ? chip(I('mail'), 'tag-ok') : '') + '</summary>' +
             '<pre class="ob-body" lang="' + (m.lang === 'FR' ? 'fr' : 'en') + '">' + h(m.body) + (m.footer ? '\n\n' + h(m.footer) : '') + '</pre>' + (m.reply ? '<p class="ob-reply">' + I('mail') + '<span>Reply ' + h(T.fmtDT(m.reply.at)) + ': “' + h(m.reply.text) + '”</span></p>' : '') + '<p class="muted"><a href="#/clients/' + m.client + '">Open ' + h(m.name) + '</a></p></details></li>';
-        }).join('') + '</ul>' : '<p class="empty">' + I('mail') + 'Nothing yet. Approve a plan with an email step and its simulated message appears here.</p>');
+        }).join('') + '</ul>' : '<p class="empty">' + I('mail') + 'Nothing yet.</p>');
     }
-    return vHead('Inbox', 'Replies, opt-outs, deadlines, overdue promises and approval requests from every module, newest first.', { close: true }) + tabs +
-      (unread ? '<p class="tools"><button type="button" class="btn btn-ghost btn-sm" data-act="read-all">' + I('check') + 'Mark all as read</button></p>' : '') +
+    return vHead('Inbox', 'Replies, opt-outs, deadlines, overdue promises and approval requests from every module, newest first.', { tools: unread ? R.ib('read-all', 'check', 'Mark all as read', '', 'v-tool') : '' }) + tabs +
       (s.inbox.length ? '<ul class="notes-l">' + s.inbox.map(function (n) {
-        return '<li class="nt' + (n.read ? '' : ' is-unread') + '"><button type="button" class="nt-b" data-act="open-note" data-n="' + n.id + '"><span class="nt-ic nt-' + h(n.kind) + '" aria-hidden="true">' + I(KIND_ICON[n.kind] || 'alert') + '</span><span class="nt-main"><span class="nt-t">' + (n.read ? '' : '<span class="sr-only">Unread: </span>') + h(n.title) + '</span><span class="nt-d">' + h(n.body) + '</span><span class="nt-w">' + h(T.relDay(n.at) === 'Today' ? 'Today' : T.fmtDate(n.at, { noDay: true })) + ' ' + h(T.fmtTime(n.at.slice(11, 16))) + '</span></span></button></li>';
-      }).join('') + '</ul>' : '<p class="empty">' + I('mail') + 'Nothing yet. Advance the clock or inject an event in the Test lab to see notifications arrive.</p>');
+        return '<li class="nt' + (n.read ? '' : ' is-unread') + '"><button type="button" class="nt-b" data-act="open-note" data-n="' + n.id + '" title="' + h(n.body) + '"><span class="nt-ic nt-' + h(n.kind) + '" aria-hidden="true">' + I(KIND_ICON[n.kind] || 'alert') + '</span><span class="nt-main"><span class="nt-t">' + (n.read ? '' : '<span class="sr-only">Unread: </span>') + h(n.title) + '</span><span class="nt-w">' + h(T.relDay(n.at) === 'Today' ? 'Today' : T.fmtDate(n.at, { noDay: true })) + ' ' + h(T.fmtTime(n.at.slice(11, 16))) + '</span></span></button></li>';
+      }).join('') + '</ul>' : '<p class="empty">' + I('mail') + 'Nothing yet.</p>');
   };
 
   /* ======================= more (mobile) ======================= */
   R.more = function () {
     var s = S(), links = [
-      ['#/listings', 'home', 'Listings', T.LISTINGS.length + ' active listings, filters, save to a client'],
-      ['#/cma', 'ledger', 'CMA studio', 'Comparable sales, adjustments, printable report'],
-      ['#/files', 'file', 'Files', s.transactions.length + ' transactions, conditions and documents'],
-      ['#/inbox', 'mail', 'Inbox', T.unread() + ' unread · outbox of simulated sends'],
-      ['#/ledger', 'ledger', 'Revenue Recovery Ledger', 'Coverage, replies and appointments, with denominators'],
-      ['#/activity', 'activity', 'Activity', 'Receipts and the event log'],
-      ['#/settings', 'settings', 'Settings', 'Mode, role, live AI, voice, style memory']
+      ['#/listings', 'home', 'Listings', T.LISTINGS.length],
+      ['#/cma', 'ledger', 'CMA studio', s.subjects.length || ''],
+      ['#/files', 'file', 'Files', s.transactions.length],
+      ['#/inbox', 'mail', 'Inbox', T.unread() || ''],
+      ['#/ledger', 'activity', 'Recovery ledger', ''],
+      ['#/activity', 'task', 'Activity', s.receipts.length || ''],
+      ['#/settings', 'settings', 'Settings', '']
     ];
-    return vHead('More', 'Everything else in Tayoo.') + '<ul class="more">' + links.map(function (x) { return '<li><a href="' + x[0] + '">' + I(x[1]) + '<span><strong>' + h(x[2]) + '</strong><small>' + h(x[3]) + '</small></span>' + I('chevron') + '</a></li>'; }).join('') +
-      '<li><button type="button" data-act="lab">' + I('flask') + '<span><strong>Test lab</strong><small>Presets, demo clock, events, capabilities, export and import</small></span>' + I('chevron') + '</button></li>' +
-      '<li><button type="button" data-act="tour">' + I('tour') + '<span><strong>Guided tour</strong><small>Both signature workflows end to end, about two minutes</small></span>' + I('chevron') + '</button></li></ul>';
+    return vHead('More') + '<ul class="more">' + links.map(function (x) { return '<li><a href="' + x[0] + '">' + I(x[1]) + '<span><strong>' + h(x[2]) + '</strong></span>' + (x[3] !== '' ? '<span class="n">' + x[3] + '</span>' : '') + I('chevron') + '</a></li>'; }).join('') +
+      '<li><button type="button" data-act="demo">' + I('flask') + '<span><strong>Demo</strong></span>' + I('chevron') + '</button></li></ul>';
   };
 
   /* ======================= forms ======================= */
@@ -349,7 +346,7 @@
         return '<label class="check lab-cap"><input type="checkbox" data-cap="' + x[0] + '"' + (s.caps[x[0]] ? ' checked' : '') + '><span><strong>' + h(x[1]) + '</strong> <span class="muted">' + h(x[2]) + '</span></span></label>';
       }).join('')) +
       labSec('Role', '<div class="seg-r" role="radiogroup" aria-label="Signed in as">' + [['broker', T.BROKER.name + ', broker'], ['coordinator', T.BROKER.coordinator + ', coordinator']].map(function (x) { return '<label class="radio-s"><input type="radio" name="lab-role" data-role="' + x[0] + '"' + (s.role === x[0] ? ' checked' : '') + '><span>' + h(x[1]) + '</span></label>'; }).join('') + '</div><p class="lab-note">The coordinator prepares; plans that send or change memory wait for the broker.</p>') +
-      labSec('Live AI', '<p class="ai-state ' + (ai.on ? 'is-on' : '') + '">' + I('spark') + '<span><strong>' + (ai.on ? 'On.' : 'Off.') + '</strong> ' + h(ai.why) + '</span></p><div class="lai-host" data-lai-host></div>') +
+      labSec('Live AI', '<p class="ai-state ai-' + (ai.state || 'off') + '">' + I(ai.state === 'paused' ? 'pause' : 'spark') + '<span><strong>' + (ai.on ? 'On' : ai.state === 'paused' ? 'Paused' : 'Off') + '</strong> · ' + h(ai.why) + '</span></p><p><a class="btn btn-ghost btn-sm" href="../../index.html#api">' + I('gauge') + 'API monitor</a></p>') +
       labSec('Event log', '<ol class="lab-log">' + s.events.slice(0, 30).map(function (e) { return '<li><time>' + h(T.fmtDate(e.at, { noDay: true })) + ' ' + h(T.fmtTime(e.at.slice(11, 16))) + '</time><span class="lab-k">' + h(e.kind) + '</span><span>' + h(e.text) + '</span></li>'; }).join('') + '</ol>' + (s.events.length ? '' : '<p class="muted">Nothing yet.</p>') + '<p><a class="btn-link" href="#/activity">Full log in Activity</a></p>', s.events.length + ' events') +
       labSec('Workspace', '<div class="lab-row"><button type="button" class="btn btn-ghost btn-sm" data-act="export">' + I('download') + 'Export JSON</button><button type="button" class="btn btn-ghost btn-sm" data-act="import">' + I('upload') + 'Import JSON</button><button type="button" class="btn btn-quiet btn-sm" data-act="reset">' + I('refresh') + 'Reset demo</button></div><p class="lab-note">An export holds the whole workspace: records, conversation, cards, receipts, clock and settings. Import it here or in another browser to get the same state back.</p>');
   };

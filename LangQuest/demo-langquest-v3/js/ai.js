@@ -6,19 +6,30 @@
 (function () {
   const AI = LQ.ai = {};
   const S = LQ.store, U = LQ.ui, esc = U.esc;
-  const LA = () => window.LiveAI || null;
+  const root = window, LA = () => window.LiveAI || null;
   AI.MODEL = 'claude-opus-5-5';
 
-  /* Is a live call allowed right now? Key configured, Test-lab toggle on, not offline. */
-  AI.on = () => { const la = LA(); return !!(la && la.isOn() && S.state.caps.liveAI !== false && !S.cap('offline')); };
+  if (LA()) LA().app = 'langquest'; // usage is metered under this app on the hub's API monitor
+  const MON = () => root.ApiMeter || null;
+  const gate = () => { const m = MON(); return m ? m.check('langquest', 'anthropic') : { ok: true }; };
+  /* Is a live call allowed right now? Key on the API monitor, not killed or over budget,
+     Test-lab toggle on, not offline. */
+  AI.on = () => { const la = LA(); return !!(la && la.isOn() && gate().ok && S.state.caps.liveAI !== false && !S.cap('offline')); };
   AI.why = () => {
     const la = LA();
     if (!la || !la.available()) return 'The live AI library didn’t load, so rules are used.';
     if (S.cap('offline')) return 'Offline (Test lab), so the rules run on this device.';
     if (S.state.caps.liveAI === false) return 'Live AI is switched off in the Test lab, so rules are used.';
-    if (!la.isOn()) return 'No API key: deterministic rules run on this device. Add your own key in the Test lab to try live AI.';
+    const g = gate();
+    if (!g.ok && /No .* key/.test(g.reason)) return 'No API key: deterministic rules run on this device. Add a key on the API monitor to try live AI.';
+    if (!g.ok) return 'Live AI paused on the API monitor (' + g.reason + '), so rules are used.';
+    if (!la.isOn()) return 'No API key: deterministic rules run on this device. Add a key on the API monitor to try live AI.';
     return '';
   };
+  AI.MONITOR = '../../index.html#api';
+  /* Compact live-AI status: on / off / paused, reason in the tooltip, linking to the hub monitor. */
+  AI.state = () => { if (AI.on()) return { k: 'on', label: 'Live AI on', why: 'Live AI · ' + AI.MODEL + ', metered on the API monitor.' }; const g = gate(); return { k: g.ok || /No .* key/.test(g.reason) ? 'off' : 'paused', label: g.ok || /No .* key/.test(g.reason) ? 'Live AI off' : 'Live AI paused', why: AI.why() }; };
+  AI.statusIcon = (cls) => { const s = AI.state(); return '<a class="aistat aistat--' + s.k + ' ' + (cls || '') + '" href="' + AI.MONITOR + '" aria-label="' + esc(s.label + '. ' + s.why + ' Open the API monitor') + '" title="' + esc(s.label + '. ' + s.why) + '">' + LQ.art.icon('cpu', 'ic--sm') + '<span class="aistat__dot" aria-hidden="true"></span></a>'; };
   /* Provenance badge: "Rules" or "Live AI · claude-opus-5-5 · 2.1 s". */
   AI.badge = (prov) => {
     if (prov && prov.source === 'live-ai') return '<span class="prov prov--ai" title="Proposed by live AI. Nothing is applied until you accept it.">Live AI · ' + esc(prov.model || AI.MODEL) + ' · ' + ((prov.ms || 0) / 1000).toFixed(1) + ' s' + (prov.fellBack ? ' (fallback model)' : '') + '</span>';

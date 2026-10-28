@@ -6,7 +6,8 @@
   var R = T.render;
   var $ = function (id) { return document.getElementById(id); };
   var S = function () { return T.store.state; };
-  var desktopMQ = window.matchMedia('(min-width: 1100px)');
+  // The phone app is the product on every screen: on a desktop it sits in a device frame, so there is no desktop layout.
+  var desktopMQ = { matches: false };
   var A = (T.app = {});
   var esc = T.esc;
 
@@ -68,10 +69,8 @@
     return true;
   }
   A.swap = swap;
-  function fillLAI(root) {
-    if (!window.LiveAI) return;
-    (root || document).querySelectorAll('[data-lai-host]').forEach(function (el) { if (!el.querySelector('.lai')) window.LiveAI.renderSettings(el, { lang: 'en' }); });
-  }
+  // keys, budgets and killswitches live on the hub's API monitor; the app only shows its status
+  function fillLAI() {}
 
   /* ---------------- render ---------------- */
   var lastRoute = null, lastAI = null;
@@ -90,9 +89,7 @@
     if (!$('composer') || aiOn !== lastAI) { lastAI = aiOn; A.renderComposer(); }
     var html = viewHTML(r);
     var routeKey = r.view + '/' + (r.id || '');
-    var target = desk ? $('pane') : $('page');
-    var other = desk ? $('page') : $('pane');
-    other.innerHTML = ''; other._html = '';
+    var target = $('page');
     var changed = routeKey !== lastRoute;
     swap(target, html, !changed);
     if (changed) target.scrollTop = 0;
@@ -189,6 +186,21 @@
   function toConvo() { if (!desktopMQ.matches && route().view) location.hash = '#/'; }
 
   /* ---------------- drafts & submit ---------------- */
+  // A voice request goes straight to Tayoo; Edit takes it back into the composer and withdraws the plan
+  A.sendVoice = function (text, source, lang) {
+    toConvo();
+    var before = S().thread.length;
+    return A.submit(text, 'voice', source, lang).then(function (card) {
+      var cardId = card && card.id;
+      A.toast('Sent.', { label: 'Edit', fn: function () {
+        var s = S();
+        if (cardId && s.cards[cardId] && (s.cards[cardId].status === 'ready' || s.cards[cardId].status === 'awaiting' || s.cards[cardId].status === 'clarify')) { s.cards[cardId].status = 'cancelled'; s.cards[cardId].withdrawn = true; s.cards[cardId].rev++; }
+        T.log('Voice request taken back for editing', 'draft');
+        A.setDraft(text, 'voice', source, lang);
+      } });
+      return card;
+    });
+  };
   A.setDraft = function (text, kind, source, lang) {
     var s = S();
     s.draft = text; s.draftKind = kind; s.draftSource = source || null; s.draftLang = lang || null;
@@ -278,7 +290,8 @@
       work.kind = 'text'; work.text = 'Here’s your briefing.'; work.rev++;
       T.addMessage({ role: 'tayoo', kind: 'brief', clientId: out.brief.clientId, lines: out.brief.lines });
     } else {
-      work.kind = 'text'; work.text = out.reply; work.chips = out.chips || null; work.rev++;
+      // the card says the rest: one short line here, the full reply as its tooltip (and spoken, if replies are on)
+      work.kind = 'text'; work.full = out.reply; work.text = out.cards ? out.cards.length + ' plans, one per client.' : out.card ? (out.card.type === 'clarify' ? 'Which one?' : out.card.unhandled && out.card.unhandled.length ? 'Here’s the plan. One part needs you.' : 'Here’s the plan.') : out.reply; work.chips = out.chips || null; work.rev++;
       (out.cards || []).forEach(function (cd) {
         s.cards[cd.id] = cd;
         cd.pending = { text: cd.pendingText || p.text, input: work._input, source: work._source };
@@ -311,7 +324,7 @@
     var useAI = T.ai.on() && source !== 'sample' && !opts.rules && !cp && rp.intent !== 'message' && rp.intent !== 'followup';
     T.addMessage({ role: 'broker', kind: input === 'voice' ? 'voice' : 'text', text: rp.text, source: source, lang: rp.lang, by: T.actor() });
     var work = T.addMessage({ role: 'tayoo', kind: 'working', steps: useAI ? ['Sending your text to live AI (' + window.LiveAI.model + ')', 'Checking names, listings and dates against your records', 'Building the plan'] : cp ? ['Splitting your message into ' + cp.clauses.length + ' parts', 'Matching the client and the records in each part', 'Checking your calendar and consent', 'Building one plan'] : workSteps(rp), done: 0 });
-    if (cp && T.ai.on() && source !== 'sample') work.note = 'Several requests in one message: the built-in rules split it into parts, so each part shows how it was read.';
+    if (cp && T.ai.on() && source !== 'sample') work.note = 'Several requests: read by the rules, part by part.';
     work._input = input; work._source = source;
     T.store.commit();
     A.renderComposer();
@@ -326,7 +339,7 @@
         var msg = window.LiveAI.describe(err);
         T.log('Live AI failed (' + msg + '); the rules read the request instead', 'ai');
         var p = T.parse(text); p.source = { kind: 'rules', fallback: true, error: msg };
-        work.note = 'Live AI didn’t answer: ' + msg + ' I read your request with the built-in rules instead.';
+        work.note = 'Live AI failed, so the rules read it. ' + msg;
         return p;
       });
     } else parsed = Promise.resolve(rp);
@@ -457,7 +470,24 @@
     d.setAttribute('open', '');
   }
   function closeDialog(id) { var d = $(id); if (!d.open) return; if (d.close) { try { d.close(); return; } catch (e) { /* ignore */ } } d.removeAttribute('open'); }
+  // One place for demo tooling: tour, Test lab, samples, mode, reset, the API monitor and the way back to all demos
+  A.openDemo = function () {
+    var s = S(), shadow = s.settings.mode === 'shadow', ai = T.ai.status();
+    var row = function (act, icon, label, val, extra) { return '<li><button type="button" class="dm-row" data-act="' + act + '"' + (extra || '') + '>' + T.icon(icon) + '<span>' + esc(label) + '</span>' + (val ? '<span class="dm-v">' + val + '</span>' : '') + '</button></li>'; };
+    $('demo-in').innerHTML = '<header class="dlg-h"><h2 id="demo-h">' + T.icon('flask') + 'Demo</h2><button type="button" class="icon-btn" data-act="demo-close" aria-label="Close" title="Close">' + T.icon('close') + '</button></header>' +
+      '<p class="dm-tag"><span class="demo-tag">Fictional data</span><span class="demo-tag">Sends simulated</span></p>' +
+      '<ul class="dm-list">' +
+      row('tour', 'tour', 'Guided tour') +
+      row('samples', 'play', 'Sample dictations') +
+      row('lab', 'flask', 'Test lab') +
+      row('mode', shadow ? 'eye' : 'check', shadow ? 'Shadow Mode' : 'Approvals', shadow ? 'On' : 'Shadow off', ' data-mode="' + (shadow ? 'active' : 'shadow') + '" aria-label="' + (shadow ? 'Shadow Mode is on. Switch to Approvals' : 'Approvals mode. Switch to Shadow Mode') + '"') +
+      '<li><a class="dm-row" href="../../index.html#api">' + T.icon('gauge') + '<span>API monitor</span><span class="dm-v">' + esc(ai.on ? 'AI on' : 'AI off') + '</span></a></li>' +
+      row('reset', 'refresh', 'Reset demo') +
+      '<li><a class="dm-row" href="../../index.html">' + T.icon('back') + '<span>All demos</span></a></li></ul>';
+    openDialog('demo-dlg');
+  };
   A.openSamples = function () {
+    closeDialog('demo-dlg');
     $('samples-list').innerHTML = T.SAMPLES.map(function (x) {
       return '<li class="smp"><p class="smp-h">' + esc(x.label) + '<span class="muted">' + esc(x.short) + '</span></p><p class="said-text smp-t" lang="' + x.lang.slice(0, 2) + '">' + esc(x.text) + '</p>' +
         '<p class="smp-act"><button type="button" class="btn btn-primary btn-sm" data-act="sample" data-sample="' + x.id + '">' + T.icon('talk') + 'Play as dictation</button><button type="button" class="btn btn-ghost btn-sm" data-act="prefill" data-text="' + esc(x.text) + '">' + T.icon('keyboard') + 'Put it in the composer</button></p></li>';
@@ -705,12 +735,16 @@
     if (!el || el.disabled) return;
     var act = el.getAttribute('data-act'), s = S(), id;
     switch (act) {
-      case 'talk': e.preventDefault(); closeDialog('samples-dlg'); if (A.labOpen) A.closeLab(); T.capture.show({ origin: el }); break;
-      case 'sample': e.preventDefault(); closeDialog('samples-dlg'); if (A.labOpen && !desktopMQ.matches) A.closeLab(); toConvo(); T.capture.show({ sample: el.getAttribute('data-sample'), origin: el }); break;
+      case 'talk': e.preventDefault(); if (T.capture.open) break; closeDialog('samples-dlg'); if (A.labOpen) A.closeLab(); T.capture.show({ origin: el }); break;
+      case 'sample': e.preventDefault(); closeDialog('samples-dlg'); closeDialog('demo-dlg'); if (A.labOpen) A.closeLab(); toConvo(); T.capture.show({ sample: el.getAttribute('data-sample'), origin: el }); break;
+      case 'suggest': e.preventDefault(); toConvo(); A.submit(el.getAttribute('data-text'), 'text', 'suggestion'); break;
+      case 'demo': A.openDemo(); break;
+      case 'demo-close': closeDialog('demo-dlg'); break;
       case 'samples': A.openSamples(); break;
       case 'close-samples': closeDialog('samples-dlg'); break;
       case 'cap-stop': T.capture.stop(); break;
       case 'cap-cancel': T.capture.cancel(); break;
+      case 'cap-retry': T.capture.retry(); break;
       case 'cap-type': T.capture.typeInstead(); break;
       case 'cap-sample': T.capture.playSample(el.getAttribute('data-sample')); break;
       case 'approve':
@@ -739,13 +773,14 @@
       case 'ask': toConvo(); A.submit(el.getAttribute('data-text'), 'text'); break;
       case 'undo': T.undo(el.getAttribute('data-receipt')); break;
       case 'mode':
+        closeDialog('demo-dlg');
         s.settings.mode = el.getAttribute('data-mode'); T.log(s.settings.mode === 'shadow' ? 'Shadow Mode on' : 'Approvals mode on', 'settings'); T.store.commit();
         A.toast(s.settings.mode === 'shadow' ? 'Shadow Mode on. Approving records what Tayoo would do; nothing changes.' : 'Approvals mode. Approved plans change local records; sends stay simulated.');
         break;
       case 'toggle-speak': s.settings.speak = !s.settings.speak; if (!s.settings.speak) T.voice.hush(); T.store.commit(); A.toast(s.settings.speak ? 'Spoken replies on.' + (T.voice.canSpeak ? '' : ' No voices are available here, so replies stay on screen.') : 'Spoken replies off.'); break;
       case 'hush': T.voice.hush(); break;
-      case 'tour': if (A.labOpen) A.closeLab(); T.tour.start(); break;
-      case 'reset': openDialog('confirm-dlg'); break;
+      case 'tour': closeDialog('demo-dlg'); if (A.labOpen) A.closeLab(); T.tour.start(); break;
+      case 'reset': closeDialog('demo-dlg'); openDialog('confirm-dlg'); break;
       case 'confirm-reset':
         closeDialog('confirm-dlg');
         A.replaceState(function () { T.store.reset(); });
@@ -843,7 +878,7 @@
         break;
       }
       case 'search': A.openSearch(); break;
-      case 'lab': if (A.labOpen) A.closeLab(); else A.openLab(el); break;
+      case 'lab': closeDialog('demo-dlg'); if (A.labOpen) A.closeLab(); else A.openLab(el); break;
       case 'lab-close': A.closeLab(); break;
       case 'clock': A.advance(T.addMinutes(s.now, +el.getAttribute('data-min'))); break;
       case 'preset': A.loadPreset(el.getAttribute('data-preset')); break;
@@ -854,6 +889,29 @@
     }
   });
 
+  // Press and hold the mic to talk, release to send; a quick tap listens hands-free until a short silence.
+  // Recognition starts here, synchronously inside the gesture.
+  var press = null;
+  document.addEventListener('pointerdown', function (e) {
+    var el = e.target.closest && e.target.closest('[data-act="talk"]');
+    if (!el || el.disabled || T.capture.open || (e.button && e.button > 0)) return;
+    press = { t: Date.now(), type: e.pointerType };
+    closeDialog('samples-dlg'); if (A.labOpen) A.closeLab();
+    T.capture.show({ origin: el, hold: true });
+    T.capture.holding = true;
+  });
+  function endPress() {
+    if (!press) return;
+    var held = Date.now() - press.t, p = press; press = null;
+    if (!T.capture.open) return;
+    if (held >= 350) return T.capture.release();
+    T.capture.hold = false; T.capture.holding = false;
+    // a touch press may not count as a gesture for the speech service: the release does, so start again from here
+    if (T.capture.error === 'not-allowed' && p.type !== 'mouse') T.capture.retry();
+    else if (T.capture.text || T.capture.interim) T.capture.armSilence();
+  }
+  document.addEventListener('pointerup', endPress);
+  document.addEventListener('pointercancel', endPress);
   document.addEventListener('change', function (e) {
     var el = e.target, s = S();
     if (el.id === 'import-file') {
@@ -995,7 +1053,7 @@
   $('form-dlg').addEventListener('close', function () { A.formCtx = null; });
 
   window.addEventListener('hashchange', function () { if (!desktopMQ.matches && A.labOpen) A.closeLab(); A.render(); });
-  if (desktopMQ.addEventListener) desktopMQ.addEventListener('change', function () { lastRoute = null; A.render(); });
+  if (window.ApiMeter && ApiMeter.onChange) ApiMeter.onChange(function () { if (!A.mute) { var t = $('top'); if (t) { t._html = ''; swap(t, R.top()); } A.renderComposer(); } });
   if (window.LiveAI) window.LiveAI.onChange(function (on) { T.log('Live AI ' + (on ? 'key added' : 'key removed'), 'ai'); T.store.commit(); });
   window.addEventListener('afterprint', function () { $('print-root').innerHTML = ''; });
 

@@ -31,6 +31,34 @@
     return '<span class="prov prov-ai" title="Proposed by live AI; you review before anything is applied">' + icon('spark', 12) + '<span>Live AI · ' + esc(p.model || 'claude-opus-5-5') + ' · ' + ((p.ms || 0) / 1000).toFixed(1) + ' s' + (p.fellBack ? ' · fallback model' : '') + '</span></span>';
   }
 
+  /* ---------- Compact helpers: explanations behind ⓘ, status icons, tabs, live-AI status ---------- */
+  /* ⓘ: the explanation is one tap away (a native disclosure, keyboard and touch friendly), never on the surface. */
+  function info(text, label) {
+    if (!text) return '';
+    return '<details class="ii"><summary aria-label="' + esc(label ? 'About ' + label : 'Details') + '" title="' + esc(String(text).slice(0, 160)) + '">' + icon('info', 15) + '</summary><div class="ii-pop" role="note">' + esc(text) + '</div></details>';
+  }
+  /* A status as an icon with its word for screen readers and as a tooltip. */
+  const ICO = { explicit: ['check', 'leaf', 'Stated in the message'], inferred: ['dot', 'steel', 'Inferred: check it'], approx: ['minus', 'amber', 'Approximate'], derived: ['alert', 'amber', 'Derived: check it'], missing: ['x', 'brick', 'Missing'], edited: ['edit', 'navy', 'Your entry'], converted: ['refresh', 'navy', 'Converted'], unverified: ['alert', 'amber', 'Quote not found in the message'], sender: ['mail', 'steel', 'From the sender address'], newsite: ['alert', 'amber', 'Not on file'] };
+  function ico(kind, label) {
+    const c = Array.isArray(kind) ? [kind[0], kind[1], label] : ICO[kind] || [CHIP[kind] ? CHIP[kind][1] : 'dot', TONE[kind] || 'muted', CHIP[kind] ? CHIP[kind][0] : kind];
+    const l = label || c[2];
+    return '<span class="sti tone-' + c[1] + '" title="' + esc(l) + '" role="img" aria-label="' + esc(l) + '">' + icon(c[0], 14) + '</span>';
+  }
+  /* Tabs: one panel at a time; the others stay in the page (search, tests and links still find them). */
+  function tabs(group, list, active) {
+    const cur = list.some((t) => t[0] === active) ? active : list[0][0];
+    return { cur: cur, bar: '<div class="tabs" role="tablist" aria-label="' + esc(group) + '">' + list.map((t) => '<button type="button" role="tab" class="tab" id="tab-' + esc(group) + '-' + t[0] + '" aria-selected="' + (t[0] === cur) + '" aria-controls="tp-' + esc(group) + '-' + t[0] + '" data-act="tab" data-g="' + esc(group) + '" data-t="' + t[0] + '">' + (t[2] ? icon(t[2], 15) : '') + '<span>' + esc(t[1]) + '</span>' + (t[3] != null ? '<span class="tab-n">' + esc(t[3]) + '</span>' : '') + '</button>').join('') + '</div>',
+      panel: (id, html) => '<div role="tabpanel" class="tabpanel" id="tp-' + esc(group) + '-' + id + '" aria-labelledby="tab-' + esc(group) + '-' + id + '"' + (id === cur ? '' : ' hidden') + '>' + html + '</div>' };
+  }
+  /* Live AI status icon: on, off or paused (reason as tooltip), linking to the hub's API monitor. */
+  function aiStatus(opts) {
+    opts = opts || {};
+    const st = TD.ai ? TD.ai.status() : { state: 'off', reason: 'Live AI is not loaded.' };
+    const word = st.state === 'on' ? 'on' : st.state === 'paused' ? 'paused' : 'off';
+    const tip = 'Live AI ' + word + (st.reason ? ': ' + st.reason : '') + '. Keys, budgets and killswitches: API monitor.';
+    return '<a class="ai-st is-' + st.state + (opts.cls ? ' ' + opts.cls : '') + '" href="../../index.html#api" title="' + esc(tip) + '" aria-label="' + esc(tip) + '" id="' + esc(opts.id || 'ai-status') + '">' + icon(st.state === 'paused' ? 'pause' : 'spark', opts.size || 15) + (opts.label ? '<span>AI ' + word + '</span>' : '') + '</a>';
+  }
+
   /* ---------- Trade thread: the stages of the physical trade loop ---------- */
   const STAGES = ['Offer', 'Lot', 'Priced', 'Approved', 'Freight', 'Moving', 'Delivered', 'Settled'];
   function stageOf(state, tr) {
@@ -60,7 +88,8 @@
     const s = stageOf(state, tr);
     const items = STAGES.map((name, i) => {
       const cls = i < s.done ? 'is-done' : i === s.done ? (s.blocked ? 'is-blocked' : 'is-current') : '';
-      return '<li class="th-step ' + cls + '"><span class="th-node" aria-hidden="true">' + (i < s.done ? icon('check', 10) : '') + '</span>' + (opts.labels ? '<span class="th-label">' + name + '</span>' : '') + '</li>';
+      const lab = opts.labels === 'current' ? i === Math.min(s.done, STAGES.length - 1) : opts.labels;
+      return '<li class="th-step ' + cls + '" title="' + name + '"><span class="th-node" aria-hidden="true">' + (i < s.done ? icon('check', 10) : '') + '</span>' + (lab ? '<span class="th-label">' + name + '</span>' : '') + '</li>';
     }).join('');
     const label = s.done >= STAGES.length ? 'All 8 stages complete: settled' : 'Stage ' + (s.done + 1) + ' of 8: ' + STAGES[Math.min(s.done, 7)] + (s.blocked ? ', blocked (' + s.note + ')' : '');
     return '<ol class="thread' + (opts.labels ? ' has-labels' : '') + (opts.dark ? ' on-dark' : '') + '" aria-label="' + esc(label) + '">' + items + '</ol>';
@@ -126,8 +155,9 @@
   /* ---------- Desk bar ---------- */
   const NAV = [
     ['today', 'Today', 'today'], ['inbox', 'Inbox', 'inbox'], ['trades', 'Trades', 'trade'], ['loads', 'Loads', 'truck'],
-    ['settle', 'Settle', 'scale'], ['book', 'Book', 'book'], ['review', 'Review', 'chart']
+    ['settle', 'Settle', 'scale']
   ];
+  const MORE = [['book', 'Book', 'book'], ['review', 'Review', 'chart']];
   function navCounts(state) {
     const inbox = state.messages.filter((m) => (TD.store.isExtractable(m) && m.status === 'review') || (m.status === 'flagged' && !state.msgState[m.id])).length;
     const loads = Object.values(state.exceptions).filter((x) => x.status !== 'resolved').length;
@@ -143,28 +173,39 @@
       const cnt = c[n[0]] ? '<span class="nav-count' + (n[0] === 'loads' ? ' is-alert' : '') + '" aria-label="' + c[n[0]] + ' waiting">' + c[n[0]] + '</span>' : '';
       return '<a class="nav-a" href="#/' + n[0] + '"' + (cur ? ' aria-current="page"' : '') + ' data-nav="' + n[0] + '">' + icon(n[2], 17) + '<span>' + n[1] + '</span>' + cnt + '</a>';
     }).join('');
+    const moreCur = MORE.some((n) => n[0] === route.section);
+    const more = '<details class="nav-more"><summary class="nav-a"' + (moreCur ? ' aria-current="page"' : '') + '>' + icon('menu', 17) + '<span>More</span>' + icon('down', 13) + '</summary><div class="nav-more-menu">' + MORE.map((n) => '<a href="#/' + n[0] + '"' + (route.section === n[0] ? ' aria-current="page"' : '') + '>' + icon(n[2], 16) + '<span>' + n[1] + '</span></a>').join('') + '</div></details>';
     const roles = Object.values(D.users).map((x) => '<li><button type="button" role="menuitemradio" aria-checked="' + (x.id === state.role) + '" data-act="role" data-role="' + x.id + '"><span class="av">' + x.initials + '</span><span><strong>' + esc(x.name) + '</strong><small>' + esc(x.title) + '</small></span>' + (x.id === state.role ? icon('check', 15) : '') + '</button></li>').join('');
     const unread = unreadCount(state);
     const mac = /Mac|iPhone|iPad/.test(navigator.platform || '');
+    const t = esc(u.dayShort(state.now).slice(0, 3)) + ' ' + u.hhmm(state.now);
     return '<header class="deskbar" id="deskbar"><div class="deskbar-in">' +
-      '<a class="back-all" href="../../index.html" aria-label="All demos">' + icon('back', 14) + '<span>All demos</span></a>' +
+      '<a class="back-all" href="../../index.html" aria-label="All demos" title="All demos">' + icon('back', 15) + '</a>' +
       '<a class="brand" href="#/today" aria-label="TradeDesk home: Today"><img src="assets/tradedesk-wordmark.png" alt="TradeDesk" width="137" height="24"></a>' +
-      '<nav class="mainnav" aria-label="Main">' + navItems + '</nav>' +
+      '<nav class="mainnav" aria-label="Main">' + navItems + more + '</nav>' +
       '<div class="desk-tools">' +
-      '<button type="button" class="tool-btn search-btn" data-act="search" id="search-btn" aria-label="Search (' + (mac ? '⌘' : 'Ctrl') + '+K)">' + icon('search', 16) + '<span class="tb-l">Search</span><kbd>' + (mac ? '⌘K' : 'Ctrl K') + '</kbd></button>' +
-      '<div class="notif"><button type="button" class="tool-btn icon-only" data-act="notif" id="notif-btn" aria-haspopup="true" aria-expanded="false" aria-controls="notif-panel" aria-label="Notifications' + (unread ? ', ' + unread + ' unread' : '') + '">' + icon('bell', 17) + (unread ? '<span class="nb-count" aria-hidden="true">' + (unread > 99 ? '99+' : unread) + '</span>' : '') + '</button>' + notifPanel(state) + '</div>' +
-      '<button type="button" class="clock" data-act="lab" data-sec="clock" id="clock-btn" title="Demo clock: open the Test lab to move time">' + icon('clock', 14) + '<span>' + esc(u.dayShort(state.now).slice(0, 3)) + ' ' + u.hhmm(state.now) + '</span></button>' +
-      '<button type="button" class="lab-btn" data-act="lab" id="lab-btn">' + icon('flask', 15) + '<span>Test lab</span></button>' +
-      '<button type="button" class="tour-btn" data-act="tour-start" id="tour-start">' + icon('play', 14) + '<span>Guided tour</span></button>' +
-      '<div class="who"><button type="button" class="who-btn" data-act="role-menu" aria-haspopup="true" aria-expanded="false" aria-controls="role-menu" id="who-btn"><span class="av">' + usr.initials + '</span><span class="who-txt"><strong>' + esc(usr.name) + '</strong><small>' + esc(usr.title) + '</small></span>' + icon('down', 14) + '</button>' +
-      '<div class="role-menu" id="role-menu" hidden><p class="rm-title">Act as</p><ul role="menu" aria-label="Switch desk role">' + roles + '</ul><p class="rm-note">Each role has its own limits and queue: traders price and approve, logistics books freight, finance settles and approves credit. Nobody approves their own new counterparty.</p><div class="rm-foot"><button type="button" class="btn small" data-act="reset" id="reset-demo">' + icon('reset', 15) + '<span>Reset demo</span></button><a class="btn small ghost" href="../../index.html">' + icon('back', 15) + '<span>All demos</span></a></div></div></div>' +
+      '<button type="button" class="tool-btn icon-only search-btn" data-act="search" id="search-btn" aria-label="Search (' + (mac ? '⌘' : 'Ctrl') + '+K)" title="Search (' + (mac ? '⌘K' : 'Ctrl K') + ')">' + icon('search', 16) + '</button>' +
+      '<div class="notif"><button type="button" class="tool-btn icon-only" data-act="notif" id="notif-btn" aria-haspopup="true" aria-expanded="false" aria-controls="notif-panel" aria-label="Notifications' + (unread ? ', ' + unread + ' unread' : '') + '" title="Notifications">' + icon('bell', 17) + (unread ? '<span class="nb-count" aria-hidden="true">' + (unread > 99 ? '99+' : unread) + '</span>' : '') + '</button>' + notifPanel(state) + '</div>' +
+      '<div class="demo"><button type="button" class="demo-btn" data-act="demo-menu" id="demo-btn" aria-haspopup="true" aria-expanded="false" aria-controls="demo-menu" aria-label="Demo tools: tour, Test lab, reset, live AI. Demo clock ' + t + '" title="Demo tools · clock ' + t + '">' + icon('flask', 16) + '<span class="demo-t num">' + t + '</span></button>' + demoMenu(state, t) + '</div>' +
+      '<div class="who"><button type="button" class="who-btn" data-act="role-menu" aria-haspopup="true" aria-expanded="false" aria-controls="role-menu" id="who-btn" aria-label="Acting as ' + esc(usr.name) + ', ' + esc(usr.title) + '. Switch role" title="' + esc(usr.name + ' · ' + usr.title) + '"><span class="av">' + usr.initials + '</span>' + icon('down', 14) + '</button>' +
+      '<div class="role-menu" id="role-menu" hidden><p class="rm-title">Act as ' + info('Each role has its own limits and queue: traders price and approve, logistics books freight, finance settles and approves credit. Nobody approves their own new counterparty.', 'roles') + '</p><ul role="menu" aria-label="Switch desk role">' + roles + '</ul></div></div>' +
       '</div></div>' + banners(state) + '</header>';
+  }
+  /* Everything about the demo itself in one place: tour, Test lab and clock, reset, live-AI status, the demo marker. */
+  function demoMenu(state, t) {
+    return '<div class="demo-menu" id="demo-menu" hidden><p class="dm-mark">' + chip('simulated', 'Demo · fictional data') + info('Fictional companies, people and prices. Carrier, facility and accounting replies are simulated. TradeDesk runs beside an ERP and does not replace it.', 'the demo') + '</p><ul class="dm-list">' +
+      '<li><button type="button" data-act="tour-start" id="tour-start">' + icon('play', 16) + '<span>Guided tour</span></button></li>' +
+      '<li><button type="button" data-act="lab" id="lab-btn">' + icon('flask', 16) + '<span>Test lab</span></button></li>' +
+      '<li><button type="button" data-act="lab" data-sec="clock" id="clock-btn">' + icon('clock', 16) + '<span>Clock <span class="num">' + t + '</span></span></button></li>' +
+      '<li><button type="button" data-act="reset" id="reset-demo">' + icon('reset', 16) + '<span>Reset</span></button></li>' +
+      '<li class="dm-ai">' + aiStatus({ id: 'ai-status-menu', label: true, size: 16 }) + '</li>' +
+      '<li><a href="../../index.html">' + icon('back', 16) + '<span>All demos</span></a></li></ul></div>';
   }
   function banners(state) {
     const b = [];
-    if (u.caps.offline) b.push('Offline (Test lab): carrier, facility and accounting requests are paused; live AI is unavailable.');
-    if (!u.caps.storage) b.push('Saving is off (Test lab): changes last until you reload.');
-    return b.length ? '<div class="capbar" role="status">' + icon('alert', 14) + '<span>' + esc(b.join(' ')) + '</span><button type="button" class="btn small on-dark" data-act="lab" data-sec="caps">Change</button></div>' : '';
+    if (u.caps.offline) b.push('Offline');
+    if (!u.caps.storage) b.push('Not saving');
+    return b.length ? '<div class="capbar" role="status">' + icon('alert', 14) + '<span>' + esc(b.join(' · ')) + '</span>' + info((u.caps.offline ? 'Offline (Test lab): carrier, facility and accounting requests are paused; live AI is unavailable. ' : '') + (!u.caps.storage ? 'Saving is off (Test lab): changes last until you reload.' : ''), 'this mode') + '<button type="button" class="btn small on-dark" data-act="lab" data-sec="caps">Change</button></div>' : '';
   }
   function notifPanel(state) {
     const list = state.events.filter((e) => e.notify).slice(-40).reverse();
@@ -174,8 +215,8 @@
         const href = refHref(state, e.ref);
         const inner = '<span class="np-dot' + (e.id > seen ? ' is-new' : '') + '" aria-hidden="true"></span><span class="np-main"><span>' + esc(e.text) + '</span><small>' + esc(u.when(e.at, state.now)) + ' · ' + esc(e.who) + (e.id > seen ? ' · new' : '') + '</small></span>';
         return '<li>' + (href ? '<a href="' + href + '" data-act="notif-go">' + inner + '</a>' : '<div>' + inner + '</div>') + '</li>';
-      }).join('') + '</ul>' : '<p class="muted small np-empty">Nothing yet. Handoffs, expiries, cancellations and arrivals appear here.</p>') +
-      '<p class="np-foot"><button type="button" class="plink" data-act="lab" data-sec="log">Open the full event log</button></p></div>';
+      }).join('') + '</ul>' : '<p class="muted small np-empty">Nothing yet.</p>') +
+      '<p class="np-foot"><button type="button" class="plink" data-act="lab" data-sec="log">Event log</button></p></div>';
   }
   function bottomNav(state, route) {
     const c = navCounts(state);
@@ -187,11 +228,9 @@
   function moreSheet(state) {
     const unread = unreadCount(state);
     return '<dialog class="sheet" id="more-sheet" aria-labelledby="more-title"><div class="sheet-in"><div class="sheet-head"><h2 id="more-title">More</h2><button type="button" class="icon-btn" data-act="close-dialog" aria-label="Close">' + icon('x', 18) + '</button></div>' +
-      '<nav class="sheet-nav" aria-label="More sections"><a href="#/book">' + icon('book', 18) + 'Book: positions, bids, counterparties</a><a href="#/review">' + icon('chart', 18) + 'Review: performance and automation</a>' +
-      '<button type="button" data-act="search">' + icon('search', 18) + 'Search everything</button><button type="button" data-act="lab" data-sec="log">' + icon('bell', 18) + 'Notifications and event log' + (unread ? ' <span class="nav-count">' + unread + '</span>' : '') + '</button><button type="button" data-act="lab">' + icon('flask', 18) + 'Test lab: clock, events, scenarios</button></nav>' +
-      '<p class="sheet-label">Act as</p><div class="sheet-roles">' + Object.values(D.users).map((x) => '<button type="button" class="role-pill' + (x.id === state.role ? ' is-on' : '') + '" aria-pressed="' + (x.id === state.role) + '" data-act="role" data-role="' + x.id + '"><span class="av">' + x.initials + '</span>' + esc(x.first) + ' · ' + esc(x.title) + '</button>').join('') + '</div>' +
-      '<div class="sheet-actions"><button type="button" class="btn" data-act="tour-start">' + icon('play', 16) + '<span>Guided tour</span></button><button type="button" class="btn" data-act="reset">' + icon('reset', 16) + '<span>Reset demo</span></button><a class="btn ghost" href="../../index.html">' + icon('back', 16) + '<span>All demos</span></a></div>' +
-      '<p class="sheet-note">Demo, fictional data. Demo clock ' + esc(u.dayLong(state.now)) + ', ' + u.hhmm(state.now) + '.</p></div></dialog>';
+      '<nav class="sheet-nav" aria-label="More sections">' + MORE.map((n) => '<a href="#/' + n[0] + '">' + icon(n[2], 18) + n[1] + '</a>').join('') +
+      '<button type="button" data-act="search">' + icon('search', 18) + 'Search</button><button type="button" data-act="lab" data-sec="log">' + icon('bell', 18) + 'Event log' + (unread ? ' <span class="nav-count">' + unread + '</span>' : '') + '</button></nav>' +
+      '<p class="sheet-label">Act as</p><div class="sheet-roles">' + Object.values(D.users).map((x) => '<button type="button" class="role-pill' + (x.id === state.role ? ' is-on' : '') + '" aria-pressed="' + (x.id === state.role) + '" data-act="role" data-role="' + x.id + '"><span class="av">' + x.initials + '</span>' + esc(x.first) + ' · ' + esc(x.title) + '</button>').join('') + '</div></div></dialog>';
   }
 
   /* ---------- Counterparty passport (CT-03, CT-09) ---------- */
@@ -248,5 +287,5 @@
     setTimeout(() => { el.classList.add('is-out'); setTimeout(() => el.remove(), 400); }, kind === 'warn' ? 5200 : (opts && opts.undo ? 7000 : 3600));
   };
 
-  Object.assign(V, { chip, provenance, thread, stageOf, STAGES, btn, link, partyLink, band, commodityName, pname, tradeTitle, statusChip, loadChip, lotChip, when, perUnit, unitLabel, deskbar, bottomNav, moreSheet, passport, navCounts, refHref, hoursLabel, unreadCount });
+  Object.assign(V, { info, ico, tabs, aiStatus, chip, provenance, thread, stageOf, STAGES, btn, link, partyLink, band, commodityName, pname, tradeTitle, statusChip, loadChip, lotChip, when, perUnit, unitLabel, deskbar, bottomNav, moreSheet, passport, navCounts, refHref, hoursLabel, unreadCount });
 })();

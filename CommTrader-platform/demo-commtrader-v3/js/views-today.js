@@ -17,55 +17,57 @@
       const ex = state.extraction[q.ref];
       const miss = ex ? S.extractionMissing(ex) : null;
       d.facts = [['From', m ? m.org : '—'], ['Language', m && m.lang === 'en' ? 'English' : 'French'], ['Missing', miss == null ? 'Not reviewed yet' : miss.length ? miss.join(', ') : 'Nothing required'], ['Approval', 'Review only: nothing is bought']];
-      d.action = q.kind === 'revision' ? 'Review the revision' : 'Review the offer'; d.icon = 'inbox';
+      d.action = q.kind === 'revision' ? 'Review' : 'Review'; d.icon = 'inbox';
+      if (m) { const pv = S.valuesFromParse(Object.assign(TD.parser.parse(m.body, m.at), { text: m.body }), m); d.value = [pv.qtyValue != null ? pv.qtyValue + (pv.qtyUnit === 'loads' ? ' loads' : ' t') : null, pv.commodity ? V.commodityName(pv.commodity).toLowerCase() : null].filter(Boolean).join(' ') || m.kind; d.valueNote = pv.price != null ? u.rate(pv.price) + '/t' : ''; }
     } else if (q.kind === 'approve') {
       const tr = state.trades[q.ref];
       const plan = E.planSummary(state, tr, { moisture: tr.moisture, freightPct: 0 });
       d.why = q.note === 'Ready to approve' ? 'All checks pass for ' + V.tradeTitle(tr) + ': ' + (plan.loads ? plan.per.map((p) => p.loads + ' loads to ' + p.rates.name).join(' and ') : 'no sale allocated yet') + '.' : q.note;
       d.facts = [['Plan', plan.contribution == null ? 'Incomplete' : u.cad(plan.contribution) + (plan.perTonne != null ? ' (' + u.rate(plan.perTonne) + '/t)' : '')], ['Supply', tr.certainty === 'tentative' ? 'Tentative' : tr.supplierConfirmed ? 'Supplier-confirmed' : 'Stated'], ['Window', tr.windowEnd != null ? 'Ends ' + V.when(tr.windowEnd) : 'Missing'], ['Authority', auth.trade ? 'Up to ' + u.cad(u.toCents(auth.purchaseLimit)).replace('.00', '') : usr.title + ': view only']];
-      d.action = 'Price and approve'; d.icon = 'scale';
+      d.action = 'Approve'; d.icon = 'scale'; d.value = plan.contribution == null ? 'Incomplete' : u.cad(plan.contribution); d.valueNote = 'contribution';
     } else if (q.kind === 'exception') {
       const ex = state.exceptions[q.ref]; const l = E.load(state, ex.load);
       const q2 = E.quotedLoadLines(state, l); const opts = E.exceptionOptions(state, ex); const best = opts.find((o) => o.recommended);
       d.time = V.when(ex.openedAt);
       d.why = ex.cause + ' Receiver cutoff ' + V.when(l.cutoffAt) + '.';
       d.facts = [['At risk', q2 ? u.cad(E.contrib(q2)) + ' contribution' : '—'], ['Best option', best ? V.pname(best.carrier, true) + ', +' + u.money(best.extra) : 'None eligible: re-quote'], ['Quote validity', best ? 'Until ' + V.when(best.validUntil) : '—'], ['Your cap', auth.replacement ? 'CAD ' + auth.replacementCap + ' per load' : 'Cannot approve']];
-      d.action = 'Resolve the incident'; d.icon = 'truck';
+      d.action = 'Resolve'; d.icon = 'truck'; d.value = q2 ? u.cad(E.contrib(q2)) : '—'; d.valueNote = 'at risk';
     } else if (['quality', 'invoice', 'settle', 'export', 'ack'].includes(q.kind)) {
       const l = E.load(state, q.ref); const tr = state.trades[l.trade]; const dm = E.demand(state, l.demand);
       d.why = V.commodityName(tr.commodity) + ', ' + V.pname(tr.supplier) + ' to ' + V.pname(dm.buyer) + '. ' + (q.kind === 'quality' ? 'Destination grades settle the sale; both readings are kept.' : q.kind === 'invoice' ? 'The freight order sets the payable basis; finance treats invoices.' : q.kind === 'settle' ? 'Every discrepancy is treated. Finance approves the package.' : q.kind === 'export' ? 'Approved values only. Export is not posting.' : 'Exported; the accounting acknowledgement is pending.');
       d.facts = [['Amount', q.money != null ? u.cad(q.money) : '—'], ['Load', l.id + ' · ' + u.t3(l.docs.receiving ? l.docs.receiving.net : l.planned) + ' t'], ['Delivered', l.deliveredAt != null ? V.when(l.deliveredAt) : '—'], ['Authority', q.kind === 'quality' ? 'Trader' : 'Finance']];
-      d.action = q.kind === 'export' ? 'Export to accounting' : 'Review the evidence'; d.icon = 'scale';
+      d.action = q.kind === 'export' ? 'Export' : 'Review'; d.icon = 'scale'; d.value = q.money != null ? u.cad(q.money) : l.id; d.valueNote = q.money != null ? l.id : '';
     } else if (q.kind === 'rfq' || q.kind === 'appts') {
       const tr = state.trades[q.ref]; const alloc = tr.approval.snapshot.alloc; const n = Object.values(alloc).reduce((a, b) => a + b, 0);
       d.why = 'Approved v' + tr.approval.version + ' by ' + tr.approval.by + '. ' + (q.kind === 'rfq' ? 'Carriers see lanes, dates and equipment only.' : 'A request is not a confirmed slot.');
       d.facts = [['Loads', n + ' × ' + tr.payload + ' t'], ['Lanes', Object.keys(alloc).filter((k) => alloc[k]).map((k) => tr.origin + ' → ' + (E.party(state, E.demand(state, k).buyer) || {}).town).join('; ')], ['Window', u.dayShort(tr.windowStart) + '–' + u.dayShort(tr.windowEnd)], ['Authority', auth.award ? 'You can award' : 'Logistics awards']];
-      d.action = q.kind === 'rfq' ? 'Open freight' : 'Book appointments'; d.icon = 'truck';
+      d.action = q.kind === 'rfq' ? 'Freight' : 'Book'; d.icon = 'truck'; d.value = n + ' loads'; d.valueNote = n * tr.payload + ' t';
     } else if (q.kind === 'overdue') {
       d.why = 'Payment status imports from accounting; TradeDesk never marks an invoice paid by itself.';
       d.facts = [['Amount', u.cad(q.money)], ['Counterparty', q.title.split('(')[1] ? q.title.split('(')[1].replace(')', '') : '—'], ['Credit', 'Counts against the limit until paid'], ['Authority', 'Finance']];
-      d.action = 'Open receivables';
+      d.action = 'Open'; d.value = u.cad(q.money); d.valueNote = 'overdue';
     } else if (q.kind === 'party') {
       const p = state.parties[q.ref];
       d.why = 'Created by ' + (p.createdBy || 'someone') + '. Segregation of duties: the creator cannot approve.';
       d.facts = [['Kind', p.kind], ['Town', p.town || '—'], ['Credit', p.creditLimit ? u.cad(u.toCents(p.creditLimit)) : '—'], ['Authority', p.kind === 'Carrier' ? 'Logistics' : 'Finance']];
-      d.action = 'Open the passport'; d.actAttr = 'party';
+      d.action = 'Open'; d.actAttr = 'party'; d.value = p.creditLimit ? u.cad(u.toCents(p.creditLimit)) : p.kind; d.valueNote = p.creditLimit ? 'credit' : '';
     } else if (q.kind === 'late') {
       const l = E.load(state, q.ref);
       d.why = 'ETA ' + V.when(l.etaAt) + ' against a ' + u.hhmm(l.cutoffAt % 1440) + ' cutoff. Call the receiver or plan the next receiving day.';
-      d.action = 'Open the load';
-    } else if (q.kind === 'policy') { d.action = 'Review the policy'; }
+      d.action = 'Open'; d.value = 'ETA ' + u.hhmm(l.etaAt % 1440); d.valueNote = 'cutoff ' + u.hhmm(l.cutoffAt % 1440);
+    } else if (q.kind === 'policy') { d.action = 'Review'; }
     return d;
   }
 
-  function card(d, i) {
-    const sevChip = V.chip(d.sev === 'new' ? 'new' : d.sev, d.sev === 'new' ? ({ offer: 'New offer', approve: 'Ready', rfq: 'Handoff', appts: 'Handoff', settle: 'Handoff', party: 'Approval', export: 'Next step' }[d.kind] || 'New') : null);
-    const action = d.actAttr === 'party' ? '<button type="button" class="btn primary" data-act="party" data-id="' + esc(d.ref) + '">' + icon('user', 16) + '<span>' + esc(d.action) + '</span></button>' : V.link(esc(d.action), d.href, i === 0 ? 'primary' : '', d.icon);
+  /* One card per decision: what, the money at stake, one action. Facts and reasons are one tap away. */
+  function card(state, d, i) {
+    const sevIco = V.ico(d.sev === 'high' ? 'open' : d.sev === 'medium' ? 'warn' : d.sev === 'low' ? 'low' : 'new', d.sev === 'new' ? 'New' : d.sev === 'high' ? 'High priority' : d.sev === 'medium' ? 'Medium priority' : 'Low priority');
+    const action = d.actAttr === 'party' ? '<button type="button" class="btn primary small" data-act="party" data-id="' + esc(d.ref) + '">' + icon('user', 16) + '<span>' + esc(d.action) + '</span></button>' : V.link(esc(d.action), d.href, (i === 0 ? 'primary ' : '') + 'small', d.icon || 'arrow');
+    const offerPreview = d.kind === 'offer' ? heroDemo(state, d.ref) : '';
     return '<article class="dcard sev-' + d.sev + '" id="dcard-' + esc(d.kind + '-' + d.ref) + '">' +
-      '<header class="dcard-head">' + sevChip + '<span class="dcard-ref">' + esc(d.ref) + '</span>' + (d.time ? '<time>' + esc(d.time) + '</time>' : '') + '</header>' +
-      '<h3>' + esc(d.title) + '</h3>' + (d.why ? '<p class="dcard-why">' + esc(d.why) + '</p>' : '') +
-      (d.facts ? '<dl class="dcard-facts">' + d.facts.map((f) => '<div><dt>' + esc(f[0]) + '</dt><dd>' + esc(f[1]) + '</dd></div>').join('') + '</dl>' : '') +
-      '<div class="dcard-actions">' + action + '</div></article>';
+      '<div class="dc-row">' + sevIco + '<div class="dc-main"><h3>' + esc(d.title) + '</h3><p class="dc-val"><strong class="num">' + esc(d.value || '') + '</strong>' + (d.valueNote ? ' <small>' + esc(d.valueNote) + '</small>' : '') + '</p></div><div class="dcard-actions">' + action + '</div></div>' +
+      (d.why || d.facts || offerPreview ? '<details class="dc-more"><summary aria-label="Details for ' + esc(d.title) + '">' + icon('info', 14) + '<span>' + esc(d.ref) + (d.time ? ' · ' + esc(d.time) : '') + '</span></summary>' + (d.why ? '<p class="dcard-why">' + esc(d.why) + '</p>' : '') + (d.facts ? '<dl class="dcard-facts">' + d.facts.map((f) => '<div><dt>' + esc(f[0]) + '</dt><dd>' + esc(f[1]) + '</dd></div>').join('') + '</dl>' : '') + offerPreview + '</details>' : '') +
+      '</article>';
   }
 
   /* Things worth a look that are not yet a decision. */
@@ -104,12 +106,8 @@
     const usr = D.users[state.role];
     const WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
     const nextCut = state.loads.filter((l) => ['booked', 'loading', 'transit'].includes(l.status) && l.cutoffAt > state.now && Math.floor(l.cutoffAt / 1440) === Math.floor(state.now / 1440)).map((l) => l.cutoffAt).sort((a, b) => a - b)[0];
-    const by = nextCut ? ' before the ' + u.hhmm(nextCut % 1440) + ' cutoff' : '';
-    const title = n === 0 ? 'Your queue is clear, ' + usr.first + '. Every decision is on the record.' : (n === 1 ? 'One decision needs you' + by + '.' : (WORDS[n] || n) + ' decisions need you' + by + '.');
-    const parts = items.slice(0, 3).map((d) => d.title.charAt(0).toLowerCase() + d.title.slice(1));
-    let lede = parts.length ? (parts.length > 1 ? parts.slice(0, -1).join('; ') + '; and ' + parts[parts.length - 1] : parts[0]) : 'Contribution, loads and settlements below reflect everything approved so far.';
-    lede = lede.charAt(0).toUpperCase() + lede.slice(1) + (parts.length ? '.' : '');
-    return { title: title, lede: lede };
+    const title = n === 0 ? 'Queue clear, ' + usr.first : (n === 1 ? 'One decision needs you' : (WORDS[n] || n) + ' decisions need you');
+    return { title: title, lede: nextCut ? 'Before the ' + u.hhmm(nextCut % 1440) + ' cutoff' : 'Everything else is on the record' };
   }
 
   function loopStrip(state) {
@@ -138,7 +136,7 @@
       '<div class="pnl3"><div><span class="pnl-l">Quoted</span><strong class="num" id="pnl-quoted">' + u.money(b.quoted) + '</strong><small>at approval</small></div><div><span class="pnl-l">Current</span><strong class="num" id="pnl-current">' + u.money(b.current) + '</strong><small>with today’s evidence</small></div><div><span class="pnl-l">Realized</span><strong class="num" id="pnl-actual">' + u.money(b.actual) + '</strong><small>reconciled loads</small></div></div>' +
       '<div class="table-wrap"><table class="mini"><caption class="sr-only">Contribution by trade, CAD</caption><thead><tr><th scope="col">Trade</th><th scope="col" class="r">Quoted</th><th scope="col" class="r">Current</th><th scope="col" class="r">Realized</th></tr></thead><tbody>' +
       rows.map((x) => '<tr><th scope="row"><a href="#/trade/' + x.t.id + '">' + u.kernel(x.t.commodity, 12) + x.t.id + '</a></th><td class="r num">' + u.money(x.p.quoted) + '</td><td class="r num' + (x.p.current < x.p.quoted ? ' neg' : '') + '">' + u.money(x.p.current) + '</td><td class="r num">' + (x.p.reconciled ? u.money(x.p.actual) : '—') + '</td></tr>').join('') +
-      '</tbody></table></div><p class="panel-note">CAD. Quoted is fixed at approval; current adds rebookings, firm freight and tickets; realized counts reconciled loads only.</p></section>';
+      '</tbody></table></div></section>';
   }
 
   function loadsPanel(state) {
@@ -150,7 +148,7 @@
       (ls.length ? '<ul class="lt-list">' + ls.map((l) => {
         const tr = state.trades[l.trade]; const b = E.party(state, E.demand(state, l.demand).buyer);
         return '<li><a href="#/load/' + l.id + '">' + u.kernel(tr.commodity, 12) + '<span class="lt-id">' + l.id + '</span><span class="lt-lane">to ' + esc(b.town) + '</span>' + V.loadChip(state, l) + '<span class="lt-eta num">' + (['booked', 'loading', 'transit'].includes(l.status) ? 'ETA ' + u.hhmm(l.etaAt % 1440) : '') + '</span></a></li>';
-      }).join('') + '</ul>' : '<p class="muted small">No loads move today. Advance the clock in the Test lab to watch booked loads roll.</p>') + '<p class="panel-note">Positions come from manual check-ins, not GPS.</p></section>';
+      }).join('') + '</ul>' : '<p class="muted small">No loads today.</p>') + '</section>';
   }
 
   function marketPanel(state) {
@@ -161,7 +159,7 @@
     const cz = E.futuresCad(state, 'CZ26');
     return '<section class="panel" aria-labelledby="mk-h"><div class="panel-head"><h2 id="mk-h">Benchmarks</h2>' + V.link('Edit in Book', '#/book', 'small ghost') + '</div><dl class="bench">' + rows +
       '<div><dt>CZ26 in CAD/t</dt><dd><span class="num">' + u.rate(cz.value) + '</span> <small class="muted">= ' + cz.fut.value.toFixed(4) + ' × ' + cz.fx.value.toFixed(4) + ' × ' + cz.buPerT.toFixed(4) + ' bu/t</small></dd></div></dl>' +
-      '<p class="panel-note">Manual entries, not a live feed. A price older than 4 hours stays visible but cannot support an executable basis sale.</p></section>';
+      '</section>';
   }
 
   function logPanel(state) {
@@ -171,9 +169,9 @@
   }
 
   /* Hero companion: the newest offer in one glance, from the sender's words to delivered margin by buyer. */
-  function heroDemo(state) {
+  function heroDemo(state, msgId) {
     let tr = null; let m = null;
-    const offer = state.messages.find((x) => x.kind === 'Supply offer' && (x.status === 'review' || x.status === 'linked'));
+    const offer = state.messages.find((x) => (msgId ? x.id === msgId : x.kind === 'Supply offer') && (x.status === 'review' || x.status === 'linked'));
     if (offer) { m = offer; const ex = state.extraction[offer.id]; if (ex && ex.created) tr = state.trades[ex.created]; }
     if (!tr && !m) tr = Object.values(state.trades).filter((t) => t.status === 'open' && t.price != null && t.origin).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
     if (!m && tr && tr.source) m = state.messages.find((x) => x.id === tr.source);
@@ -199,10 +197,10 @@
       quote = spans.length ? '<blockquote lang="' + esc(m.lang) + '">' + (a > 0 ? '…' : '') + TD.parser.highlight(m.body.slice(a, b), shifted).replace(/src-mark/g, 'hd-mark') + (b < m.body.length ? '…' : '') + '</blockquote>' : '';
     }
     const ap = tr && tr.approval && tr.approval.valid;
-    const foot = ap ? 'Approved v' + tr.approval.version + ': ' + Object.keys(tr.approval.snapshot.alloc).filter((k) => tr.approval.snapshot.alloc[k]).map((k) => tr.approval.snapshot.alloc[k] + ' loads to ' + E.party(state, E.demand(state, k).buyer).short).join(', ') + '.' : 'Grey is freight, moisture shrink, financing and detention. The highest bid comes last.';
+    const foot = ap ? 'Approved v' + tr.approval.version + ': ' + Object.keys(tr.approval.snapshot.alloc).filter((k) => tr.approval.snapshot.alloc[k]).map((k) => tr.approval.snapshot.alloc[k] + ' loads to ' + E.party(state, E.demand(state, k).buyer).short).join(', ') + '.' : 'Grey: costs. Highest bid last.';
     const href = tr ? '#/trade/' + tr.id + '/price' : '#/inbox/' + m.id;
     return '<a class="hero-demo" href="' + href + '" aria-label="Open the delivered-margin comparison for ' + esc(m ? m.from : tr.id) + '"><p class="hd-l">' + esc(m ? m.from + ', ' + V.when(m.at) : tr.id + ', ' + V.tradeTitle(tr)) + '</p>' + quote +
-      '<p class="hd-l">Delivered contribution, CAD/t, before you call anyone back</p><ul class="hd-rows">' + rows.map((r) => {
+      '<p class="hd-l">Delivered contribution, CAD/t</p><ul class="hd-rows">' + rows.map((r) => {
         const w = Math.max(4, (Math.max(0, r.contribution) / max) * 100); const cost = (Math.max(0, r.price - lot.price - r.contribution) / max) * 100;
         return '<li><span class="hd-name">' + esc(r.name) + '<small>bids ' + u.rate(r.price) + '</small></span><span class="hd-bar"><i class="hd-cost" style="width:' + Math.min(100, cost).toFixed(1) + '%"></i><i class="hd-c" style="width:' + Math.min(100, w).toFixed(1) + '%"></i></span><span class="hd-v num">' + u.rate(r.contribution) + '</span></li>';
       }).join('') + '</ul><p class="hd-foot">' + esc(foot) + '</p></a>';
@@ -213,21 +211,27 @@
     const sevRank = { high: 0, medium: 1, new: 2, low: 3 };
     items.sort((a, b) => sevRank[a.sev] - sevRank[b.sev]);
     const h = heroCopy(state, items);
-    const usr = D.users[state.role];
-    const primary = items.length ? V.link('Go to the first decision', items[0].href || '#/today', 'primary on-dark', 'arrow', 'hero-primary') : V.link('Review the month', '#/review', 'primary on-dark', 'chart', 'hero-primary');
-    const hero = '<div class="hero-grid"><div class="hero"><p class="hero-date">' + esc(u.dayLong(state.now)) + ', ' + u.hhmm(state.now) + ' · ' + esc(D.desk.company) + ', ' + esc(D.desk.desk) + ' · ' + esc(usr.name) + ', ' + esc(usr.title.toLowerCase()) + '</p>' +
-      '<h1 class="hero-title" id="hero-title">' + esc(h.title) + '</h1><p class="hero-lede">' + esc(h.lede) + '</p>' +
-      '<p class="hero-what">TradeDesk turns supplier messages, buyer bids and freight quotes into priced, booked and reconciled loads. It runs beside your ERP; you keep every purchase, sale and payment decision.</p>' +
-      '<div class="hero-actions">' + primary + '<button type="button" class="btn ghost on-dark" data-act="tour-start">' + icon('play', 16) + '<span>Take the guided tour</span></button><button type="button" class="btn ghost on-dark" data-act="lab">' + icon('flask', 16) + '<span>Open the Test lab</span></button></div></div>' + heroDemo(state) + '</div>' + loopStrip(state);
+    const primary = items.length ? V.link('First decision', items[0].href || '#/today', 'primary on-dark', 'arrow', 'hero-primary') : V.link('Review', '#/review', 'primary on-dark', 'chart', 'hero-primary');
+    const hero = '<div class="hero hero-slim"><h1 class="hero-title" id="hero-title">' + esc(h.title) + '</h1><p class="hero-lede">' + icon('clock', 15) + '<span>' + esc(h.lede) + '</span></p><div class="hero-actions">' + primary + '</div></div>';
     const watch = watching(state);
     const day = Math.floor(state.now / 1440);
     const done = state.events.filter((e) => e.role !== 'service' && e.kind === 'action' && Math.floor(e.at / 1440) === day && !/^Edited|^Entered indicative|^Logged confirmation/.test(e.text)).slice(-6).reverse();
-    return V.band(hero, 'band-hero') +
-      '<div class="wrap today-grid"><div class="col-main"><section aria-labelledby="dec-h"><div class="sec-head"><h2 id="dec-h">Your queue</h2><span class="muted small">' + esc(usr.title) + ': each card names the action, the money and the authority it needs. Switch roles to see their queues.</span></div>' +
-      (items.length ? items.map(card).join('') : '<div class="empty">' + icon('check', 22) + '<p>Nothing waiting for ' + esc(usr.title.toLowerCase()) + '. New messages, handoffs and exceptions will appear here.</p></div>') + '</section>' +
-      (watch.length ? '<section aria-labelledby="w-h" class="watch"><div class="sec-head"><h2 id="w-h">Watching</h2><span class="muted small">No decision yet, but worth a look.</span></div>' + watch.map((w) => '<article class="dcard sev-' + w.sev + '" id="watch-' + esc(w.id) + '"><header class="dcard-head">' + V.chip(w.sev) + '<span class="dcard-ref">' + esc(w.ref) + '</span></header><h3>' + esc(w.title) + '</h3><p class="dcard-why">' + esc(w.why) + '</p><div class="dcard-actions">' + w.actions + '</div></article>').join('') + '</section>' : '') +
-      (done.length ? '<section aria-labelledby="dn-h" class="donelist"><div class="sec-head"><h2 id="dn-h">Done today</h2></div><ul>' + done.map((d) => { const href = V.refHref(state, d.ref); return '<li>' + icon('check', 15) + (href ? '<a href="' + href + '">' : '<span>') + esc(u.hhmm(d.at % 1440) + ' · ' + d.text) + (href ? '</a>' : '</span>') + '</li>'; }).join('') + '</ul></section>' : '') +
-      '</div><aside class="col-side" aria-label="Desk summary">' + pnlPanel(state) + loadsPanel(state) + marketPanel(state) + logPanel(state) + '</aside></div>';
+    const b = E.bookPnl(state);
+    const fold = (id, ic, label, val, body, cls) => '<details class="tfold' + (cls ? ' ' + cls : '') + '" id="fold-' + id + '"><summary>' + icon(ic, 16) + '<span>' + esc(label) + '</span>' + (val != null ? '<strong class="num">' + esc(val) + '</strong>' : '') + '</summary><div class="tfold-body">' + body + '</div></details>';
+    const watchHtml = watch.map((w) => '<article class="dcard sev-' + w.sev + '" id="watch-' + esc(w.id) + '"><div class="dc-row">' + V.ico(w.sev === 'high' ? 'open' : w.sev === 'medium' ? 'warn' : 'low') + '<div class="dc-main"><h3>' + esc(w.title) + '</h3><p class="muted small">' + esc(w.ref) + '</p></div></div><details class="dc-more"><summary aria-label="Details">' + icon('info', 14) + '<span>Why</span></summary><p class="dcard-why">' + esc(w.why) + '</p></details><div class="dcard-actions">' + w.actions + '</div></article>').join('');
+    const doneHtml = '<ul class="donelist-ul">' + done.map((d) => { const href = V.refHref(state, d.ref); return '<li>' + icon('check', 15) + (href ? '<a href="' + href + '">' : '<span>') + esc(u.hhmm(d.at % 1440) + ' · ' + d.text) + (href ? '</a>' : '</span>') + '</li>'; }).join('') + '</ul>';
+    return V.band(hero, 'band-hero band-slim') +
+      '<div class="wrap today-one"><section aria-labelledby="dec-h"><h2 id="dec-h" class="sr-only">Your queue</h2>' +
+      (items.length ? '<div class="dcards">' + items.map((d, i) => card(state, d, i)).join('') + '</div>' : '<div class="empty">' + icon('check', 22) + '<p>Nothing waiting.</p></div>') + '</section>' +
+      '<section class="tfolds" aria-label="Desk summary">' +
+      fold('pipeline', 'route', 'Pipeline', null, loopStrip(state)) +
+      fold('pnl', 'chart', 'Contribution', u.money(b.current), pnlPanel(state)) +
+      fold('loads', 'truck', 'Loads today', null, loadsPanel(state)) +
+      fold('market', 'trade', 'Benchmarks', null, marketPanel(state)) +
+      (watch.length ? fold('watch', 'alert', 'Watching', String(watch.length), watchHtml) : '') +
+      (done.length ? fold('done', 'check', 'Done today', String(done.length), doneHtml) : '') +
+      fold('log', 'bell', 'Desk log', String(state.events.length), logPanel(state)) +
+      '</section></div>';
   };
   V.enrichQueue = enrich;
 })();

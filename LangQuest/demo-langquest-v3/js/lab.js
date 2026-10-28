@@ -1,10 +1,11 @@
 /* LangQuest V3 — Test lab: a drawer for testing the demo, not part of the product.
    Scenario presets, the demo clock, event injection, capability toggles, learner and studio
-   role switchers, the shared event log, workspace export/import/reset, and live-AI settings. */
+   role switchers, the shared event log, workspace export/import/reset, and API status (keys,
+   killswitches and budgets live on the hub's API monitor, not here). */
 'use strict';
 (function () {
   const U = LQ.ui, S = LQ.store, esc = U.esc, ic = U.icon;
-  const LB = LQ.lab = { open: false, logQ: '', aiPainted: false };
+  const LB = LQ.lab = { open: false, logQ: '' };
   const $ = id => document.getElementById(id);
 
   /* ── scenario presets: each builds a whole workspace ── */
@@ -99,34 +100,48 @@
   LB.inject = (id) => { const e = EVENTS.find(x => x.id === id); if (!e) return; const msg = e.run(); S.save(); LQ.app.render(); U.toast(msg); };
 
   /* ── render ── */
+  /* API status, read from the shared monitor. Paid providers need a key added on the monitor page. */
+  const API_ROWS = [['anthropic', 'Live AI', 'cpu'], ['gemini', 'Neural voice', 'sparkle'], ['browser-tts', 'Browser voices', 'volume'], ['browser-speech', 'Speech recognition', 'ear']];
+  LB.apiRows = () => {
+    const AM = window.ApiMeter; if (!AM) return [];
+    const tot = (AM.state().totals || {}).langquest || {};
+    return API_ROWS.map(([p, label, icon]) => { const g = AM.check('langquest', p), u = tot[p] || {}; return { p, label, icon, k: g.ok ? 'on' : /^No .* key$/.test(g.reason || '') ? 'off' : 'paused', why: g.ok ? 'Ready' : g.reason, calls: u.calls || 0, cost: u.cost || 0, paid: !!(AM.PROVIDERS[p] || {}).paid }; });
+  };
+  function apiSec() {
+    const AM = window.ApiMeter;
+    if (!AM) return '<section class="lab__sec"><h3 class="lab__h">API</h3><p class="small muted">The API monitor didn’t load, so nothing can call an API.</p></section>';
+    const rows = LB.apiRows(), st = AM.state();
+    return '<section class="lab__sec" id="lab-api"><h3 class="lab__h">API ' + U.info('Every call LangQuest makes is checked and recorded by the shared API monitor (app id “langquest”): keys, killswitches, budgets and usage live there. Paid calls need a key the owner adds on the monitor; tests never call a paid API.', 'About API monitoring') + '</h3>' +
+      '<ul class="apirows" role="list">' + rows.map(r => '<li class="apirow apirow--' + r.k + '" title="' + esc(r.label + ': ' + r.why) + '">' + ic(r.icon, 'ic--sm') + '<span class="apirow__l">' + esc(r.label) + '</span><span class="dot dot--' + r.k + '" aria-hidden="true"></span><span class="small apirow__st">' + esc(r.k === 'on' ? 'On' : r.k === 'off' ? 'No key' : 'Paused') + '</span><span class="small muted apirow__n">' + r.calls + (r.paid ? ' · $' + r.cost.toFixed(4) : '') + '</span></li>').join('') + '</ul>' +
+      '<p class="small"><strong>US$' + (st.spentByApp.langquest || 0).toFixed(4) + '</strong> <span class="muted">this month · budget US$' + Number((st.budgets.apps || {}).langquest || 0).toFixed(2) + '</span></p>' +
+      '<a class="btn btn--sm" href="' + LQ.ai.MONITOR + '">' + ic('sliders', 'ic--xs') + 'API monitor</a></section>';
+  }
   const CAPS = [['noSR', 'No speech recognition', 'Microphones fall back to recording or typing.'], ['noVoice', 'No voice for this course’s locale', 'Phrases are text only; no other variety is substituted.'], ['offline', 'Offline', 'No recognizer, no live AI, network voices hidden. Lesson packs still play.'], ['liveAIOff', 'Live AI off', 'Rules only, even with a key.']];
   LB.render = () => {
     const body = $('lab-body'); if (!body || !LB.open) return;
     const st = S.state, caps = st.caps, now = S.now();
     const q = LB.logQ.toLowerCase(), ev = st.events.filter(e => !q || (e.type + ' ' + e.text).toLowerCase().includes(q)).slice(0, 60);
-    body.innerHTML = '<header class="lab__head"><div><h2 class="h3" id="lab-title">Test lab</h2><p class="small muted">Controls for testing this demo. They change the simulated device, time and data, never the product rules.</p></div><button class="iconbtn" data-act="lab-close" aria-label="Close the Test lab">' + ic('close') + '</button></header>' +
-      '<section class="lab__sec"><h3 class="lab__h">Scenarios</h3><ul class="lab__presets" role="list">' + PRESETS.map(p => '<li><div><strong>' + esc(p.name) + '</strong><span class="small muted">' + esc(p.desc) + '</span></div><button class="btn btn--sm" data-act="lab-preset" data-arg="' + p.id + '">Load</button></li>').join('') + '</ul></section>' +
-      '<section class="lab__sec"><h3 class="lab__h">Demo clock</h3><p class="lab__now"><strong>' + esc(S.fmtDay(S.today(), { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })) + ', ' + esc(S.fmtTime(now)) + '</strong>' + (st.clockMin ? ' <span class="small muted">(' + describeOffset(st.clockMin) + ' after the demo start)</span>' : '') + '</p>' +
-      '<div class="row2 wrap"><button class="btn btn--sm" data-act="clock-advance" data-arg="60">+1 hour</button><button class="btn btn--sm" data-act="clock-advance" data-arg="1440">+1 day</button><button class="btn btn--sm" data-act="clock-advance" data-arg="10080">+1 week</button><button class="btn btn--sm btn--quiet" data-act="clock-reset"' + (st.clockMin ? '' : ' disabled') + '>Back to the start</button></div>' +
-      '<form class="row2 wrap" data-submit="lab-date"><label class="field field--inline"><span>Jump to</span><input type="date" id="lab-date" name="d" min="2026-10-01" max="2027-12-31" value="' + S.today() + '"></label><button class="btn btn--sm" type="submit">Go</button></form>' +
-      '<p class="small muted">Time has consequences: phrases fall due and overdue, an 18:00 reminder lands in the inbox (not during quiet hours or a paused streak), scheduled studio drafts publish, and offline lesson packs expire after 30 days.</p></section>' +
-      '<section class="lab__sec"><h3 class="lab__h">Inject an event</h3><form class="stack-sm" data-submit="lab-inject"><label class="field"><span class="sr-only">Event</span><select name="ev" id="lab-ev">' + EVENTS.map(e => '<option value="' + e.id + '">' + esc(e.label) + '</option>').join('') + '</select></label><button class="btn btn--sm btn--primary" type="submit">Inject</button></form>' + (LQ.speech.srBroken ? '<p class="small">Recognizer state: failed (' + esc(LQ.speech.srBroken) + '). <button class="linkbtn" data-act="lab-sr-recover">Recover it</button></p>' : '') + '</section>' +
-      '<section class="lab__sec"><h3 class="lab__h">Capabilities</h3><div class="stack-sm">' + CAPS.map(([k, l, h]) => { const on = k === 'liveAIOff' ? caps.liveAI === false : !!caps[k]; return '<label class="switch"><span><strong>' + esc(l) + '</strong><span class="muted small">' + esc(h) + '</span></span><input type="checkbox" role="switch" data-change="lab-cap" data-arg="' + k + '"' + (on ? ' checked' : '') + '></label>'; }).join('') + '</div><p class="small muted">Real device: speech recognition ' + (LQ.speech.realSR ? 'available' : 'missing') + ', ' + LQ.speech.voiceCount() + ' voices, recording ' + (LQ.speech.hasRecorder ? 'available' : 'missing') + '.</p></section>' +
-      '<section class="lab__sec"><h3 class="lab__h">Roles</h3><div class="row2 wrap"><label class="field"><span>Learner on this device</span><select data-change="lab-profile">' + S.profiles().map(p => '<option value="' + p.id + '"' + (p.current ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('') + '</select></label>' +
+    body.innerHTML = '<header class="lab__head"><div><h2 class="h3" id="lab-title">Test lab ' + U.info('Controls for testing this demo. They change the simulated device, time and data, never the product rules.', 'About the Test lab') + '</h2></div><button class="iconbtn" data-act="lab-close" aria-label="Close the Test lab" title="Close">' + ic('close') + '</button></header>' +
+      '<section class="lab__sec"><h3 class="lab__h">Scenarios</h3><ul class="lab__presets" role="list">' + PRESETS.map(p => '<li title="' + esc(p.desc) + '"><div><strong>' + esc(p.name) + '</strong></div><button class="btn btn--sm" data-act="lab-preset" data-arg="' + p.id + '">Load</button></li>').join('') + '</ul></section>' +
+      '<section class="lab__sec"><h3 class="lab__h">Demo clock ' + U.info('Time has consequences: phrases fall due and overdue, an 18:00 reminder lands in the inbox (not during quiet hours or a paused streak), scheduled studio drafts publish, and offline lesson packs expire after 30 days.', 'About the clock') + '</h3><p class="lab__now"><strong>' + esc(S.fmtDay(S.today(), { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })) + ', ' + esc(S.fmtTime(now)) + '</strong>' + (st.clockMin ? ' <span class="small muted">(+' + describeOffset(st.clockMin) + ')</span>' : '') + '</p>' +
+      '<div class="row2 wrap"><button class="btn btn--sm" data-act="clock-advance" data-arg="60">+1 hour</button><button class="btn btn--sm" data-act="clock-advance" data-arg="1440">+1 day</button><button class="btn btn--sm" data-act="clock-advance" data-arg="10080">+1 week</button><button class="btn btn--sm btn--quiet" data-act="clock-reset"' + (st.clockMin ? '' : ' disabled') + '>Reset</button></div>' +
+      '<form class="row2 wrap" data-submit="lab-date"><label class="field field--inline"><span>Jump to</span><input type="date" id="lab-date" name="d" min="2026-10-01" max="2027-12-31" value="' + S.today() + '"></label><button class="btn btn--sm" type="submit">Go</button></form></section>' +
+      apiSec() +
+      '<section class="lab__sec"><h3 class="lab__h">Inject an event</h3><form class="stack-sm" data-submit="lab-inject"><label class="field"><span class="sr-only">Event</span><select name="ev" id="lab-ev">' + EVENTS.map(e => '<option value="' + e.id + '">' + esc(e.label) + '</option>').join('') + '</select></label><button class="btn btn--sm btn--primary" type="submit">Inject</button></form>' + (LQ.speech.srBroken ? '<p class="small">Recognizer: failed (' + esc(LQ.speech.srBroken) + '). <button class="linkbtn" data-act="lab-sr-recover">Recover</button></p>' : '') + '</section>' +
+      '<section class="lab__sec"><h3 class="lab__h">Capabilities ' + U.info('Real device: speech recognition ' + (LQ.speech.realSR ? 'available' : 'missing') + ', ' + LQ.speech.voiceCount() + ' voices, recording ' + (LQ.speech.hasRecorder ? 'available' : 'missing') + '.', 'This device') + '</h3><div class="stack-sm">' + CAPS.map(([k, l, h]) => { const on = k === 'liveAIOff' ? caps.liveAI === false : !!caps[k]; return '<label class="switch" title="' + esc(h) + '"><span><strong>' + esc(l) + '</strong></span><input type="checkbox" role="switch" data-change="lab-cap" data-arg="' + k + '"' + (on ? ' checked' : '') + '></label>'; }).join('') + '</div></section>' +
+      '<section class="lab__sec"><h3 class="lab__h">Roles</h3><div class="row2 wrap"><label class="field"><span>Learner</span><select data-change="lab-profile">' + S.profiles().map(p => '<option value="' + p.id + '"' + (p.current ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('') + '</select></label>' +
       '<label class="field"><span>Studio role</span><select data-change="lab-role">' + Object.entries(LQ.STUDIO_ROLES).map(([k, r]) => '<option value="' + k + '"' + (k === st.studio.role ? ' selected' : '') + '>' + esc(r.label) + '</option>').join('') + '</select></label></div></section>' +
-      '<section class="lab__sec"><h3 class="lab__h">Event log <span class="muted small">' + st.events.length + '</span></h3><label class="search search--sm">' + ic('search', 'ic--sm') + '<span class="sr-only">Filter events</span><input type="search" id="lab-log-q" data-input="lab-log-q" placeholder="Filter by type or text" value="' + esc(LB.logQ) + '"></label>' +
+      '<section class="lab__sec"><h3 class="lab__h">Event log <span class="muted small">' + st.events.length + '</span></h3><label class="search search--sm">' + ic('search', 'ic--sm') + '<span class="sr-only">Filter events</span><input type="search" id="lab-log-q" data-input="lab-log-q" placeholder="Filter" value="' + esc(LB.logQ) + '"></label>' +
       '<ol class="lab__log">' + ev.map(e => '<li><span class="small muted">' + esc(S.fmtDay(e.at)) + (e.time ? ' ' + esc(e.time) : '') + '</span><code>' + esc(e.type) + '</code><span>' + esc(e.text) + '</span></li>').join('') + '</ol></section>' +
-      '<section class="lab__sec"><h3 class="lab__h">Workspace</h3><p class="small muted">Everything this demo stores: learners, studio, inbox, clock and the event log.</p><div class="row2 wrap"><button class="btn btn--sm" data-act="lab-export">' + ic('download', 'ic--xs') + 'Export JSON</button><label class="btn btn--sm filebtn">' + ic('upload', 'ic--xs') + 'Import JSON<input type="file" accept="application/json,.json" class="sr-only" data-change="lab-import"></label><button class="btn btn--sm btn--quiet" data-act="reset-demo">Reset demo</button></div></section>';
-    if (!LB.aiPainted) paintAI();
-    $('lab-foot').innerHTML = '<p class="small muted lab__fine">Live AI note: with a key, the text of the turn being checked (and your conversation in free talk) goes to the Anthropic API and is billed to that key. Use a key with a low spend limit. Nothing is sent without a key, and tests never call the API.' + (window.LiveAI && LiveAI.lastCall() ? ' Last call: ' + esc(LiveAI.lastCall().model) + ', ' + (LiveAI.lastCall().ms / 1000).toFixed(1) + ' s, ' + LiveAI.lastCall().inputTokens + ' in / ' + LiveAI.lastCall().outputTokens + ' out tokens.' : '') + '</p>';
+      '<section class="lab__sec"><h3 class="lab__h">Workspace ' + U.info('Everything this demo stores: learners, studio, inbox, clock and the event log.', 'About the workspace') + '</h3><div class="row2 wrap"><button class="btn btn--sm" data-act="lab-export">' + ic('download', 'ic--xs') + 'Export JSON</button><label class="btn btn--sm filebtn">' + ic('upload', 'ic--xs') + 'Import JSON<input type="file" accept="application/json,.json" class="sr-only" data-change="lab-import"></label><button class="btn btn--sm btn--quiet" data-act="reset-demo">Reset demo</button></div></section>';
   };
   function describeOffset(min) { const d = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60); return (d ? d + ' day' + (d > 1 ? 's' : '') : '') + (d && h ? ' ' : '') + (h ? h + ' h' : '') || min + ' min'; }
-  function paintAI() { const el = $('lab-ai'); if (!el) return; if (window.LiveAI) { LiveAI.renderSettings(el, { lang: 'en' }); LB.aiPainted = true; } else el.innerHTML = '<p class="small muted">The live AI library didn’t load.</p>'; }
-  if (window.LiveAI) LiveAI.onChange(() => { LB.aiPainted = false; if (LB.open) paintAI(); S.event('ai.key', LiveAI.isOn() ? 'Live AI key added (held in this browser)' : 'Live AI key removed'); S.save(); LQ.app.render(); });
+  /* The key itself is entered on the hub's API monitor; here we only note the change in the event log. */
+  if (window.LiveAI) LiveAI.onChange(() => { S.event('ai.key', LiveAI.isOn() ? 'Live AI key available from the API monitor' : 'Live AI key removed on the API monitor'); S.save(); LQ.app.render(); });
 
   LB.show = () => {
     if (LQ.search && LQ.search.open) LQ.search.hide(true);
-    LB.open = true; LB.ret = document.activeElement; LB.aiPainted = false;
+    LB.open = true; LB.ret = document.activeElement;
     const el = $('lab'); el.hidden = false; document.body.classList.add('lab-open');
     ['stage', 'studio-root'].forEach(id => { const x = $(id); if (x) x.inert = true; });
     LB.render(); setTimeout(() => { const h = $('lab-title'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); } }, 20);

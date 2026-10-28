@@ -109,14 +109,22 @@
 
   function busy(key, kind, on) { const s = S.get(); s.ui.aiBusy = s.ui.aiBusy || {}; if (on) s.ui.aiBusy[key + ':' + kind] = true; else delete s.ui.aiBusy[key + ':' + kind]; S.emit({ soft: true }); }
 
-  function whyOff() {
-    if (!window.LiveAI || !window.LiveAI.available()) return 'The live AI library did not load.';
-    if (u.caps.offline) return 'Offline (Test lab toggle).';
-    if (!u.caps.liveAi) return 'Live AI is switched off in the Test lab capabilities.';
-    if (!window.LiveAI.isOn()) return 'Live AI is off. Add your own API key in the Test lab.';
-    return '';
+  /* Every live-AI call is metered by the hub's API monitor (vendor/api-meter.js, app "tradedesk"):
+     keys, budgets and killswitches live there, not in this demo. */
+  if (window.LiveAI) window.LiveAI.app = 'tradedesk';
+  function status() {
+    if (!window.LiveAI || !window.LiveAI.available()) return { state: 'off', reason: 'The live AI library did not load' };
+    if (u.caps.offline) return { state: 'off', reason: 'Offline (Test lab)' };
+    if (!u.caps.liveAi) return { state: 'off', reason: 'Switched off in the Test lab' };
+    if (window.ApiMeter) {
+      const g = window.ApiMeter.check('tradedesk', 'anthropic');
+      if (!g.ok) return { state: /^No .* key$/.test(g.reason) ? 'off' : 'paused', reason: g.reason + (/key$/.test(g.reason) ? ': add it on the API monitor' : '') };
+    } else if (!window.LiveAI.isOn()) return { state: 'off', reason: 'No API key' };
+    return { state: 'on', reason: 'claude-opus-5-5, metered on the API monitor' };
   }
-  const usable = () => !whyOff();
+  function whyOff() { const st = status(); return st.state === 'on' ? '' : st.reason + '.'; }
+  const usable = () => status().state === 'on';
+  if (window.ApiMeter) window.ApiMeter.onChange(() => { if (TD.render) TD.render(); });
 
   function extract(key, text, msg) {
     const state = S.get();
@@ -160,5 +168,5 @@
     }).catch((err) => { ex.reply = null; ex.replyNotice = 'Live AI failed: ' + window.LiveAI.describe(err) + ' The rules draft is shown.'; return false; }).finally(() => busy(key, 'reply', false));
   }
 
-  TD.ai = { SCHEMA: SCHEMA, systemPrompt: systemPrompt, toParsed: toParsed, findSpan: findSpan, extract: extract, reply: reply, usable: usable, whyOff: whyOff };
+  TD.ai = { status: status, SCHEMA: SCHEMA, systemPrompt: systemPrompt, toParsed: toParsed, findSpan: findSpan, extract: extract, reply: reply, usable: usable, whyOff: whyOff };
 })();

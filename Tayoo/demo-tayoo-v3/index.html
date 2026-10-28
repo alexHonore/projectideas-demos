@@ -11,21 +11,10 @@
 </head>
 <body>
   <a class="skip" href="#composer-input">Skip to the message box</a>
+  <a class="stage-back" href="../../index.html" title="All demos" aria-label="All demos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg><span>All demos</span></a>
+  <div class="stage" id="stage">
+  <div class="device" id="device">
   <div class="app" id="app">
-    <nav class="rail" aria-label="Main">
-      <a class="rail-logo" href="#/" aria-label="Tayoo home"><svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="12" width="3.4" height="8" rx="1.7"/><rect x="8.9" y="8" width="3.4" height="16" rx="1.7"/><rect x="14.3" y="4" width="3.4" height="24" rx="1.7"/><rect x="19.7" y="8" width="3.4" height="16" rx="1.7"/><rect x="25.6" y="12" width="3.4" height="8" rx="1.7"/></svg></a>
-      <a class="rail-item" href="#/" data-nav="talk"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4 M8 7v10 M12 4v16 M16 7v10 M20 10v4"/></svg><span>Talk</span></a>
-      <a class="rail-item" href="#/today" data-nav="today"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l2 2 4-4 M5 4h14v16H5z"/></svg><span>Today</span></a>
-      <a class="rail-item" href="#/calendar" data-nav="calendar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4z M4 10h16 M9 3v4 M15 3v4 M8 14h3"/></svg><span>Calendar</span></a>
-      <a class="rail-item" href="#/clients" data-nav="clients"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M2 21a7 7 0 0 1 14 0 M16 3.5a4 4 0 0 1 0 7.5 M18 14a6 6 0 0 1 4 7"/></svg><span>Clients</span></a>
-      <a class="rail-item" href="#/listings" data-nav="listings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7 M6 10v10h12V10"/></svg><span>Listings</span></a>
-      <a class="rail-item" href="#/cma" data-nav="cma"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10 M10 20V4 M16 20v-7 M22 20H2"/></svg><span>CMA</span></a>
-      <a class="rail-item" href="#/files" data-nav="files"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7z M14 3v4h4 M9 13h6 M9 17h4"/></svg><span>Files</span></a>
-      <a class="rail-item" href="#/ledger" data-nav="ledger"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l5-5 4 4 8-9 M14 7h6v6"/></svg><span>Ledger</span></a>
-      <a class="rail-item" href="#/activity" data-nav="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Activity</span></a>
-      <a class="rail-item" href="#/settings" data-nav="settings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M12 2v3 M12 19v3 M4.9 4.9l2.1 2.1 M17 17l2.1 2.1 M2 12h3 M19 12h3 M4.9 19.1L7 17 M17 7l2.1-2.1"/></svg><span>Settings</span></a>
-      <span class="rail-foot" title="Alex Lavoie, Courtage Boréal"><span class="av" aria-hidden="true">AL</span><span class="sr-only">Signed in as Alex Lavoie, Courtage Boréal (fictional)</span></span>
-    </nav>
 
     <header class="top" id="top"></header>
 
@@ -40,34 +29,47 @@
       <section class="page" id="page" aria-label="View" hidden></section>
     </main>
 
-    <aside class="pane" id="pane" aria-label="Context"></aside>
 
     <nav class="tabs" aria-label="Main">
       <a href="#/" data-nav="talk"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4 M8 7v10 M12 4v16 M16 7v10 M20 10v4"/></svg><span>Talk</span></a>
       <a href="#/today" data-nav="today"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l2 2 4-4 M5 4h14v16H5z"/></svg><span>Today</span></a>
-      <a href="#/calendar" data-nav="calendar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4z M4 10h16 M9 3v4 M15 3v4 M8 14h3"/></svg><span>Calendar</span></a>
       <a href="#/clients" data-nav="clients"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M2 21a7 7 0 0 1 14 0 M16 3.5a4 4 0 0 1 0 7.5 M18 14a6 6 0 0 1 4 7"/></svg><span>Clients</span></a>
+      <a href="#/calendar" data-nav="calendar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4z M4 10h16 M9 3v4 M15 3v4 M8 14h3"/></svg><span>Calendar</span></a>
       <a href="#/more" data-nav="more"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01 M12 12h.01 M19 12h.01"/></svg><span>More</span><span class="tab-n" data-nav-count="inbox" hidden></span></a>
     </nav>
   </div>
-
-  <!-- Midnight capture: the voice moment -->
-  <div class="capture" id="capture" role="dialog" aria-modal="true" aria-labelledby="cap-status-text" aria-describedby="cap-hint" hidden>
+  <!-- Midnight capture: the voice moment. Tap or hold the mic; it sends by itself after a short silence. -->
+  <div class="capture" id="capture" role="dialog" aria-modal="true" aria-labelledby="cap-status-text" hidden>
     <div class="cap-top">
-      <p class="cap-status"><span class="rec-dot" aria-hidden="true"></span><span id="cap-status-text">Listening</span><span class="cap-timer" id="cap-timer" aria-hidden="true">0:00</span></p>
-      <button type="button" class="cap-x" data-act="cap-cancel" aria-label="Cancel and discard"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12 M18 6L6 18"/></svg></button>
+      <p class="cap-status"><span class="cap-ic" id="cap-ic" aria-hidden="true"></span><span id="cap-status-text">Listening</span><span class="cap-timer" id="cap-timer" aria-hidden="true">0:00</span></p>
+      <button type="button" class="cap-x" data-act="cap-cancel" aria-label="Discard" title="Discard"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12 M18 6L6 18"/></svg></button>
     </div>
     <div class="cap-stage">
       <canvas id="orb" class="orb-canvas" aria-hidden="true"></canvas>
+      <div class="cap-level" id="cap-level" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
       <p class="cap-text" id="cap-text" aria-live="polite"></p>
       <p class="cap-hint" id="cap-hint"></p>
     </div>
-    <div class="cap-samples" id="cap-samples"></div>
     <div class="cap-controls">
-      <button type="button" class="cap-side" data-act="cap-type"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v10H3z M7 11h.01 M11 11h.01 M15 11h.01 M7 14h10"/></svg><span>Type instead</span></button>
-      <button type="button" class="cap-stop" id="cap-stop" data-act="cap-stop"><span class="cap-stop-sq" aria-hidden="true"></span><span>Stop</span></button>
-      <button type="button" class="cap-side" data-act="cap-cancel"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12 M18 6L6 18"/></svg><span>Discard</span></button>
+      <button type="button" class="cap-side" data-act="cap-type" aria-label="Type instead" title="Type instead"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v10H3z M7 11h.01 M11 11h.01 M15 11h.01 M7 14h10"/></svg></button>
+      <button type="button" class="cap-stop" id="cap-stop" data-act="cap-stop" aria-label="Done: send to Tayoo" title="Done: send to Tayoo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg><span>Done</span></button>
+      <button type="button" class="cap-side" data-act="cap-retry" aria-label="Listen again" title="Listen again"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8 M4 4v4h4 M4 13a8 8 0 0 0 14.3 4.9L20 16 M20 20v-4h-4"/></svg></button>
     </div>
+  </div>
+  <div class="spot" id="spot" hidden aria-hidden="true"></div>
+  <section class="tour" id="tour" hidden aria-label="Guided tour" aria-live="polite">
+    <div class="tour-bar" aria-hidden="true"><span></span></div>
+    <p class="tour-n"></p>
+    <h2 class="tour-h"></h2>
+    <p class="tour-t"></p>
+    <p class="tour-act"><button type="button" class="btn btn-quiet btn-sm" data-tour="exit">Exit</button><span class="tour-sp"></span><button type="button" class="btn btn-ghost btn-sm" data-tour="back">Back</button><button type="button" class="btn btn-primary btn-sm" data-tour="next">Next</button></p>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <aside class="lab" id="lab" hidden aria-labelledby="lab-h">
+    <div class="lab-body" id="lab-body"></div>
+  </aside>
+  </div>
   </div>
 
   <dialog class="dlg" id="samples-dlg" aria-labelledby="samples-h">
@@ -76,6 +78,10 @@
       <p class="muted">Scripted, fictional recordings for this demo. Play one as a dictation or put it in the composer and change the words.</p>
       <ul class="smp-list" id="samples-list"></ul>
     </div>
+  </dialog>
+
+  <dialog class="dlg dlg-sheet" id="demo-dlg" aria-labelledby="demo-h">
+    <div class="dlg-in" id="demo-in"></div>
   </dialog>
 
   <dialog class="dlg dlg-sm" id="confirm-dlg" aria-labelledby="confirm-h">
@@ -103,23 +109,13 @@
     </div>
   </dialog>
 
-  <aside class="lab" id="lab" hidden aria-labelledby="lab-h">
-    <div class="lab-body" id="lab-body"></div>
-  </aside>
+
   <input type="file" id="import-file" accept=".json,application/json" hidden>
   <div id="print-root" class="print-root" aria-hidden="true"></div>
 
-  <div class="spot" id="spot" hidden aria-hidden="true"></div>
-  <section class="tour" id="tour" hidden aria-label="Guided tour" aria-live="polite">
-    <div class="tour-bar" aria-hidden="true"><span></span></div>
-    <p class="tour-n"></p>
-    <h2 class="tour-h"></h2>
-    <p class="tour-t"></p>
-    <p class="tour-act"><button type="button" class="btn btn-quiet btn-sm" data-tour="exit">Exit</button><span class="tour-sp"></span><button type="button" class="btn btn-ghost btn-sm" data-tour="back">Back</button><button type="button" class="btn btn-primary btn-sm" data-tour="next">Next</button></p>
-  </section>
 
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script src="vendor/api-meter.js"></script>
   <script src="vendor/anthropic-sdk.js"></script>
   <script src="vendor/live-ai.js"></script>
   <script src="js/data.js"></script>

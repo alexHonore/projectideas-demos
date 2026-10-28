@@ -130,8 +130,8 @@
       body = `${tg('offline', 'SEAO injoignable', 'Surveillance des addenda interrompue : l’export exige une vérification manuelle documentée.')}
         ${tg('registryDown', 'Registres indisponibles (REA, RENA)', 'Les vérifications au registre deviennent « Non vérifié » au lieu de réutiliser un vieux résultat.')}
         ${tg('noClipboard', 'Presse-papiers refusé', 'La copie du texto affiche une solution de repli.')}
-        <div id="lab-ai" class="lab-ai"></div>
-        <p class="muted-note">Sans clé, aucune requête ne quitte le navigateur et tout fonctionne avec les règles. Avec une clé, la radiographie d’un avis collé ou d’un PDF, « Pourquoi ce prix ? » et le brouillon de question peuvent passer par ${esc(window.LiveAI ? window.LiveAI.model : 'claude-opus-5-5')}; toute erreur retombe sur les règles, avec la raison.</p>`;
+        <div class="lab-ai">${TS.AI.link('lab-ai-l')}<small>${esc(TS.AI.status().reason)}</small></div>
+        <p class="muted-note">La clé, les budgets et les coupe-circuits vivent dans le moniteur d’API du hub; chaque appel y est compté sous « tenderstrike ». Sans clé, aucune requête ne quitte le navigateur et tout fonctionne avec les règles. Avec une clé, la radiographie d’un avis collé ou d’un PDF, « Pourquoi ce prix ? » et le brouillon de question passent par ${esc(window.LiveAI ? window.LiveAI.model : 'claude-opus-5-5')}; toute erreur ou pause retombe sur les règles, avec la raison.</p>`;
     } else if (tab === 'log') {
       const ev = S.state.log.slice(-40).reverse();
       body = `<p class="muted-note">Les 40 derniers événements du journal unique. <a href="#/journal">Ouvrir le journal complet</a></p><ol class="log log-lab">${ev.map((e) => TS.V.logRow(e)).join('')}</ol>`;
@@ -147,5 +147,4 @@
       <div class="lab-b">${body}</div>
     </aside>`;
   };
-  L.after = () => { const el = U.$('#lab-ai'); if (el && window.LiveAI) { window.LiveAI.renderSettings(el, { lang: 'fr' }); U.typo(el); } };
 })();
