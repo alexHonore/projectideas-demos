@@ -276,7 +276,7 @@
     let h = '<h2 class="h3" id="sheet-title">' + ic('volume', 'ic--sm') + ' ' + esc(t.name) + '</h2>' +
       '<ul class="tiers" role="list">' +
       '<li class="' + (tier.tier === 'clip' ? 'is-on' : '') + '">' + ic('film', 'ic--sm') + '<span>Studio clips</span><span class="small muted">' + (clips ? clips : '0') + '</span></li>' +
-      '<li class="' + (tier.tier === 'gemini' ? 'is-on' : '') + '" title="' + esc(!pol.gemini ? pol.why : g.ok ? 'Gemini TTS through the API monitor, cached after the first play.' : g.reason) + '">' + ic('sparkle', 'ic--sm') + '<span>Neural voice</span><span class="small muted">' + (!pol.gemini ? 'Off for this variety' : g.ok ? (enr.neural === false ? 'Off' : 'On') : 'Paused') + '</span></li>' +
+      '<li class="' + (tier.tier === 'gemini' ? 'is-on' : '') + '" title="' + esc(!pol.gemini ? pol.why : g.ok ? 'Gemini TTS through the API monitor, cached after the first play.' : g.reason) + '">' + ic('sparkle', 'ic--sm') + '<span>Neural voice</span><span class="small muted">' + (!pol.gemini ? 'Off for this variety' : g.ok ? (enr.neural === false ? 'Off' : 'On') : /^No .* key$/.test(g.reason || '') ? 'No key' : 'Paused') + '</span></li>' +
       '<li class="' + (tier.tier === 'device' ? 'is-on' : '') + '">' + ic('volume', 'ic--sm') + '<span>Device voice</span><span class="small muted">' + ranked.length + '</span></li>' +
       '<li class="' + (tier.tier === 'text' ? 'is-on' : '') + '">' + ic('text', 'ic--sm') + '<span>Text</span></li></ul>' +
       '<p class="small">' + ic(tier.icon, 'ic--xs') + ' <strong>' + esc(tier.label) + '</strong> ' + U.info(tier.why, 'Why this voice') + '</p>';

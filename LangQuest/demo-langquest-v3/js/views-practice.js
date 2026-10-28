@@ -154,7 +154,7 @@
     const timed = () => setTimeout(next, LQ.segSeconds(seg) * 1000 / P.rate);
     let r;
     if (seg.n) r = U.sayNarrator(seg.n, f.c.source, { track: LQ.trackById(f.c.track), rate: P.rate, onend: (why) => { if (why === 'no-voice' || why === 'no-tts' || why === 'blocked') timed(); else if (why !== 'cancelled') next(); } });
-    else r = U.say({ t: seg.s, r: seg.r }, { track: LQ.trackById(f.c.track), slow: seg.slow, fast: seg.fast, onend: (why) => { if (why === 'no-voice' || why === 'no-tts' || why === 'blocked') timed(); else if (why !== 'cancelled') next(); } });
+    else r = U.say({ t: seg.s, r: seg.r }, { track: LQ.trackById(f.c.track), character: LQ.voice.whoChar(seg.who), speaker: seg.who || undefined, slow: seg.slow, fast: seg.fast, onend: (why) => { if (why === 'no-voice' || why === 'no-tts' || why === 'blocked') timed(); else if (why !== 'cancelled') next(); } });
   }
   function paintSeg() {
     document.querySelectorAll('.tx__seg').forEach(el => { const on = +el.dataset.i === P.idx; el.classList.toggle('is-on', on); if (on) { el.setAttribute('aria-current', 'true'); const box = el.closest('.tx'); if (box) box.scrollTop = el.offsetTop - box.offsetTop - 60; } else el.removeAttribute('aria-current'); });
@@ -198,7 +198,7 @@
     h += '<div class="pctl"><button class="iconbtn iconbtn--lg" data-act="p-back" aria-label="Back 15 seconds">' + ic('skipb') + '<span class="pctl__n">15</span></button>' +
       '<button class="playbtn" data-act="p-toggle" aria-label="' + (P.playing ? 'Pause' : 'Play') + '">' + ic(P.playing ? 'pause' : 'play') + '</button>' +
       '<button class="iconbtn iconbtn--lg" data-act="p-fwd" aria-label="Forward 15 seconds">' + ic('skipf') + '<span class="pctl__n">15</span></button></div>' +
-      '<div class="pbar"><div class="seg seg--mini" role="group" aria-label="Playback speed">' + [0.75, 1, 1.25].map(r => '<button class="segbtn' + (P.rate === r ? ' is-on' : '') + '" aria-pressed="' + (P.rate === r) + '" data-act="p-rate" data-arg="' + r + '">' + r + '×</button>').join('') + '</div>' +
+      '<div class="pbar"><div class="seg seg--mini" role="group" aria-label="Playback speed">' + [0.75, 1, 1.25].map(r => '<button class="segbtn' + (P.rate === r ? ' is-on' : '') + '" aria-pressed="' + (P.rate === r) + '" data-act="p-rate" data-arg="' + r + '" aria-label="Speed ' + r + '×" title="Speed ' + r + '×">' + r + '×</button>').join('') + '</div>' +
       '<label class="pbar__sleep" title="Sleep timer">' + ic('moon', 'ic--sm') + '<select data-change="p-sleep" aria-label="Sleep timer"><option value="0">Off</option>' + [5, 10, 15].map(m => '<option value="' + m + '"' + (P.sleepAt && Math.round((P.sleepAt - Date.now()) / 60000) === m ? ' selected' : '') + '>' + m + ' min</option>').join('') + '</select></label>' +
       (P.mode === 'script' ? U.tool('p-loop', 'loop', 'Loop phrase', ' aria-pressed="' + P.loop + '"') : '') +
       U.tool('p-bookmark', 'bookmark', 'Bookmark', ' aria-pressed="' + (pr.bookmarks || []).includes(P.idx) + '"') + '</div>' +

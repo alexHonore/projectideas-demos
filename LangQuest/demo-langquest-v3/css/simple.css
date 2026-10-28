@@ -199,3 +199,13 @@ svg.ic { display: inline-block; vertical-align: -0.2em; }
 .screen.is-full .toast--screen { bottom: auto; top: 64px; transform: translateX(-50%) translateY(-12px); }
 .screen.is-full .toast--screen.is-on { transform: translateX(-50%); }
 @media (min-width: 760px) { .screen.is-full .toast--screen { top: 104px; } }
+
+/* 44 px targets for the remaining small controls */
+.seg--mini .segbtn { min-height: 44px; min-width: 44px; }
+.backlink[aria-label] { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; margin-left: -10px; }
+details.scene-d > summary { min-height: 44px; min-width: 44px; justify-content: center; }
+.ltool { position: relative; }
+.ltool::after { content: ''; position: absolute; inset: -6px; }
+.switch input[type="checkbox"] { position: relative; }
+.selcell { display: grid; place-items: center; min-width: 44px; min-height: 44px; margin: -10px; cursor: pointer; }
+.selcell input { width: 18px; height: 18px; }

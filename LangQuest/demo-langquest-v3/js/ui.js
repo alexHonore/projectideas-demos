@@ -122,6 +122,7 @@
     const scope = document.getElementById(opts.scope || 'view');
     host.innerHTML = '<div class="sheet-backdrop" data-act="sheet-close"></div><div class="sheet ' + (opts.cls || '') + '" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabindex="-1"><div class="sheet__grip" aria-hidden="true"></div>' + html + '</div>';
     host.classList.add('is-open');
+    if (LQ.app && LQ.app.titles) LQ.app.titles(host);
     ['view', 'tabbar', 'app-header'].forEach(i => { const el = document.getElementById(i); if (el) el.inert = true; });
     if (opts.scope === 'studio-main') { const el = document.getElementById('studio-main'); if (el) el.inert = true; }
     sheetReturn = document.activeElement;

@@ -100,6 +100,7 @@
       const sb = $('sb-time'); if (sb) sb.textContent = S.fmtTime().replace(/\s?[AP]M$/, '');
     }
     if (LQ.lab.open) LQ.lab.render();
+    APP.titles(document.body);
     restoreDirty();
     // restore focus or move it to the new page heading
     let target = null;
@@ -194,6 +195,8 @@
   document.addEventListener('click', (ev) => { const m = $('demo-menu'); if (m && !m.hidden && !ev.target.closest('.demomenu-wrap')) APP.closeDemoMenu(); }, true);
   document.addEventListener('keydown', (ev) => { const m = $('demo-menu'); if (ev.key === 'Escape' && m && !m.hidden) { APP.closeDemoMenu(); const b = $('demo-btn'); if (b) b.focus(); } });
   ACT['tip'] = (el) => U.toggleTip(el);
+  /* Every icon-only control gets a tooltip that matches its accessible name. */
+  APP.titles = (root) => { if (root) root.querySelectorAll('button[aria-label]:not([title]), a[aria-label]:not([title])').forEach(el => { if (!/\p{L}{2,}/u.test(el.textContent || '')) el.title = el.getAttribute('aria-label'); }); };
   /* Per-course voice picker (behind the speaker icon). */
   ACT['voice-picker'] = (el) => U.sheet(V.voicePicker(el.dataset.arg || (S.track() || {}).id));
   ACT['voice-sample'] = (el) => {

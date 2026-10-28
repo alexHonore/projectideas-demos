@@ -53,6 +53,8 @@
     const list = MALE_NAMES.includes(name) ? MALE : FEMALE;
     return list[hash(name) % list.length];
   };
+  /* A speaker named in an audio script ("Lucía") keeps her character voice. */
+  VX.whoChar = (who) => { if (!who) return null; const n = String(who).split(/[ (]/)[0]; return Object.keys(LQ.CHARACTERS || {}).find(k => LQ.CHARACTERS[k].name.split(' ')[0] === n) || null; };
   /* Stable clip key, shared with tools/generate-audio.mjs. A region whose accent differs from the
      course default (British English) gets its own clip set, e.g. "english.gb". */
   VX.clipKey = (course, voice, text) => 'c' + hash(course + '|' + voice + '|' + String(text).trim()).toString(36);
